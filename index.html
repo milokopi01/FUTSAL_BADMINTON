@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzFTL2z0ZVsOi7WV1IOmonvLqiJ1vtgpxRiXtO2q3wSGNLbczypJgJfvcx2rqm2t9FdHQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -8123,6 +8123,10 @@ void main() {
         } else if (res.kod === 'SKRIP_LAMA') {
           setFormMsg(msgEl, res.error, 'error');
           return false;
+        } else if (res.kod === 'RALAT_SKRIP') {
+          // Ralat skrip Google Apps Script (bukan kata laluan salah) - jangan kira sebagai cubaan gagal
+          setFormMsg(msgEl, res.error, 'error');
+          return false;
         } else if (!res.networkError) {
           return loginFailed(msgEl, (res.error || 'Nama ringkas atau kata laluan tidak sah.') +
             ' (Disemak dengan Google Sheets. Pastikan akaun bertanda ☁ Sheets di panel Master Admin.)', pwEl);
@@ -13501,6 +13505,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     const MATCH_GAS_ACTIONS = ['syncAll', 'updateMatch', 'updateMatches'];
+    const GAS_SCRIPT_ERR_RE = /is not defined|ReferenceError|TypeError|SyntaxError|is not a function|Cannot read prop/i;
     const GAS_OLD_MSG = 'Google Sheets masih menggunakan Code.gs versi LAMA, jadi akaun pengadil tidak dapat disimpan / disemak. ' +
       'Master Admin: tampal Code.gs terkini > Deploy > Manage deployments > ✏️ Edit > Version: New version > Deploy.';
 
@@ -13835,6 +13840,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               !MATCH_GAS_ACTIONS.includes(payload.action) &&
               /Tiada data perlawanan diterima|Tindakan tidak dikenali/i.test(String(data.error || ''))) {
             return { ok: false, kod: 'SKRIP_LAMA', error: GAS_OLD_MSG };
+          }
+          // v1.16.1: ralat dalaman Code.gs (cth. "jenisSukan_ is not defined") -> mesej jelas untuk SEMUA tindakan,
+          // dan tidak dianggap sebagai kata laluan / data salah
+          if (data && data.ok === false && GAS_SCRIPT_ERR_RE.test(String(data.error || ''))) {
+            return { ok: false, kod: 'RALAT_SKRIP', error: 'Ralat skrip di Google Sheets (' + data.error + '). Master Admin perlu tampal Code.gs terkini > Deploy > Manage deployments > ✏️ Edit > Version: New version > Deploy.' };
           }
           return data;
         } catch (err) {
