@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycby5mmFG1mIIlA7Znp6EC8XCem607WFugTyuYwJvxjwIrgrm2-ULPDR-U71qxI_oplr5/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -19,12 +19,12 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Futsal PK KBB" />
+  <meta name="apple-mobile-web-app-title" content="Karnival PK KBB" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <meta name="description" content="Sistem Live Skor Pertandingan Futsal Pendidikan Khas Peringkat Daerah Kulim Bandar Baharu 2026 - Simulasi gelanggang live, carta liga, jadual penuh 65 perlawanan dan pengesahan urusetia." />
-  <title>Live Futsal PK Kulim Bandar Baharu 2026</title>
+  <meta name="description" content="Karnival Sukan Pendidikan Khas Peringkat Daerah Kulim Bandar Baharu 2026 - Dashboard Utama Futsal &amp; Badminton: gelanggang live, carta, jadual dan keputusan perlawanan." />
+  <title>Karnival Sukan PK KBB 2026 · Futsal &amp; Badminton</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -74,6 +74,16 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .ux-rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:uxRip .55s ease-out forwards;pointer-events:none}
     @keyframes uxRip{to{transform:scale(4);opacity:0}}
     .ux-hint{text-align:center;font-size:.7rem;color:var(--text-2);margin-top:10px}
+
+    .admin-team-section { margin-top: 22px; }
+    .admin-team-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:16px 0; }
+    .admin-team-form .field { min-width:0; }
+    .admin-team-form .input, .admin-team-form .select { width:100%; }
+    .admin-team-form .team-wide { grid-column:1 / -1; }
+    .admin-team-players { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .admin-team-status { min-height:1.5em; overflow-wrap:anywhere; }
+    .admin-team-status.team-error { color:var(--danger); }
+    @media(max-width:600px) { .admin-team-form, .admin-team-players { grid-template-columns:minmax(0,1fr); } }
 
     :root {
       --bg-0: #070b16;
@@ -1220,6 +1230,162 @@ body.projection-on #projection { display:block; }
       .gfx-confetti{display:none}
     }
   </style>
+  <style>
+    /* =========================================================
+       v2.0 KARNIVAL: DUA SUKAN (FUTSAL & BADMINTON) + DASHBOARD UTAMA
+       ========================================================= */
+    :root { --fs: #2ee6a6; --fs-2: #13b8d6; --fs-soft: rgba(46,230,166,.12); --fs-line: rgba(46,230,166,.38);
+            --bm: #c084fc; --bm-2: #f472b6; --bm-soft: rgba(192,132,252,.13); --bm-line: rgba(192,132,252,.42); }
+    .sport-off { display: none !important; }
+    .sport-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 0 4px; }
+    .sport-switch { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.3); border: 1px solid var(--glass-border); }
+    .sport-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 16px; border-radius: 10px;
+      font-size: .84rem; font-weight: 800; color: var(--text-1); transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast); }
+    .sport-switch button:hover { color: var(--text-0); background: var(--glass); }
+    .sport-switch button .ss-ic { font-size: 1.05rem; line-height: 1; }
+    .sport-switch button.active { color: #050b14; }
+    .sport-switch button[data-sukan="SEMUA"].active { background: linear-gradient(135deg, #ffd27a, #ffb547); box-shadow: 0 0 16px rgba(255,181,71,.45); }
+    .sport-switch button[data-sukan="FUTSAL"].active { background: linear-gradient(135deg, var(--fs), var(--fs-2)); box-shadow: 0 0 16px rgba(46,230,166,.45); }
+    .sport-switch button[data-sukan="BADMINTON"].active { background: linear-gradient(135deg, var(--bm), var(--bm-2)); box-shadow: 0 0 16px rgba(192,132,252,.5); }
+    .sport-hint { font-size: .74rem; font-weight: 700; color: var(--text-2); }
+    .tab-group { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 5px; margin: 0 2px 0 8px; padding: 4px 9px;
+      border-radius: 999px; font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .tab-group.tg-futsal { color: #8ff3cf; background: var(--fs-soft); border: 1px solid var(--fs-line); }
+    .tab-group.tg-badminton { color: #e9d5ff; background: var(--bm-soft); border: 1px solid var(--bm-line); }
+    .tab-btn.tab-bm.active::after { background: linear-gradient(90deg, var(--bm), var(--bm-2)); }
+    .tab-btn.tab-home.active::after { background: linear-gradient(90deg, #ffd27a, #ffb547); }
+
+    /* ---------- Dashboard Utama ---------- */
+    .dash-status { font-size: .76rem; color: var(--text-2); font-weight: 700; }
+    .dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .dash-kpi { padding: 14px 16px; border-radius: 16px; background: var(--glass); border: 1px solid var(--glass-border); min-width: 0; }
+    .dash-kpi .k-label { font-size: .7rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); }
+    .dash-kpi .k-val { font: 800 1.9rem/1.1 var(--font-display); margin-top: 4px; }
+    .dash-kpi .k-split { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .k-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font: 700 .72rem var(--font-mono); background: rgba(0,0,0,.25); border: 1px solid var(--glass-border); }
+    .k-chip.fs { color: #8ff3cf; border-color: var(--fs-line); }
+    .k-chip.bm { color: #e9d5ff; border-color: var(--bm-line); }
+    .dash-kpi.k-live .k-val { color: #ff8a8a; }
+    .dash-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+    .dash-cols.one { grid-template-columns: minmax(0, 1fr); }
+    .dash-col { border-radius: 20px; padding: 0; overflow: hidden; background: var(--glass); border: 1px solid var(--glass-border); }
+    .dash-col.c-futsal { border-color: var(--fs-line); }
+    .dash-col.c-badminton { border-color: var(--bm-line); }
+    .dash-col-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--glass-border); }
+    .c-futsal .dash-col-head { background: linear-gradient(135deg, rgba(46,230,166,.16), rgba(19,184,214,.06)); }
+    .c-badminton .dash-col-head { background: linear-gradient(135deg, rgba(192,132,252,.18), rgba(244,114,182,.07)); }
+    .dash-col-ic { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px; font-size: 1.4rem; }
+    .c-futsal .dash-col-ic { background: linear-gradient(135deg, var(--fs), var(--fs-2)); }
+    .c-badminton .dash-col-ic { background: linear-gradient(135deg, var(--bm), var(--bm-2)); }
+    .dash-col-title { min-width: 0; flex: 1; }
+    .dash-col-title h3 { font-size: 1.08rem; font-weight: 800; }
+    .dash-col-title p { font-size: .74rem; color: var(--text-2); font-weight: 600; }
+    .dash-prog { min-width: 96px; text-align: right; }
+    .dash-prog strong { font: 800 1rem var(--font-mono); }
+    .dash-prog small { display: block; font-size: .66rem; color: var(--text-2); font-weight: 700; }
+    .dash-bar { height: 5px; border-radius: 9px; background: rgba(255,255,255,.08); margin-top: 6px; overflow: hidden; }
+    .dash-bar i { display: block; height: 100%; border-radius: 9px; }
+    .c-futsal .dash-bar i { background: linear-gradient(90deg, var(--fs), var(--fs-2)); }
+    .c-badminton .dash-bar i { background: linear-gradient(90deg, var(--bm), var(--bm-2)); }
+    .dash-sec { padding: 14px 18px 4px; }
+    .dash-sec + .dash-sec { border-top: 1px solid rgba(255,255,255,.06); }
+    .dash-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .dash-sec-head h4 { font-size: .8rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-1); }
+    .dash-link { font-size: .74rem; font-weight: 800; color: var(--text-2); padding: 4px 8px; border-radius: 8px; }
+    .dash-link:hover { color: var(--text-0); background: var(--glass); }
+    .dash-list { display: grid; gap: 8px; margin-bottom: 10px; }
+    .dm { padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.07); }
+    .dm.live { border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.08); }
+    .dm-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .7rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+    .dm-meta .badge { font-size: .62rem; padding: 2px 7px; }
+    .dm-meta .dm-right { margin-left: auto; font-family: var(--font-mono); }
+    .dm-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center; }
+    .dm-t { font-weight: 700; font-size: .86rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .dm-t.r { text-align: right; }
+    .dm-t.win { color: var(--text-0); font-weight: 800; }
+    .dm-t.lose { color: var(--text-2); }
+    .dm-t.tbd { color: var(--text-2); font-style: italic; font-weight: 600; font-size: .78rem; }
+    .dm-t small { display: block; font: 600 .66rem var(--font-mono); color: var(--text-2); font-style: normal; }
+    .dm-sc { font: 800 1.05rem var(--font-mono); padding: 4px 10px; border-radius: 9px; background: rgba(0,0,0,.35); white-space: nowrap; }
+    .dm.live .dm-sc { color: #ffb4b4; }
+    .dm-vs { font: 800 .72rem var(--font-mono); color: var(--text-2); padding: 4px 8px; }
+    .dash-empty { padding: 12px; border-radius: 12px; border: 1px dashed var(--glass-border); color: var(--text-2); font-size: .8rem; text-align: center; margin-bottom: 10px; }
+    .mini-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 8px; margin-bottom: 12px; }
+    .mini-g { padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.07); min-width: 0; }
+    .mini-g-h { display: flex; justify-content: space-between; gap: 6px; font-size: .7rem; font-weight: 800; color: var(--text-2); margin-bottom: 6px; }
+    .mini-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: .8rem; padding: 3px 0; }
+    .mini-row .p { font: 800 .7rem var(--font-mono); color: var(--text-2); }
+    .mini-row .n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mini-row .m { font: 800 .74rem var(--font-mono); }
+    .c-futsal .mini-row .m { color: var(--fs); }
+    .c-badminton .mini-row .m { color: var(--bm); }
+    .kat-tag { display: inline-flex; padding: 1px 6px; border-radius: 6px; font: 800 .62rem var(--font-mono); }
+    .kat-tag.SR { color: #7dd3fc; background: rgba(56,189,248,.14); }
+    .kat-tag.SM { color: #fdba74; background: rgba(251,146,60,.14); }
+    .data-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: .8rem; font-weight: 600; line-height: 1.45;
+      background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.3); color: #cfeeff; }
+    .data-note.warn { background: rgba(250,204,21,.08); border-color: rgba(250,204,21,.35); color: #fff3bf; }
+
+    /* ---------- Badminton: carta, kalah mati, jadual ---------- */
+    .bm-section-title { color: #e9d5ff; }
+    .bm-grid .group-card { border-color: var(--bm-line); }
+    .bm-grid .data-table .pts { color: var(--bm); }
+    .bm-grid .data-table tr.qualify td:first-child { box-shadow: inset 3px 0 0 var(--bm); }
+    .bm-grid .team-cell .pl { display: block; font: 600 .68rem/1.35 var(--font-body); color: var(--text-2); margin-top: 2px; }
+    .bm-rules { margin-top: 22px; border-color: var(--bm-line); }
+    .bm-rules ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: .86rem; color: var(--text-1); }
+    .bm-rules details { margin-top: 12px; }
+    .bm-rules summary { cursor: pointer; font-weight: 800; font-size: .84rem; color: #e9d5ff; }
+    .bm-rules details ul { margin-top: 8px; }
+    #tab-bm-knockout .ko-card.final { border-color: var(--bm-line); box-shadow: 0 0 22px rgba(192,132,252,.35); }
+    #tab-bm-knockout .ko-team.win .sc { color: var(--bm); }
+    #tab-bm-knockout .ko-round-title { color: #e9d5ff; }
+    #tab-bm-knockout .ko-champ { background: var(--bm-soft); border-color: var(--bm-line); color: #f5e9ff; }
+    .bm-list { display: grid; gap: 8px; }
+    .bm-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 150px; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 14px;
+      background: var(--glass); border: 1px solid var(--glass-border); }
+    .bm-row.live { border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.07); }
+    .bm-row.done { border-color: rgba(34,197,94,.3); }
+    .bm-row .r-id b { display: block; font: 800 1rem var(--font-mono); color: #e9d5ff; }
+    .bm-row .r-id small { display: block; font: 600 .66rem var(--font-mono); color: var(--text-2); }
+    .bm-row .r-stage { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .7rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+    .bm-row .r-side { text-align: right; display: grid; gap: 5px; justify-items: end; font-size: .74rem; font-weight: 700; color: var(--text-2); }
+    .bm-row .r-court { font: 800 .8rem var(--font-mono); color: var(--text-1); }
+    .bm-empty { padding: 30px 16px; text-align: center; color: var(--text-2); border: 1px dashed var(--glass-border); border-radius: 14px; }
+
+    @media (max-width: 1100px) {
+      .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dash-cols { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .sport-bar { gap: 6px; }
+      .sport-switch { display: flex; width: 100%; }
+      .sport-switch button { flex: 1; padding: 9px 6px; font-size: .8rem; }
+      .sport-hint { display: none; }
+      .brand-text p { display: none; }
+      .tab-group { margin-left: 4px; }
+      .dash-kpis { gap: 8px; }
+      .dash-kpi { padding: 11px 12px; }
+      .dash-kpi .k-val { font-size: 1.5rem; }
+      .dash-col-head { padding: 13px 14px; }
+      .dash-sec { padding: 12px 12px 2px; }
+      .dm { padding: 9px 10px; }
+      .dm-t { font-size: .8rem; }
+      .dm-sc { font-size: .95rem; padding: 3px 8px; }
+      .bm-row { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; }
+      .bm-row .r-id { display: flex; align-items: baseline; gap: 8px; }
+      .bm-row .r-side { grid-auto-flow: column; justify-content: space-between; justify-items: start; text-align: left; }
+      /* Header lebih padat di telefon (lebih ruang untuk kandungan) */
+      .app-header .header-inner { padding: 10px 0 8px; gap: 8px; }
+      .app-header .brand-logo { width: 38px; height: 38px; border-radius: 12px; font-size: 1.2rem; }
+      .app-header .category-switch button { padding: 7px 6px; font-size: .74rem; white-space: nowrap; }
+      .sport-switch button { padding: 7px 6px; }
+      .app-header .tab-nav { padding: 6px 0 8px; }
+      .app-header .tab-btn { padding: 8px 12px; font-size: .8rem; }
+      #tab-bm-schedule .filter-bar .input { flex: 1 1 100%; }
+      #tab-bm-schedule .filter-bar .select { flex: 1 1 140px; min-width: 0; }
+    }
+  </style>
 </head>
 <body data-category="SEMUA">
 
@@ -1230,10 +1396,10 @@ body.projection-on #projection { display:block; }
     <div class="container">
       <div class="header-inner">
         <div class="brand">
-          <div class="brand-logo" aria-hidden="true">⚽</div>
+          <div class="brand-logo" id="brandLogo" aria-hidden="true">🏆</div>
           <div class="brand-text">
-            <h1>Futsal Pendidikan Khas KBB 2026</h1>
-            <p>PERINGKAT DAERAH KULIM BANDAR BAHARU · SISTEM LIVE SKOR</p>
+            <h1>Karnival Sukan Pendidikan Khas KBB 2026</h1>
+            <p>FUTSAL &amp; BADMINTON · PERINGKAT DAERAH KULIM BANDAR BAHARU · SISTEM LIVE SKOR</p>
           </div>
         </div>
 
@@ -1263,25 +1429,50 @@ body.projection-on #projection { display:block; }
         </div>
       </div>
 
-      <!-- NAVIGASI 5 TAB -->
+      <!-- v2.0: PILIHAN SUKAN (Semua / Futsal / Badminton) -->
+      <div class="sport-bar">
+        <nav class="sport-switch" id="sportSwitch" aria-label="Pilih sukan">
+          <button type="button" class="active" data-sukan="SEMUA" aria-pressed="true"><span class="ss-ic" aria-hidden="true">🏆</span><span class="ss-tx">Semua</span></button>
+          <button type="button" data-sukan="FUTSAL" aria-pressed="false"><span class="ss-ic" aria-hidden="true">⚽</span><span class="ss-tx">Futsal</span></button>
+          <button type="button" data-sukan="BADMINTON" aria-pressed="false"><span class="ss-ic" aria-hidden="true">🏸</span><span class="ss-tx">Badminton</span></button>
+        </nav>
+        <span class="sport-hint" id="sportHint">Paparan: Futsal + Badminton</span>
+      </div>
+
+      <!-- NAVIGASI TAB (v2.0: Dashboard Utama + Futsal + Badminton) -->
       <nav class="tab-nav" id="tabNav" role="tablist" aria-label="Navigasi utama">
-        <button type="button" class="tab-btn active" role="tab" data-tab="tab-live" aria-selected="true">
+        <button type="button" class="tab-btn tab-home active" role="tab" data-tab="tab-dashboard" data-sukan="SEMUA" aria-selected="true">
+          <span aria-hidden="true">🏠</span> Dashboard Utama
+        </button>
+        <span class="tab-group tg-futsal" data-sukan="FUTSAL" aria-hidden="true">⚽ Futsal</span>
+        <button type="button" class="tab-btn" role="tab" data-tab="tab-live" data-sukan="FUTSAL" aria-selected="false">
           <span aria-hidden="true">📡</span> Simulasi Gelanggang Live
         </button>
-        <button type="button" class="tab-btn" role="tab" data-tab="tab-standings" aria-selected="false">
+        <button type="button" class="tab-btn" role="tab" data-tab="tab-standings" data-sukan="FUTSAL" aria-selected="false">
           <span aria-hidden="true">🏆</span> Carta Liga
         </button>
-        <button type="button" class="tab-btn tab-ko" role="tab" data-tab="tab-knockout" aria-selected="false" id="tabBtnKnockout">
+        <button type="button" class="tab-btn tab-ko" role="tab" data-tab="tab-knockout" data-sukan="FUTSAL" aria-selected="false" id="tabBtnKnockout">
           <span aria-hidden="true">⚔️</span> Kalah Mati
         </button>
-        <button type="button" class="tab-btn" role="tab" data-tab="tab-schedule" aria-selected="false">
+        <button type="button" class="tab-btn" role="tab" data-tab="tab-schedule" data-sukan="FUTSAL" aria-selected="false">
           <span aria-hidden="true">📅</span> Jadual Penuh (65 Match)
         </button>
-        <button type="button" class="tab-btn" role="tab" data-tab="tab-approval" aria-selected="false">
+        <span class="tab-group tg-badminton" data-sukan="BADMINTON" aria-hidden="true">🏸 Badminton</span>
+        <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-standings" data-sukan="BADMINTON" aria-selected="false">
+          <span aria-hidden="true">🏅</span> Carta Kumpulan
+        </button>
+        <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-knockout" data-sukan="BADMINTON" aria-selected="false">
+          <span aria-hidden="true">⚔️</span> Kalah Mati
+        </button>
+        <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-schedule" data-sukan="BADMINTON" aria-selected="false">
+          <span aria-hidden="true">📅</span> Jadual (34 Match)
+        </button>
+        <span class="tab-group" data-sukan="SEMUA" aria-hidden="true" style="color:var(--text-2);border:1px solid var(--glass-border)">🔐 Urusetia</span>
+        <button type="button" class="tab-btn" role="tab" data-tab="tab-approval" data-sukan="SEMUA" aria-selected="false">
           <span aria-hidden="true">📥</span> Peti Kelulusan Urusetia
           <span class="tab-count hidden" id="approvalCount">0</span>
         </button>
-        <button type="button" class="tab-btn" role="tab" data-tab="tab-admin" aria-selected="false">
+        <button type="button" class="tab-btn" role="tab" data-tab="tab-admin" data-sukan="SEMUA" aria-selected="false">
           <span aria-hidden="true">⚙️</span> Tetapan Master Admin
         </button>
       </nav>
@@ -1322,9 +1513,96 @@ body.projection-on #projection { display:block; }
       </div>
 
       <!-- =========================================================
+           v2.0 TAB UTAMA: DASHBOARD UTAMA (FUTSAL + BADMINTON)
+           ========================================================= -->
+      <section class="tab-panel" id="tab-dashboard" role="tabpanel">
+        <div class="panel-head">
+          <div>
+            <h2>Dashboard Utama</h2>
+            <p id="dashSubtitle">Ringkasan langsung Futsal &amp; Badminton: perlawanan semasa, giliran seterusnya, keputusan terkini dan carta.</p>
+          </div>
+          <div class="panel-tools">
+            <span class="dash-status" id="dashStatus">Memuatkan data…</span>
+            <button type="button" class="btn btn-sm" id="btnDashRefresh" title="Muat semula data daripada Google Sheets">↻ Muat semula</button>
+          </div>
+        </div>
+        <div id="dashNotice"></div>
+        <div class="dash-kpis" id="dashKpis"></div>
+        <div class="dash-cols" id="dashCols"></div>
+      </section>
+
+      <!-- =========================================================
+           v2.0 BADMINTON: CARTA KUMPULAN
+           ========================================================= -->
+      <section class="tab-panel" id="tab-bm-standings" role="tabpanel">
+        <div class="panel-head">
+          <div>
+            <h2>🏸 Carta Kumpulan Badminton</h2>
+            <p>Beregu Perempuan · Menang 3 mata, Kalah 0 · Kedudukan ikut Mata, kemudian Beza Mata. Hanya keputusan DISAHKAN dikira.</p>
+          </div>
+          <div class="panel-tools">
+            <span class="badge badge-ok badge-dot">Johan &amp; Naib Johan layak</span>
+          </div>
+        </div>
+        <div data-bm-notice></div>
+        <div id="bmStandings"></div>
+        <div class="card glass bm-rules" id="bmRules"></div>
+      </section>
+
+      <!-- =========================================================
+           v2.0 BADMINTON: KALAH MATI
+           ========================================================= -->
+      <section class="tab-panel" id="tab-bm-knockout" role="tabpanel">
+        <div class="panel-head">
+          <div>
+            <h2>🏸 Kalah Mati Badminton</h2>
+            <p>SR: Separuh Akhir silang → Akhir · SM: Suku Akhir (A1–B2, B1–A2, C1–D2, D1–C2) → Separuh Akhir → Akhir. Nama pasukan diisi automatik selepas kumpulan lengkap.</p>
+          </div>
+        </div>
+        <div data-bm-notice></div>
+        <div id="bmKnockout"></div>
+      </section>
+
+      <!-- =========================================================
+           v2.0 BADMINTON: JADUAL PENUH
+           ========================================================= -->
+      <section class="tab-panel" id="tab-bm-schedule" role="tabpanel">
+        <div class="panel-head">
+          <div>
+            <h2>🏸 Jadual Badminton</h2>
+            <p>24 perlawanan kumpulan (susunan P1–P24) + 10 perlawanan kalah mati · Gelanggang 1–2 Sekolah Rendah, 3–6 Sekolah Menengah.</p>
+          </div>
+          <div class="panel-tools">
+            <span class="badge" id="bmScheduleSummary">0 / 34 disahkan</span>
+          </div>
+        </div>
+        <div data-bm-notice></div>
+        <div class="filter-bar">
+          <input type="search" class="input" id="bmSearch" placeholder="🔍 Cari pasukan / singkatan / P1…" />
+          <select class="select" id="bmFilterCourt">
+            <option value="SEMUA">Semua Gelanggang</option>
+            <option value="1">Gelanggang 1</option>
+            <option value="2">Gelanggang 2</option>
+            <option value="3">Gelanggang 3</option>
+            <option value="4">Gelanggang 4</option>
+            <option value="5">Gelanggang 5</option>
+            <option value="6">Gelanggang 6</option>
+          </select>
+          <select class="select" id="bmFilterStatus">
+            <option value="SEMUA">Semua Status</option>
+            <option value="BELUM">Belum Bermula</option>
+            <option value="LIVE">Sedang Berlangsung</option>
+            <option value="TAMAT">Tamat · Tunggu Sah</option>
+            <option value="DISAHKAN">Disahkan</option>
+          </select>
+        </div>
+        <div class="bm-list" id="bmSchedule"></div>
+      </section>
+
+      <!-- =========================================================
            TAB 1: SIMULASI GELANGGANG LIVE
            ========================================================= -->
-      <section class="tab-panel active" id="tab-live" role="tabpanel">
+      <section class="tab-panel" id="tab-live" role="tabpanel">
         <div class="panel-head">
           <div>
             <h2>Simulasi Gelanggang Live</h2>
@@ -1549,6 +1827,61 @@ body.projection-on #projection { display:block; }
             <div class="stat glass"><div class="stat-val" id="statReferees">0</div><div class="stat-lbl">Pengadil Aktif</div></div>
           </div>
 
+          <section class="admin-team-section" aria-labelledby="adminTeamTitle">
+            <div class="card-bar">
+              <h3 class="card-title" id="adminTeamTitle">Pendaftaran Pasukan</h3>
+              <button type="button" class="btn btn-sm" id="adminTeamRefresh">🔄 Semak Pasukan</button>
+            </div>
+            <form id="adminTeamForm" class="admin-team-form">
+              <div class="field"><label for="adminTeamSport">Sukan *</label><select class="select" id="adminTeamSport" name="sukan" required><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
+              <div class="field"><label for="adminTeamCategory">Kategori *</label><select class="select" id="adminTeamCategory" name="kategori" required><option value="">Pilih kategori</option><option value="SR">Sekolah Rendah (SR)</option><option value="SM">Sekolah Menengah (SM)</option></select></div>
+              <div class="field"><label for="adminTeamName">Nama Pasukan *</label><input class="input" id="adminTeamName" name="nama" maxlength="120" required /></div>
+              <div class="field"><label for="adminTeamSchool">Nama Sekolah</label><input class="input" id="adminTeamSchool" name="sekolah" maxlength="120" /></div>
+              <div class="field"><label for="adminTeamCode">Kod Pasukan</label><input class="input" id="adminTeamCode" name="kod" maxlength="20" /></div>
+              <div class="field"><label for="adminTeamGroup">Kumpulan</label><input class="input" id="adminTeamGroup" name="kumpulan" maxlength="10" /></div>
+              <div class="field"><label for="adminTeamShort">Singkatan</label><input class="input" id="adminTeamShort" name="singkatan" maxlength="30" /></div>
+              <div class="admin-team-players team-wide hidden" id="adminTeamPlayers">
+                <div class="field"><label for="adminTeamPlayer1">Pemain 1</label><input class="input" id="adminTeamPlayer1" name="pemain1" maxlength="120" /></div>
+                <div class="field"><label for="adminTeamPlayer2">Pemain 2</label><input class="input" id="adminTeamPlayer2" name="pemain2" maxlength="120" /></div>
+              </div>
+              <div class="team-wide"><button class="btn btn-primary" type="submit" id="adminTeamSave">＋ Daftar Pasukan</button></div>
+            </form>
+            <p id="adminTeamStatus" class="admin-team-status muted" role="status" aria-live="polite"></p>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>ID Pasukan</th><th>Nama Pasukan</th><th>Kategori</th><th>Kod</th><th>Kumpulan</th></tr></thead><tbody id="adminTeamRows"></tbody></table></div>
+          </section>
+
+          <section class="admin-team-section" aria-labelledby="adminScheduleTitle">
+            <div class="card-bar"><h3 class="card-title" id="adminScheduleTitle">Pengurusan Jadual Perlawanan</h3><button type="button" class="btn btn-sm" id="adminScheduleRefresh">🔄 Muat Semula Jadual</button></div>
+            <div class="field"><label for="adminScheduleSport">Sukan</label><select class="select" id="adminScheduleSport"><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
+            <p class="admin-team-status muted" id="adminScheduleStatus" role="status" aria-live="polite"></p>
+            <form class="admin-team-form hidden" id="adminScheduleForm">
+              <h4 class="team-wide" id="adminScheduleEditTitle"></h4>
+              <div class="field"><label for="scheduleTime">Masa Jadual (Malaysia)</label><input class="input" type="datetime-local" id="scheduleTime" name="masaJadual" /></div>
+              <div class="field"><label for="scheduleCourt">Gelanggang *</label><input class="input" id="scheduleCourt" name="gelanggang" maxlength="120" required /></div>
+              <div class="field"><label for="scheduleTeam1">Pasukan 1 *</label><input class="input" id="scheduleTeam1" name="namaP1" maxlength="120" required /></div>
+              <div class="field"><label for="scheduleTeam2">Pasukan 2 *</label><input class="input" id="scheduleTeam2" name="namaP2" maxlength="120" required /></div>
+              <div class="field"><label for="scheduleCode1">Kod Pasukan 1</label><input class="input" id="scheduleCode1" name="kodP1" maxlength="120" /></div>
+              <div class="field"><label for="scheduleCode2">Kod Pasukan 2</label><input class="input" id="scheduleCode2" name="kodP2" maxlength="120" /></div>
+              <div class="team-wide row-actions"><button class="btn btn-primary" type="submit" id="adminScheduleSave">💾 Simpan Jadual</button><button class="btn" type="button" id="adminScheduleCancel">Batal</button></div>
+            </form>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Kategori</th><th>Masa (Malaysia)</th><th>Gelanggang</th><th>Pasukan 1</th><th>Pasukan 2</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="adminScheduleRows"></tbody></table></div>
+          </section>
+
+          <section class="admin-team-section" aria-labelledby="adminScoreHeading">
+            <div class="card-bar"><h3 class="card-title" id="adminScoreHeading">Skor &amp; Keputusan Perlawanan</h3><button class="btn btn-sm" type="button" id="adminScoreRefresh">🔄 Muat Semula Skor</button></div>
+            <div class="field"><label for="adminScoreSport">Sukan</label><select class="select" id="adminScoreSport"><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
+            <p class="admin-team-status muted" id="adminScoreStatus" role="status" aria-live="polite"></p>
+            <form class="admin-team-form hidden" id="adminScoreForm">
+              <h4 class="team-wide" id="adminScoreTitle"></h4>
+              <div class="field"><label for="scoreP1" id="scoreLabel1">Pasukan 1</label><input class="input" id="scoreP1" name="skorP1" type="number" min="0" max="99" step="1" required /></div>
+              <div class="field"><label for="scoreP2" id="scoreLabel2">Pasukan 2</label><input class="input" id="scoreP2" name="skorP2" type="number" min="0" max="99" step="1" required /></div>
+              <div class="field"><label for="scoreResult">Keputusan</label><select class="select" id="scoreResult" name="keputusan"><option value="SEMENTARA">Simpan Skor Sementara</option><option value="DISAHKAN">Sahkan Keputusan Akhir</option></select></div>
+              <div class="field hidden" id="adminScorePenalty"><label for="scorePenalty">Pemenang Penalti (Futsal kalah mati seri)</label><select class="select" id="scorePenalty" name="pemenangPenalti"><option value="">Tiada</option><option value="P1">Pasukan 1</option><option value="P2">Pasukan 2</option></select></div>
+              <div class="team-wide row-actions"><button class="btn btn-primary" type="submit" id="adminScoreSave">💾 Simpan Skor</button><button class="btn" type="button" id="adminScoreCancel">Batal</button></div>
+            </form>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Pasukan 1</th><th>Skor 1</th><th>Skor 2</th><th>Pasukan 2</th><th>Keputusan</th><th>Tindakan</th></tr></thead><tbody id="adminScoreRows"></tbody></table></div>
+          </section>
+
           <div class="admin-grid">
             <!-- FASA 4: Pembetulan Markah (Master Admin sahaja) -->
             <div class="card glass" id="correctionCard" style="grid-column: 1 / -1; padding: 0; overflow: hidden;">
@@ -1756,7 +2089,7 @@ body.projection-on #projection { display:block; }
 
   <footer class="app-footer">
     <div class="container">
-      Pertandingan Futsal Pendidikan Khas Peringkat Daerah Kulim Bandar Baharu 2026 ·
+      Karnival Sukan Pendidikan Khas (Futsal &amp; Badminton) Peringkat Daerah Kulim Bandar Baharu 2026 ·
       <span id="footerUpdated">Kemaskini terakhir: -</span>
     </div>
   </footer>
@@ -6262,7 +6595,7 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
-    const GAS_MIN_VERSI = '1.10.0';  // versi Code.gs dengan Jana Susunan (gelanggang terbuka + kunci Separuh Akhir / Akhir)
+    const GAS_MIN_VERSI = '1.14.0';  // Bahagian 4 memerlukan skor Admin dua sukan
     const ADMIN_KEY_STORAGE = 'FUTSAL_PK_KBB_ADMIN_KEY';
 
     const EVENTS = {
@@ -7535,7 +7868,9 @@ void main() {
         'renderSchedule',
         'renderApprovals',
         'renderAdmin',
-        'updateFooter'
+        'updateFooter',
+        'renderDashboard',        // v2.0 Dashboard Utama (baca sahaja)
+        'renderBadmintonViews'    // v2.0 paparan badminton (baca sahaja)
       ];
       renderers.forEach(name => {
         if (typeof window[name] === 'function') {
@@ -13859,9 +14194,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       SM: 'Sekolah Menengah'
     };
     const CATEGORY_NOTES = {
-      SEMUA: 'Sekolah Rendah + Sekolah Menengah',
-      SR: 'Gelanggang C & D · Kumpulan A, B, C, X, Y',
-      SM: 'Gelanggang A & B · Kumpulan A, B, C, D'
+      SEMUA: 'Sekolah Rendah + Sekolah Menengah · Futsal & Badminton',
+      SR: 'Futsal: Gel. C & D · Badminton: Gel. 1 & 2',
+      SM: 'Futsal: Gel. A & B · Badminton: Gel. 3–6'
     };
     const CATEGORY_CHROME = { SEMUA: '#0f172a', SR: '#071a2b', SM: '#221207' };
 
@@ -14651,9 +14986,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       // Tab terakhir yang disimpan dalam peranti diabaikan; hanya pautan yang menyatakan
       // tab secara jelas (cth. index.html#tab-standings) akan membuka tab lain.
       const hashTab = location.hash.replace('#', '');
-      state.ui.activeTab = (hashTab && document.getElementById(hashTab) && canViewTab(hashTab)) ? hashTab : 'tab-live';
+      // v2.0: halaman hadapan kini Dashboard Utama (pengadil kekal di Gelanggang Live).
+      const homeTab = typeof defaultHomeTab === 'function' ? defaultHomeTab() : 'tab-live';
+      state.ui.activeTab = (hashTab && document.getElementById(hashTab) && canViewTab(hashTab)) ? hashTab : homeTab;
       setActiveTab(state.ui.activeTab);
-      if (state.ui.activeTab === 'tab-live' && hashTab && history.replaceState) {
+      if (state.ui.activeTab === homeTab && hashTab && history.replaceState) {
         history.replaceState(null, '', location.pathname + location.search);
       }
       autoAssignCourts(null, { silent: true });
@@ -14681,5 +15018,663 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     // Sokongan ikon telefon dikekalkan; tiada cache halaman / pendaftaran SW baharu.
     // sw.js dihantar sebagai pembersih untuk pelawat yang pernah memasang versi lama.
   </script>
+  <script>
+    'use strict';
+    /* =========================================================
+       v2.0 KARNIVAL SUKAN PK KBB 2026: DASHBOARD UTAMA & BADMINTON
+       - Butang tapis sukan: Semua / Futsal / Badminton (disimpan dalam peranti).
+       - Dashboard Utama: ringkasan, perlawanan semasa, giliran, keputusan & carta
+         untuk kedua-dua sukan serentak (baca sahaja; tiada penulisan ke Google Sheets).
+       - Data futsal: GET ?action=read & papan live sedia ada (publicLive).
+       - Data badminton: GET ?action=badminton (Code.gs v1.11.0+). Jika Code.gs belum
+         dikemas kini, jadual & kumpulan asal (BM_SEED) dipaparkan.
+       - Fungsi Admin / Urusetia / Pengadil TIDAK diubah.
+       ========================================================= */
+    const SUKAN_KEY = 'KARNIVAL_PK_KBB_SUKAN';
+    const SUKAN_LIST = ['SEMUA', 'FUTSAL', 'BADMINTON'];
+    const SUKAN_INFO = {
+      SEMUA: { ikon: '🏆', hint: 'Paparan: Futsal + Badminton' },
+      FUTSAL: { ikon: '⚽', hint: 'Paparan: Futsal sahaja' },
+      BADMINTON: { ikon: '🏸', hint: 'Paparan: Badminton sahaja' }
+    };
+    const BM_MIN_VERSI = '1.11.0';
+    const DASH_POLL_MS = 20000;
+    const DASH_LIVE_RENDER_MS = 5000;
+    const BM_SEED = {"teams":[{"id":"BSR-A1","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"A","kod":"A1","sing":"SKTK","nama":"SK TAMAN KENARI","sekolah":"SK TAMAN KENARI","p1":"NUR QHALISSHA NASSUHA BINTI ABDULLAH","p2":"NUR AISYAH HANANI BINTI IRUWAN","status":"AKTIF"},{"id":"BSR-A2","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"A","kod":"A2","sing":"SKSK","nama":"SK SG KOB","sekolah":"SK SUNGAI KOB","p1":"NUR ARIANA FARISA BINTI NOR AFANDI","p2":"NUR AINA ARYANA BINTI MOHAMAD FAUZI","status":"AKTIF"},{"id":"BSR-A3","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"A","kod":"A3","sing":"SKPTD'A'","nama":"SK PERMATANG TOK DIK A","sekolah":"SK PERMATANG TOK DIK","p1":"SHARIFAH NUR AINUL SHIDQIA BINTI SYED MOHSIN","p2":"NUR AINIS AWANI BINTI RUSILIN","status":"AKTIF"},{"id":"BSR-B1","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"B","kod":"B1","sing":"SKS","nama":"SK SELAMA","sekolah":"SK SELAMA (K)","p1":"AYLA KHADEEJA BINTI MOHD ROSTAM","p2":"NUR AWATIF BINTI MOHD SABRI","status":"AKTIF"},{"id":"BSR-B2","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"B","kod":"B2","sing":"SKLR","nama":"SK LINDUNGAN RAJA","sekolah":"SK SERI LINDUNGAN RAJA","p1":"NUR ARRIANA ARISSA BINTI SHAHRIL NIZAR","p2":"NOR SYAFINI BINTI MOHD ZUL","status":"AKTIF"},{"id":"BSR-B3","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"B","kod":"B3","sing":"SKPTD'B'","nama":"SK PERMATANG TOK DIK B","sekolah":"SK PERMATANG TOK DIK","p1":"NURHIDAYAH RAISHA BINTI MOHD HASRUL","p2":"NURUL ZAHIRAH BINTI MOHD NAJIB","status":"AKTIF"},{"id":"BSR-B4","ev":"BPK-KBB-2026-SR","kat":"SR","kumpulan":"B","kod":"B4","sing":"SKDHZ","nama":"SK DATO HAJI ZAINUDDIN","sekolah":"SK DATO HJ ZAINUDDIN","p1":"SITI NORHAYATI BINTI ROSLI","p2":"NURUL IZZ SAFRINA BINTI SAMSUL","status":"AKTIF"},{"id":"BSM-A1","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"A","kod":"A1","sing":"SMKLB","nama":"SMK LABU BESAR","sekolah":"SMK LABU BESAR","p1":"NUR ZAHRA IMAN BINTI ABDULLAH","p2":"NUR SHEREEN SYAFINAZ BINTI MOHD SAFARIN","status":"AKTIF"},{"id":"BSM-A2","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"A","kod":"A2","sing":"SMKPS'A","nama":"SMK PADANG SERAI A","sekolah":"SMK PADANG SERAI (1)","p1":"ANISSYA BALQIS BIN MOHD SYUKRI","p2":"NUR SYAKIRAH BINTI NOOR AZAMIZAN","status":"AKTIF"},{"id":"BSM-A3","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"A","kod":"A3","sing":"SMKTM","nama":"SMK TAMAN MUTIARA","sekolah":"SMK TAMAN MUTIARA","p1":"NUR NAJRISHA BINTI RAMLI","p2":"NURUL FITRAH BINTI MAAULIDOL MOHAMAD","status":"AKTIF"},{"id":"BSM-A4","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"A","kod":"A4","sing":"SMKS'B","nama":"SMK SELAMA B","sekolah":"SMK SELAMA (2)","p1":"NORLIYANA BALQIS BINTI MOHD SAIFOL NIZAM","p2":"NUR ASYIKIN BINTI HASSAN GANI","status":"AKTIF"},{"id":"BSM-B1","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"B","kod":"B1","sing":"SMKL'A","nama":"SMK LUNAS A","sekolah":"SMK LUNAS (1)","p1":"AINUR ALEEYA BINTI ANUAR","p2":"NUR ARISSYA RUWAIDA BINTI MOHD SYAFIQ","status":"AKTIF"},{"id":"BSM-B2","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"B","kod":"B2","sing":"SMKSB","nama":"SMK SERDANG BARU","sekolah":"SMK SERDANG BARU","p1":"NUR NAZURAH BINTI SABARUDDIN","p2":"NUR AUFA DANIA BINTI ZAIDON","status":"AKTIF"},{"id":"BSM-B3","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"B","kod":"B3","sing":"SMKSgK'B","nama":"SMK SG KOB B","sekolah":"SMK SUNGAI KOB (2)","p1":"KUMITHIRA A/P UTHAYASURIYAN","p2":"NUR INSYIRAH HUSNA BINTI AZHAR","status":"AKTIF"},{"id":"BSM-C1","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"C","kod":"C1","sing":"SMKSAT","nama":"SMK SULTAN AHMAD TAJUDDIN","sekolah":"SMK SULTAN AHMAD TAJUDDIN","p1":"NUR ANIS SYAHIRAH BINTI ISMAIL","p2":"NURUL ADZIMAH BINTI ROSMADI","status":"AKTIF"},{"id":"BSM-C2","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"C","kod":"C2","sing":"SMKSgK'A","nama":"SMK SG KOB A","sekolah":"SMK SUNGAI KOB (1)","p1":"NURUL QISYA HUMAIRAH BINTI ABDULLAH","p2":"NUR IRDINA ZULAIKHA BINTI IZHAM","status":"AKTIF"},{"id":"BSM-C3","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"C","kod":"C3","sing":"SMKL'B","nama":"SMK LUNAS B","sekolah":"SMK LUNAS (2)","p1":"NUR HUSNA SOLEHAH BINTI ABDUL RAHMAN","p2":"NUR BATRISYIA QAISARA BINTI NORAIMI","status":"AKTIF"},{"id":"BSM-D1","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"D","kod":"D1","sing":"SMKS'A","nama":"SMK SELAMA A","sekolah":"SMK SELAMA (1)","p1":"NUR ARRMIYA YASMIN BINTI ROSLAN","p2":"YUMNA BINTI YASIR","status":"AKTIF"},{"id":"BSM-D2","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"D","kod":"D2","sing":"SMKJPB","nama":"SMK JALAN PAYA BESAR","sekolah":"SMK JALAN PAYA BESAR","p1":"NUR INAS MAHSURI BINTI MOHD RAQIB","p2":"NUR FARZANAH BINTI MOHAMAD RAZAK","status":"AKTIF"},{"id":"BSM-D3","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"D","kod":"D3","sing":"SMKPS'B","nama":"SMK PADANG SERAI B","sekolah":"SMK PADANG SERAI (2)","p1":"NURUL ALIA BATRISYIA BINTI HUSSIN","p2":"NUR AININ SOFIYA BINTI MUHAMMED NIZAM","status":"AKTIF"},{"id":"BSM-TD1","ev":"BPK-KBB-2026-SM","kat":"SM","kumpulan":"","kod":"","sing":"","nama":"SMK LUBUK BUNTAR","sekolah":"SMK LUBUK BUNTAR","p1":"","p2":"","status":"TARIK DIRI"}],"matches":[{"id":"BSR-01","kat":"SR","no":1,"ov":"P6","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A1","sing1":"SKTK","nama1":"SK TAMAN KENARI","s1":null,"s2":null,"kod2":"A2","sing2":"SKSK","nama2":"SK SG KOB","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-02","kat":"SR","no":2,"ov":"P7","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B1","sing1":"SKS","nama1":"SK SELAMA","s1":null,"s2":null,"kod2":"B2","sing2":"SKLR","nama2":"SK LINDUNGAN RAJA","gel":"2","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-03","kat":"SR","no":3,"ov":"P8","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B3","sing1":"SKPTD'B'","nama1":"SK PERMATANG TOK DIK B","s1":null,"s2":null,"kod2":"B4","sing2":"SKDHZ","nama2":"SK DATO HAJI ZAINUDDIN","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-04","kat":"SR","no":4,"ov":"P14","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A3","sing1":"SKPTD'A'","nama1":"SK PERMATANG TOK DIK A","s1":null,"s2":null,"kod2":"A1","sing2":"SKTK","nama2":"SK TAMAN KENARI","gel":"2","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-05","kat":"SR","no":5,"ov":"P15","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B4","sing1":"SKDHZ","nama1":"SK DATO HAJI ZAINUDDIN","s1":null,"s2":null,"kod2":"B1","sing2":"SKS","nama2":"SK SELAMA","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-06","kat":"SR","no":6,"ov":"P16","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B2","sing1":"SKLR","nama1":"SK LINDUNGAN RAJA","s1":null,"s2":null,"kod2":"B3","sing2":"SKPTD'B'","nama2":"SK PERMATANG TOK DIK B","gel":"2","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-07","kat":"SR","no":7,"ov":"P22","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A2","sing1":"SKSK","nama1":"SK SG KOB","s1":null,"s2":null,"kod2":"A3","sing2":"SKPTD'A'","nama2":"SK PERMATANG TOK DIK A","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-08","kat":"SR","no":8,"ov":"P23","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B1","sing1":"SKS","nama1":"SK SELAMA","s1":null,"s2":null,"kod2":"B3","sing2":"SKPTD'B'","nama2":"SK PERMATANG TOK DIK B","gel":"2","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-09","kat":"SR","no":9,"ov":"P24","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B2","sing1":"SKLR","nama1":"SK LINDUNGAN RAJA","s1":null,"s2":null,"kod2":"B4","sing2":"SKDHZ","nama2":"SK DATO HAJI ZAINUDDIN","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-10","kat":"SR","no":10,"ov":"SF1","peringkat":"SEPARUH AKHIR","kumpulan":"","kod1":"JOHAN-A","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-B","sing2":"","nama2":"","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-11","kat":"SR","no":11,"ov":"SF2","peringkat":"SEPARUH AKHIR","kumpulan":"","kod1":"JOHAN-B","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-A","sing2":"","nama2":"","gel":"2","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSR-12","kat":"SR","no":12,"ov":"FINAL","peringkat":"AKHIR","kumpulan":"","kod1":"MENANG-10","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"MENANG-11","sing2":"","nama2":"","gel":"1","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-01","kat":"SM","no":1,"ov":"P1","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A1","sing1":"SMKLB","nama1":"SMK LABU BESAR","s1":null,"s2":null,"kod2":"A4","sing2":"SMKS'B","nama2":"SMK SELAMA B","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-02","kat":"SM","no":2,"ov":"P2","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A2","sing1":"SMKPS'A","nama1":"SMK PADANG SERAI A","s1":null,"s2":null,"kod2":"A3","sing2":"SMKTM","nama2":"SMK TAMAN MUTIARA","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-03","kat":"SM","no":3,"ov":"P3","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B1","sing1":"SMKL'A","nama1":"SMK LUNAS A","s1":null,"s2":null,"kod2":"B2","sing2":"SMKSB","nama2":"SMK SERDANG BARU","gel":"5","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-04","kat":"SM","no":4,"ov":"P4","peringkat":"PERINGKAT KUMPULAN","kumpulan":"C","kod1":"C1","sing1":"SMKSAT","nama1":"SMK SULTAN AHMAD TAJUDDIN","s1":null,"s2":null,"kod2":"C2","sing2":"SMKSgK'A","nama2":"SMK SG KOB A","gel":"6","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-05","kat":"SM","no":5,"ov":"P5","peringkat":"PERINGKAT KUMPULAN","kumpulan":"D","kod1":"D1","sing1":"SMKS'A","nama1":"SMK SELAMA A","s1":null,"s2":null,"kod2":"D2","sing2":"SMKJPB","nama2":"SMK JALAN PAYA BESAR","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-06","kat":"SM","no":6,"ov":"P9","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A4","sing1":"SMKS'B","nama1":"SMK SELAMA B","s1":null,"s2":null,"kod2":"A2","sing2":"SMKPS'A","nama2":"SMK PADANG SERAI A","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-07","kat":"SM","no":7,"ov":"P10","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A1","sing1":"SMKLB","nama1":"SMK LABU BESAR","s1":null,"s2":null,"kod2":"A3","sing2":"SMKTM","nama2":"SMK TAMAN MUTIARA","gel":"5","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-08","kat":"SM","no":8,"ov":"P11","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B2","sing1":"SMKSB","nama1":"SMK SERDANG BARU","s1":null,"s2":null,"kod2":"B3","sing2":"SMKSgK'B","nama2":"SMK SG KOB B","gel":"6","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-09","kat":"SM","no":9,"ov":"P12","peringkat":"PERINGKAT KUMPULAN","kumpulan":"C","kod1":"C2","sing1":"SMKSgK'A","nama1":"SMK SG KOB A","s1":null,"s2":null,"kod2":"C3","sing2":"SMKL'B","nama2":"SMK LUNAS B","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-10","kat":"SM","no":10,"ov":"P13","peringkat":"PERINGKAT KUMPULAN","kumpulan":"D","kod1":"D2","sing1":"SMKJPB","nama1":"SMK JALAN PAYA BESAR","s1":null,"s2":null,"kod2":"D3","sing2":"SMKPS'B","nama2":"SMK PADANG SERAI B","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-11","kat":"SM","no":11,"ov":"P17","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A1","sing1":"SMKLB","nama1":"SMK LABU BESAR","s1":null,"s2":null,"kod2":"A2","sing2":"SMKPS'A","nama2":"SMK PADANG SERAI A","gel":"5","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-12","kat":"SM","no":12,"ov":"P18","peringkat":"PERINGKAT KUMPULAN","kumpulan":"A","kod1":"A3","sing1":"SMKTM","nama1":"SMK TAMAN MUTIARA","s1":null,"s2":null,"kod2":"A4","sing2":"SMKS'B","nama2":"SMK SELAMA B","gel":"6","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-13","kat":"SM","no":13,"ov":"P19","peringkat":"PERINGKAT KUMPULAN","kumpulan":"B","kod1":"B1","sing1":"SMKL'A","nama1":"SMK LUNAS A","s1":null,"s2":null,"kod2":"B3","sing2":"SMKSgK'B","nama2":"SMK SG KOB B","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-14","kat":"SM","no":14,"ov":"P20","peringkat":"PERINGKAT KUMPULAN","kumpulan":"C","kod1":"C1","sing1":"SMKSAT","nama1":"SMK SULTAN AHMAD TAJUDDIN","s1":null,"s2":null,"kod2":"C3","sing2":"SMKL'B","nama2":"SMK LUNAS B","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-15","kat":"SM","no":15,"ov":"P21","peringkat":"PERINGKAT KUMPULAN","kumpulan":"D","kod1":"D1","sing1":"SMKS'A","nama1":"SMK SELAMA A","s1":null,"s2":null,"kod2":"D3","sing2":"SMKPS'B","nama2":"SMK PADANG SERAI B","gel":"5","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-16","kat":"SM","no":16,"ov":"QF1","peringkat":"SUKU AKHIR","kumpulan":"","kod1":"JOHAN-A","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-B","sing2":"","nama2":"","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-17","kat":"SM","no":17,"ov":"QF2","peringkat":"SUKU AKHIR","kumpulan":"","kod1":"JOHAN-B","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-A","sing2":"","nama2":"","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-18","kat":"SM","no":18,"ov":"QF3","peringkat":"SUKU AKHIR","kumpulan":"","kod1":"JOHAN-C","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-D","sing2":"","nama2":"","gel":"5","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-19","kat":"SM","no":19,"ov":"QF4","peringkat":"SUKU AKHIR","kumpulan":"","kod1":"JOHAN-D","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"NJOHAN-C","sing2":"","nama2":"","gel":"6","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-20","kat":"SM","no":20,"ov":"SF1","peringkat":"SEPARUH AKHIR","kumpulan":"","kod1":"MENANG-16","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"MENANG-18","sing2":"","nama2":"","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-21","kat":"SM","no":21,"ov":"SF2","peringkat":"SEPARUH AKHIR","kumpulan":"","kod1":"MENANG-17","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"MENANG-19","sing2":"","nama2":"","gel":"4","status":"BELUM BERMULA","sah":"MENUNGGU"},{"id":"BSM-22","kat":"SM","no":22,"ov":"FINAL","peringkat":"AKHIR","kumpulan":"","kod1":"MENANG-20","sing1":"","nama1":"","s1":null,"s2":null,"kod2":"MENANG-21","sing2":"","nama2":"","gel":"3","status":"BELUM BERMULA","sah":"MENUNGGU"}],"rules":[{"bahagian":"FORMAT","kod":"ACARA","nilai":"BEREGU PEREMPUAN","ket":"Badminton beregu perempuan, Sekolah Rendah dan Menengah Pendidikan Khas"},{"bahagian":"FORMAT","kod":"SET_PER_PERLAWANAN","nilai":1,"ket":"Setiap perlawanan dimainkan 1 set sahaja"},{"bahagian":"FORMAT","kod":"SISTEM_MATA","nilai":"RALLY","ket":"Satu serve satu point"},{"bahagian":"FORMAT","kod":"MATA_MENANG","nilai":30,"ket":"Pasukan pertama mencapai 30 mata dikira menang"},{"bahagian":"FORMAT","kod":"DEUCE_PADA","nilai":29,"ket":"Jika 29-29, permainan diteruskan sehingga beza 2 mata"},{"bahagian":"FORMAT","kod":"BEZA_MINIMUM","nilai":2,"ket":"Beza mata minimum untuk menang selepas deuce"},{"bahagian":"FORMAT","kod":"HAD_MAKSIMUM","nilai":37,"ket":"Had maksimum 37 mata (pada 36-36, mata seterusnya menentukan pemenang)"},{"bahagian":"LIGA","kod":"MATA_LIGA_MENANG","nilai":3,"ket":"Menang = 3 mata"},{"bahagian":"LIGA","kod":"MATA_LIGA_KALAH","nilai":0,"ket":"Kalah = 0 mata"},{"bahagian":"LIGA","kod":"KEDUDUKAN","nilai":"MATA > BEZA MATA","ket":"Kedudukan ditentukan berdasarkan mata dan perbezaan mata"},{"bahagian":"FORMAT","kod":"TUKAR_GELANGGANG_PADA","nilai":15,"ket":"Regu yang mencapai mata ke-15 dahulu bertukar court dan disambung dengan mata ke-16"},{"bahagian":"KELAYAKAN","kod":"SR","nilai":"2 KUMPULAN (A, B)","ket":"Johan & Naib Johan setiap kumpulan (4 pasukan) layak ke Separuh Akhir dan Final"},{"bahagian":"KELAYAKAN","kod":"SM","nilai":"4 KUMPULAN (A, B, C, D)","ket":"Johan & Naib Johan setiap kumpulan (8 pasukan) layak ke Suku Akhir, Separuh Akhir dan Final"},{"bahagian":"SYARAT","kod":"SYARAT_1","nilai":"","ket":"Peserta hendaklah merupakan murid Pendidikan Khas daripada sekolah rendah dan sekolah menengah yang berdaftar di sekolah masing-masing (pemegang kad OKU)"},{"bahagian":"SYARAT","kod":"SYARAT_2","nilai":"","ket":"Peserta hendaklah membawa kad pengenalan dan kad OKU semasa hari pertandingan dan menunjukkan kepada urusetia semasa membuat pendaftaran"},{"bahagian":"SYARAT","kod":"SYARAT_3","nilai":"","ket":"Peserta hendaklah mendapat kebenaran daripada pihak sekolah dan ibu bapa/penjaga"},{"bahagian":"SYARAT","kod":"SYARAT_4","nilai":"","ket":"Setiap sekolah dibenarkan menghantar satu atau dua pasangan bagi acara beregu perempuan"},{"bahagian":"SYARAT","kod":"SYARAT_5","nilai":"","ket":"Peserta hendaklah memakai pakaian sukan yang sesuai"},{"bahagian":"SYARAT","kod":"SYARAT_6","nilai":"","ket":"Peserta perlu membawa keperluan peribadi dan peralatan badminton sendiri kecuali bulu tangkis. Bulu tangkis akan disediakan oleh pihak penganjur"},{"bahagian":"SYARAT","kod":"SYARAT_7","nilai":"","ket":"Semua peserta hendaklah mematuhi peraturan pertandingan serta arahan pegawai teknikal"},{"bahagian":"SYARAT","kod":"SYARAT_8","nilai":"","ket":"Sebarang perkara yang tidak dinyatakan dalam syarat pertandingan akan diputuskan oleh Jawatankuasa Pengelola dan keputusan tersebut adalah muktamad"},{"bahagian":"SERVIS","kod":"ARAH_PEPENJURU","nilai":"","ket":"Servis mesti dipukul secara melintang/pepenjuru (cross-court) ke dalam petak servis pihak lawan"},{"bahagian":"SERVIS","kod":"SERVIS_PENDEK","nilai":"","ket":"Digunakan pada permulaan rali. Servis pendek akan memberikan mata kepada pihak lawan"},{"bahagian":"SERVIS","kod":"KEDUDUKAN_GENAP","nilai":"KANAN","ket":"Jika jumlah mata pasukan genap (0, 2, 4, 6...), servis dibuat dari petak sebelah kanan"},{"bahagian":"SERVIS","kod":"KEDUDUKAN_GANJIL","nilai":"KIRI","ket":"Jika jumlah mata pasukan ganjil (1, 3, 5, 7...), servis dibuat dari petak sebelah kiri"},{"bahagian":"SERVIS","kod":"BANTUAN_PENGADIL","nilai":"","ket":"Pergerakan servis akan dibantu oleh pengadil (kad petak warna akan digunakan)"},{"bahagian":"SERVIS","kod":"PERTUKARAN_PETAK","nilai":"","ket":"Pasangan yang melakukan servis bertukar petak hanya sekiranya mereka memenangi rali. Pasangan lawan kekal di petak masing-masing (diberikan kelonggaran & tidak diambil kira)"},{"bahagian":"SERVIS","kod":"KEDUDUKAN_PEMAIN_LAIN","nilai":"","ket":"Rakan sepasukan pembuat servis dan penerima servis boleh berdiri di mana-mana bahagian gelanggang, asalkan tidak menghalang pandangan pembuat servis atau penerima servis"}]};
+
+    const dash = {
+      sukan: 'SEMUA',
+      futsal: { rows: null, at: 0, err: '' },
+      bm: { data: null, at: 0, err: '', lama: false },
+      busy: false
+    };
+
+    function dashEsc(v) { return (typeof escapeHtml === 'function') ? escapeHtml(v) : String(v == null ? '' : v); }
+    function dashKatOk(kat) { try { return categoryVisible(kat); } catch (e) { return true; } }
+    function dashTime(ms) {
+      if (!ms) return '-';
+      try { return new Date(ms).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (e) { return '-'; }
+    }
+    function getSukan() {
+      try { const v = localStorage.getItem(SUKAN_KEY); return SUKAN_LIST.includes(v) ? v : 'SEMUA'; } catch (e) { return 'SEMUA'; }
+    }
+    function sukanVisible(s) { return dash.sukan === 'SEMUA' || dash.sukan === s; }
+
+    // Halaman hadapan: Dashboard Utama (pengadil kekal di Gelanggang Live / Meja Pengadil).
+    function defaultHomeTab() {
+      try { const s = getSession(); if (s && s.peranan === 'PENGADIL') return 'tab-live'; } catch (e) { /* abaikan */ }
+      return 'tab-dashboard';
+    }
+
+    function applySukan(s, opts = {}) {
+      const k = SUKAN_LIST.includes(s) ? s : 'SEMUA';
+      dash.sukan = k;
+      try { localStorage.setItem(SUKAN_KEY, k); } catch (e) { /* abaikan */ }
+      document.body.dataset.sukan = k;
+      document.querySelectorAll('#sportSwitch button').forEach(b => {
+        const on = b.dataset.sukan === k;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('#tabNav [data-sukan]').forEach(el => {
+        const sp = el.dataset.sukan;
+        el.classList.toggle('sport-off', k !== 'SEMUA' && sp !== 'SEMUA' && sp !== k);
+      });
+      const logo = document.getElementById('brandLogo');
+      if (logo) logo.textContent = SUKAN_INFO[k].ikon;
+      const hint = document.getElementById('sportHint');
+      if (hint) hint.textContent = SUKAN_INFO[k].hint;
+      const act = (state.ui && state.ui.activeTab) || '';
+      const btn = document.querySelector(`#tabNav .tab-btn[data-tab="${act}"]`);
+      if (btn && btn.classList.contains('sport-off')) openTab('tab-dashboard');
+      renderDashboard();
+      renderBadmintonViews();
+      if (!opts.silent) dashRefresh(true);
+    }
+
+    /* ---------------- Pengambilan data (GET sahaja) ---------------- */
+    async function dashFetch(action) {
+      const url = getGasUrl();
+      if (!url) throw new Error('URL Google Apps Script belum ditetapkan.');
+      const sep = url.includes('?') ? '&' : '?';
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      const t = setTimeout(() => { if (ctrl) ctrl.abort(); }, 15000);
+      try {
+        const res = await fetch(`${url}${sep}action=${action}&_=${Date.now()}`,
+          { method: 'GET', redirect: 'follow', cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+        const text = await res.text();
+        let d = null;
+        try { d = JSON.parse(text); } catch (e) { d = null; }
+        if (!d) throw new Error('Respons tidak sah daripada Google Sheets.');
+        return d;
+      } catch (err) {
+        if (err && err.name === 'AbortError') throw new Error('Google Sheets lambat bertindak balas.');
+        throw err;
+      } finally { clearTimeout(t); }
+    }
+
+    function dashNeedsData() {
+      const t = (state.ui && state.ui.activeTab) || '';
+      return t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0;
+    }
+
+    async function dashRefresh(force = false) {
+      if (dash.busy) return;
+      if (!dashNeedsData()) return;
+      if (!force && document.hidden) return;
+      if (!getGasUrl() || !navigator.onLine) { renderDashboard(); renderBadmintonViews(); return; }
+      dash.busy = true;
+      const onDash = state.ui.activeTab === 'tab-dashboard';
+      const jobs = [];
+      if (onDash && sukanVisible('FUTSAL')) {
+        jobs.push(dashFetch('read').then(d => {
+          if (d && d.ok && Array.isArray(d.matches)) { dash.futsal.rows = d.matches; dash.futsal.at = Date.now(); dash.futsal.err = ''; }
+          else dash.futsal.err = (d && d.error) || 'Data futsal tidak dapat dibaca.';
+        }).catch(e => { dash.futsal.err = (e && e.message) || 'Ralat rangkaian.'; }));
+      }
+      if (sukanVisible('BADMINTON')) {
+        jobs.push(dashFetch('badminton').then(d => {
+          if (d && d.ok && Array.isArray(d.jadual)) {
+            dash.bm.data = normBmServer(d); dash.bm.at = Date.now(); dash.bm.err = ''; dash.bm.lama = false;
+          } else {
+            const e = (d && d.error) || 'Data badminton tidak dapat dibaca.';
+            dash.bm.lama = /tidak dikenali/i.test(e);
+            dash.bm.err = e;
+          }
+        }).catch(e => { dash.bm.err = (e && e.message) || 'Ralat rangkaian.'; }));
+      }
+      try { await Promise.all(jobs); } finally {
+        dash.busy = false;
+        renderDashboard();
+        renderBadmintonViews();
+      }
+    }
+
+    /* ---------------- Model badminton ---------------- */
+    function bmKey(o) {
+      const m = {};
+      Object.keys(o || {}).forEach(k => { m[String(k).toLowerCase().replace(/[^a-z0-9]/g, '')] = o[k]; });
+      return k => (m[k] === undefined ? '' : m[k]);
+    }
+    function bmNum(v) {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    function bmStr(v) { return String(v == null ? '' : v).trim(); }
+    function bmUp(v) { return bmStr(v).toUpperCase(); }
+
+    function normBmServer(d) {
+      const teams = (d.pasukan || []).map(o => {
+        const g = bmKey(o);
+        const ev = bmStr(g('idevent'));
+        return {
+          id: bmStr(g('idpasukan')), ev, kat: bmUp(ev.slice(-2)) || (bmUp(g('kategori')).indexOf('RENDAH') >= 0 ? 'SR' : 'SM'),
+          kumpulan: bmUp(g('kumpulan')), kod: bmUp(g('kod')), sing: bmStr(g('singkatan')),
+          nama: bmStr(g('namapasukan')) || bmStr(g('namasekolah')), sekolah: bmStr(g('namasekolah')),
+          p1: bmStr(g('pemain1')), p2: bmStr(g('pemain2')), status: bmUp(g('statuspenyertaan')) || 'AKTIF'
+        };
+      }).filter(t => t.id);
+      const matches = (d.jadual || []).map(o => {
+        const g = bmKey(o);
+        const kum = bmUp(g('kumpulan'));
+        return {
+          id: bmUp(g('idmatch')), kat: bmUp(g('kategori')), no: bmNum(g('noper')) || 0, ov: bmStr(g('noperkeseluruhan')),
+          peringkat: bmUp(g('peringkat')), kumpulan: kum === '-' ? '' : kum,
+          kod1: bmUp(g('kodp1')), kod2: bmUp(g('kodp2')), sing1: bmStr(g('singkatanp1')), sing2: bmStr(g('singkatanp2')),
+          nama1: bmStr(g('namapasukan1')), nama2: bmStr(g('namapasukan2')),
+          s1: bmNum(g('skorp1')), s2: bmNum(g('skorp2')), gel: bmStr(g('gelanggang')),
+          status: bmUp(g('statusperlawanan')) || 'BELUM BERMULA', sah: bmUp(g('statuspengesahan')) || 'MENUNGGU',
+          pada: bmStr(g('disahkanpada')) || bmStr(g('kemaskiniterakhir')), catatan: bmStr(g('catatan'))
+        };
+      }).filter(m => m.id);
+      const rules = (d.peraturan || []).map(o => {
+        const g = bmKey(o);
+        return { bahagian: bmUp(g('bahagian')), kod: bmUp(g('kod')), nilai: g('nilai'), ket: bmStr(g('keterangan')) };
+      });
+      return { teams, matches, rules: rules.length ? rules : (BM_SEED ? BM_SEED.rules : []) };
+    }
+
+    function bmSource() { return dash.bm.data || BM_SEED || { teams: [], matches: [], rules: [] }; }
+    function bmRule(data, kod, def) {
+      const r = (data.rules || []).find(x => x.kod === kod);
+      const n = r ? Number(r.nilai) : NaN;
+      return Number.isFinite(n) ? n : def;
+    }
+    function bmApproved(m) { return m.sah === 'DISAHKAN' && m.s1 !== null && m.s2 !== null && m.s1 !== m.s2; }
+    function bmIsLive(m) { return !bmApproved(m) && ['SEDANG BERLANGSUNG', 'LIVE', 'REHAT'].includes(m.status); }
+    function bmIsWaitSah(m) { return !bmApproved(m) && m.status === 'TAMAT'; }
+    function bmIsGroup(m) { return m.peringkat === 'PERINGKAT KUMPULAN'; }
+    function bmPlaceholder(n) { const s = bmStr(n); return !s || s.charAt(0) === '('; }
+    function bmOvRank(m) {
+      const p = /^P(\d+)$/i.exec(m.ov || '');
+      if (p) return Number(p[1]);
+      return 100 + (m.kat === 'SR' ? 0 : 50) + (m.no || 0);
+    }
+
+    function bmStandings(data, kat, grp) {
+      const win = bmRule(data, 'MATA_LIGA_MENANG', 3), lose = bmRule(data, 'MATA_LIGA_KALAH', 0);
+      const rows = {};
+      data.teams.filter(t => t.kat === kat && t.kumpulan === grp && t.status === 'AKTIF').forEach(t => {
+        rows[t.kod] = { t, kod: t.kod, nama: t.nama, sing: t.sing, P: 0, M: 0, K: 0, MD: 0, ML: 0, BM: 0, Mata: 0 };
+      });
+      const ms = data.matches.filter(m => m.kat === kat && m.kumpulan === grp && bmIsGroup(m));
+      const done = ms.filter(bmApproved);
+      done.forEach(m => {
+        const a = rows[m.kod1], b = rows[m.kod2];
+        if (!a || !b) return;
+        a.P++; b.P++; a.MD += m.s1; a.ML += m.s2; b.MD += m.s2; b.ML += m.s1;
+        if (m.s1 > m.s2) { a.M++; b.K++; a.Mata += win; b.Mata += lose; } else { b.M++; a.K++; b.Mata += win; a.Mata += lose; }
+      });
+      const list = Object.values(rows);
+      list.forEach(r => { r.BM = r.MD - r.ML; });
+      list.sort((x, y) => (y.Mata - x.Mata) || (y.BM - x.BM) || x.kod.localeCompare(y.kod));
+      list.forEach((r, i) => {
+        r.pos = i + 1;
+        const same = o => o && o.Mata === r.Mata && o.BM === r.BM && o.P > 0;
+        r.seri = r.P > 0 && (same(list[i - 1]) || same(list[i + 1]));
+      });
+      return { rows: list, played: done.length, total: ms.length, complete: ms.length > 0 && done.length === ms.length };
+    }
+
+    function bmGroups(data, kat) {
+      return Array.from(new Set(data.teams.filter(t => t.kat === kat && t.kumpulan && t.status === 'AKTIF').map(t => t.kumpulan))).sort();
+    }
+
+    // Nama pasukan peringkat kalah mati: data Google Sheets (jika sudah diisi) > kiraan automatik > label.
+    function bmModel() {
+      const data = bmSource();
+      const st = {};
+      ['SR', 'SM'].forEach(kat => bmGroups(data, kat).forEach(g => { st[`${kat}|${g}`] = bmStandings(data, kat, g); }));
+      const byKatNo = {};
+      const out = data.matches.map(m => Object.assign({}, m));
+      out.forEach(m => { byKatNo[`${m.kat}|${m.no}`] = m; });
+      const resolveCode = (m, kod) => {
+        let x;
+        if ((x = /^(N?)JOHAN-([A-Z])$/.exec(kod))) {
+          const naib = !!x[1], g = x[2];
+          const lbl = `${naib ? 'Naib Johan' : 'Johan'} Kumpulan ${g}`;
+          const s = st[`${m.kat}|${g}`];
+          if (!s || !s.complete) return { nama: lbl, tbd: true };
+          const r = s.rows[naib ? 1 : 0];
+          if (!r) return { nama: lbl, tbd: true };
+          if (r.seri) return { nama: `${lbl} (seri – urusetia tentukan)`, tbd: true };
+          return { nama: r.nama, tbd: false };
+        }
+        if ((x = /^MENANG-(\d+)$/.exec(kod))) {
+          const src = byKatNo[`${m.kat}|${Number(x[1])}`];
+          if (src && src.winner) return { nama: src.winner, tbd: false };
+          return { nama: `Pemenang ${src ? src.ov : 'P' + x[1]}`, tbd: true };
+        }
+        return null;
+      };
+      out.sort((a, b) => (a.kat === b.kat ? a.no - b.no : (a.kat === 'SR' ? -1 : 1)));
+      out.forEach(m => {
+        ['1', '2'].forEach(sd => {
+          const srv = m['nama' + sd];
+          const res = resolveCode(m, m['kod' + sd]);
+          if (!bmPlaceholder(srv)) { m['tbd' + sd] = false; }
+          else if (res) { m['nama' + sd] = res.nama; m['tbd' + sd] = res.tbd; }
+          else { m['nama' + sd] = srv || m['kod' + sd]; m['tbd' + sd] = true; }
+          if (!m['sing' + sd] && !m['tbd' + sd]) {
+            const t = data.teams.find(tt => tt.nama === m['nama' + sd]);
+            m['sing' + sd] = t ? t.sing : '';
+          }
+        });
+        m.winner = bmApproved(m) ? (m.s1 > m.s2 ? m.nama1 : m.nama2) : '';
+      });
+      const order = out.slice().sort((a, b) => bmOvRank(a) - bmOvRank(b));
+      return { data, st, matches: order };
+    }
+
+    /* ---------------- Model futsal (baca sahaja) ---------------- */
+    function futsalRows() {
+      const src = Array.isArray(dash.futsal.rows) && dash.futsal.rows.length ? dash.futsal.rows : null;
+      const rows = (src || (state.matches || [])).map(r => {
+        const ph = c => { try { return placeholderFor(c); } catch (e) { return null; } };
+        const nm = (n, k) => { const s = bmStr(n); return s || ph(k) || bmStr(k); };
+        return {
+          id: bmUp(r.id), kat: bmUp(r.kategori), no: Number(r.no) || 0, peringkat: bmUp(r.peringkat),
+          kumpulan: bmUp(r.kumpulan) === '-' ? '' : bmUp(r.kumpulan),
+          kod1: bmUp(r.kodP1), kod2: bmUp(r.kodP2), nama1: nm(r.namaP1, r.kodP1), nama2: nm(r.namaP2, r.kodP2),
+          s1: bmNum(r.skorP1), s2: bmNum(r.skorP2), gel: bmUp(r.gelanggang), status: bmUp(r.status), sah: bmUp(r.pengesahan),
+          pen: bmUp(r.pemenangPenalti), pada: r.disahkanPada || r.kemaskini || r.masaTamat || ''
+        };
+      }).filter(r => r.id);
+      return { rows, server: !!src };
+    }
+    function fsApproved(m) { return m.sah === 'DISAHKAN' && m.s1 !== null && m.s2 !== null; }
+    function fsPlaceholder(n) { try { return isPlaceholderName(n); } catch (e) { return /MENUNGGU|JOHAN|MENANG|KALAH/i.test(n || ''); } }
+    function fsWinnerSide(m) {
+      if (!fsApproved(m)) return '';
+      if (m.s1 > m.s2) return '1';
+      if (m.s2 > m.s1) return '2';
+      return m.pen === 'P1' ? '1' : (m.pen === 'P2' ? '2' : '');
+    }
+    function fsStandings(rows, kat, grp) {
+      const tb = {};
+      const ms = rows.filter(m => m.kat === kat && m.kumpulan === grp && ['PERINGKAT KUMPULAN', 'PUSINGAN KEDUA'].includes(m.peringkat));
+      ms.forEach(m => [[m.kod1, m.nama1], [m.kod2, m.nama2]].forEach(([k, n]) => {
+        if (k && !tb[k]) tb[k] = { kod: k, nama: n, P: 0, M: 0, S: 0, K: 0, J: 0, B: 0, PG: 0, Mata: 0 };
+      }));
+      const done = ms.filter(fsApproved);
+      done.forEach(m => {
+        const a = tb[m.kod1], b = tb[m.kod2];
+        if (!a || !b) return;
+        a.P++; b.P++; a.J += m.s1; a.B += m.s2; b.J += m.s2; b.B += m.s1;
+        if (m.s1 > m.s2) { a.M++; b.K++; a.Mata += 3; } else if (m.s2 > m.s1) { b.M++; a.K++; b.Mata += 3; } else { a.S++; b.S++; a.Mata++; b.Mata++; }
+      });
+      const list = Object.values(tb);
+      list.forEach(r => { r.PG = r.J - r.B; });
+      list.sort((x, y) => (y.Mata - x.Mata) || (y.PG - x.PG) || (y.J - x.J) || x.kod.localeCompare(y.kod));
+      return { rows: list, played: done.length, total: ms.length, named: list.some(r => !fsPlaceholder(r.nama)) };
+    }
+    function futsalLiveEntries() {
+      const live = (typeof publicLive !== 'undefined' && publicLive && publicLive.data) ? publicLive.data : null;
+      if (!live) return null;
+      return Object.keys(live).sort().map(g => Object.assign({ gelanggang: g }, live[g] || {}));
+    }
+
+    /* ---------------- Komponen paparan ---------------- */
+    function katTag(kat) { return kat === 'SR' || kat === 'SM' ? `<span class="kat-tag ${kat}">${kat}</span>` : ''; }
+    function dmTeam(nama, cls, sing, right) {
+      return `<span class="dm-t ${right ? 'r' : ''} ${cls || ''}">${dashEsc(nama)}${sing ? `<small>${dashEsc(sing)}</small>` : ''}</span>`;
+    }
+    function dmCard({ live, meta, right, n1, n2, c1, c2, sg1, sg2, score }) {
+      return `<div class="dm ${live ? 'live' : ''}"><div class="dm-meta">${meta}${right ? `<span class="dm-right">${right}</span>` : ''}</div>
+        <div class="dm-teams">${dmTeam(n1, c1, sg1)}${score != null ? `<span class="dm-sc">${score}</span>` : '<span class="dm-vs">VS</span>'}${dmTeam(n2, c2, sg2, true)}</div></div>`;
+    }
+    function dashEmpty(t) { return `<div class="dash-empty">${t}</div>`; }
+    function secHead(title, tab, linkText) {
+      return `<div class="dash-sec-head"><h4>${title}</h4>${tab ? `<button type="button" class="dash-link" data-open-tab="${tab}">${linkText || 'Lihat semua'} →</button>` : ''}</div>`;
+    }
+
+    function futsalColumn() {
+      const { rows } = futsalRows();
+      const vis = rows.filter(m => dashKatOk(m.kat));
+      const done = vis.filter(fsApproved);
+      const pct = vis.length ? Math.round(done.length * 100 / vis.length) : 0;
+      // Sedang berlangsung
+      const entries = futsalLiveEntries();
+      let liveHtml = '';
+      let liveList = [];
+      if (entries) {
+        liveList = entries.filter(e => bmUp(e.status) === 'LIVE' && dashKatOk(bmUp(e.kategori)));
+        liveHtml = liveList.map(e => dmCard({
+          live: true,
+          meta: `<span class="badge badge-live badge-dot">${e.rehat ? 'Rehat' : 'Live'}</span><span>Gel. ${dashEsc(e.gelanggang)}</span>${katTag(bmUp(e.kategori))}<span>${dashEsc(e.peringkat || '')}${e.kumpulan && e.kumpulan !== '-' ? ' · ' + dashEsc(e.kumpulan) : ''}</span>`,
+          right: dashEsc(e.fasaMasa || ''), n1: e.namaP1, n2: e.namaP2,
+          score: `${Number(e.skorP1) || 0} : ${Number(e.skorP2) || 0}`
+        })).join('');
+      } else {
+        liveList = vis.filter(m => m.status === 'LIVE');
+        liveHtml = liveList.map(m => dmCard({ live: true, meta: `<span class="badge badge-live badge-dot">Live</span><span>Gel. ${dashEsc(m.gel)}</span>${katTag(m.kat)}`,
+          n1: m.nama1, n2: m.nama2, score: `${m.s1 || 0} : ${m.s2 || 0}` })).join('');
+      }
+      // Seterusnya
+      let next = [];
+      if (entries) {
+        entries.forEach(e => {
+          const q = (e.giliran || []).filter(x => dashKatOk(bmUp(x.kategori)));
+          if (q[0]) next.push({ gel: e.gelanggang, kat: bmUp(q[0].kategori), id: q[0].id, peringkat: q[0].peringkat, kumpulan: q[0].kumpulan, n1: q[0].namaP1 || placeholderFor(q[0].kodP1) || q[0].kodP1, n2: q[0].namaP2 || placeholderFor(q[0].kodP2) || q[0].kodP2 });
+        });
+      }
+      if (!next.length) {
+        next = vis.filter(m => m.status === 'MENUNGGU GILIRAN' || (!m.status && !fsApproved(m)))
+          .sort((a, b) => (a.kat === b.kat ? a.no - b.no : a.kat.localeCompare(b.kat))).slice(0, 4)
+          .map(m => ({ gel: m.gel, kat: m.kat, id: m.id, peringkat: m.peringkat, kumpulan: m.kumpulan, n1: m.nama1, n2: m.nama2 }));
+      }
+      const nextHtml = next.slice(0, 4).map(x => dmCard({
+        meta: `<span class="badge badge-pending">Seterusnya</span><span>Gel. ${dashEsc(x.gel)}</span>${katTag(x.kat)}<span>${dashEsc(x.peringkat || '')}${x.kumpulan && x.kumpulan !== '-' ? ' · ' + dashEsc(x.kumpulan) : ''}</span>`,
+        right: dashEsc(x.id), n1: x.n1, n2: x.n2, c1: fsPlaceholder(x.n1) ? 'tbd' : '', c2: fsPlaceholder(x.n2) ? 'tbd' : ''
+      })).join('');
+      // Keputusan terkini
+      const recent = done.slice().sort((a, b) => {
+        const ta = Date.parse(a.pada) || 0, tb = Date.parse(b.pada) || 0;
+        return (tb - ta) || (b.no - a.no);
+      }).slice(0, 5);
+      const recentHtml = recent.map(m => {
+        const w = fsWinnerSide(m);
+        const pen = m.pen ? ` <small>(pen)</small>` : '';
+        return dmCard({ meta: `<span class="badge badge-ok">Disahkan</span>${katTag(m.kat)}<span>${dashEsc(m.peringkat)}${m.kumpulan ? ' · ' + dashEsc(m.kumpulan) : ''}</span>`,
+          right: dashEsc(m.id), n1: m.nama1, n2: m.nama2, c1: w === '1' ? 'win' : (w ? 'lose' : ''), c2: w === '2' ? 'win' : (w ? 'lose' : ''),
+          score: `${m.s1} : ${m.s2}${pen}` });
+      }).join('');
+      // Carta ringkas
+      const groups = [];
+      ['SR', 'SM'].filter(dashKatOk).forEach(kat => {
+        const gs = Array.from(new Set(rows.filter(m => m.kat === kat && ['PERINGKAT KUMPULAN', 'PUSINGAN KEDUA'].includes(m.peringkat)).map(m => m.kumpulan))).filter(Boolean).sort();
+        gs.forEach(g => {
+          const s = fsStandings(rows, kat, g);
+          if (!s.named) return;
+          groups.push(`<div class="mini-g"><div class="mini-g-h"><span>${katTag(kat)} Kumpulan ${dashEsc(g)}</span><span>${s.played}/${s.total}</span></div>
+            ${s.rows.slice(0, 2).map((r, i) => `<div class="mini-row"><span class="p">${i + 1}</span><span class="n" title="${dashEsc(r.nama)}">${dashEsc(r.nama)}</span><span class="m">${r.Mata} mata</span></div>`).join('')}</div>`);
+        });
+      });
+      const tunggu = vis.filter(m => m.status === 'TAMAT - TUNGGU SAH').length;
+      return {
+        stats: { total: vis.length, done: done.length, live: liveList.length, wait: vis.filter(m => !fsApproved(m) && m.status !== 'LIVE' && m.status !== 'TAMAT - TUNGGU SAH').length, tunggu,
+          teams: new Set(rows.filter(m => dashKatOk(m.kat) && m.peringkat === 'PERINGKAT KUMPULAN').flatMap(m => [m.nama1, m.nama2]).filter(n => !fsPlaceholder(n))).size },
+        html: `<article class="dash-col c-futsal" aria-label="Ringkasan Futsal">
+          <div class="dash-col-head"><div class="dash-col-ic" aria-hidden="true">⚽</div>
+            <div class="dash-col-title"><h3>Futsal</h3><p>Gelanggang A &amp; B (SM) · C &amp; D (SR)${tunggu ? ` · ${tunggu} menunggu pengesahan` : ''}</p></div>
+            <div class="dash-prog"><strong>${done.length}/${vis.length}</strong><small>disahkan</small><div class="dash-bar"><i style="width:${pct}%"></i></div></div></div>
+          <div class="dash-sec">${secHead('🔴 Sedang Berlangsung', 'tab-live', 'Gelanggang Live')}<div class="dash-list">${liveHtml || dashEmpty('Tiada perlawanan futsal sedang berlangsung.')}</div></div>
+          <div class="dash-sec">${secHead('⏭️ Giliran Seterusnya', 'tab-schedule', 'Jadual')}<div class="dash-list">${nextHtml || dashEmpty('Tiada perlawanan menunggu giliran.')}</div></div>
+          <div class="dash-sec">${secHead('✅ Keputusan Terkini', 'tab-schedule', 'Semua keputusan')}<div class="dash-list">${recentHtml || dashEmpty('Belum ada keputusan disahkan.')}</div></div>
+          <div class="dash-sec">${secHead('🏆 Carta Ringkas (Top 2)', 'tab-standings', 'Carta Liga')}${groups.length ? `<div class="mini-groups">${groups.join('')}</div>` : dashEmpty('Carta akan dipaparkan selepas undian / perlawanan pertama.')}</div>
+        </article>`
+      };
+    }
+
+    function bmStatusBadge(m) {
+      if (bmApproved(m)) return '<span class="badge badge-ok">Disahkan</span>';
+      if (m.sah === 'DITOLAK') return '<span class="badge badge-reject">Ditolak</span>';
+      switch (m.status) {
+        case 'SEDANG BERLANGSUNG': case 'LIVE': return '<span class="badge badge-live badge-dot">Live</span>';
+        case 'REHAT': return '<span class="badge badge-live badge-dot">Rehat</span>';
+        case 'TAMAT': return '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>';
+        case 'DITANGGUH': return '<span class="badge badge-reject">Ditangguh</span>';
+        default: return '<span class="badge badge-pending">Belum Bermula</span>';
+      }
+    }
+    function bmStageText(m) { return m.kumpulan ? `Kumpulan ${m.kumpulan}` : (m.peringkat || ''); }
+    function bmScore(m) { return m.s1 !== null && m.s2 !== null ? `${m.s1} : ${m.s2}` : null; }
+    function bmSideCls(m, sd) {
+      if (m['tbd' + sd]) return 'tbd';
+      if (!m.winner) return '';
+      return m.winner === m['nama' + sd] ? 'win' : 'lose';
+    }
+
+    function badmintonColumn() {
+      const { data, st, matches } = bmModel();
+      const vis = matches.filter(m => dashKatOk(m.kat));
+      const done = vis.filter(bmApproved);
+      const pct = vis.length ? Math.round(done.length * 100 / vis.length) : 0;
+      const live = vis.filter(bmIsLive);
+      const liveHtml = live.map(m => dmCard({ live: true,
+        meta: `${bmStatusBadge(m)}<span>Gel. ${dashEsc(m.gel)}</span>${katTag(m.kat)}<span>${dashEsc(bmStageText(m))}</span>`,
+        right: dashEsc(m.ov), n1: m.nama1, n2: m.nama2, sg1: m.sing1, sg2: m.sing2, score: bmScore(m) || '0 : 0' })).join('');
+      const next = vis.filter(m => !bmApproved(m) && !bmIsLive(m) && !bmIsWaitSah(m) && m.status !== 'DITANGGUH').slice(0, 4);
+      const nextHtml = next.map(m => dmCard({
+        meta: `<span class="badge badge-pending">Seterusnya</span><span>Gel. ${dashEsc(m.gel)}</span>${katTag(m.kat)}<span>${dashEsc(bmStageText(m))}</span>`,
+        right: dashEsc(m.ov), n1: m.nama1, n2: m.nama2, sg1: m.sing1, sg2: m.sing2, c1: m.tbd1 ? 'tbd' : '', c2: m.tbd2 ? 'tbd' : '' })).join('');
+      const recent = done.slice().sort((a, b) => ((Date.parse(b.pada) || 0) - (Date.parse(a.pada) || 0)) || (bmOvRank(b) - bmOvRank(a))).slice(0, 5);
+      const recentHtml = recent.map(m => dmCard({
+        meta: `<span class="badge badge-ok">Disahkan</span>${katTag(m.kat)}<span>${dashEsc(bmStageText(m))}</span>`,
+        right: dashEsc(m.ov), n1: m.nama1, n2: m.nama2, sg1: m.sing1, sg2: m.sing2,
+        c1: bmSideCls(m, '1'), c2: bmSideCls(m, '2'), score: bmScore(m) })).join('');
+      const groups = [];
+      ['SR', 'SM'].filter(dashKatOk).forEach(kat => bmGroups(data, kat).forEach(g => {
+        const s = st[`${kat}|${g}`];
+        if (!s) return;
+        groups.push(`<div class="mini-g"><div class="mini-g-h"><span>${katTag(kat)} Kumpulan ${dashEsc(g)}</span><span>${s.played}/${s.total}</span></div>
+          ${s.rows.slice(0, 2).map((r, i) => `<div class="mini-row"><span class="p">${i + 1}</span><span class="n" title="${dashEsc(r.nama)}">${dashEsc(r.nama)}</span><span class="m">${r.Mata} mata</span></div>`).join('')}</div>`);
+      }));
+      const tunggu = vis.filter(bmIsWaitSah).length;
+      return {
+        stats: { total: vis.length, done: done.length, live: live.length, wait: vis.filter(m => !bmApproved(m) && !bmIsLive(m) && !bmIsWaitSah(m)).length, tunggu,
+          teams: data.teams.filter(t => t.status === 'AKTIF' && dashKatOk(t.kat)).length },
+        html: `<article class="dash-col c-badminton" aria-label="Ringkasan Badminton">
+          <div class="dash-col-head"><div class="dash-col-ic" aria-hidden="true">🏸</div>
+            <div class="dash-col-title"><h3>Badminton · Beregu Perempuan</h3><p>Gelanggang 1–2 (SR) · 3–6 (SM) · 1 set, 30 mata${tunggu ? ` · ${tunggu} menunggu pengesahan` : ''}</p></div>
+            <div class="dash-prog"><strong>${done.length}/${vis.length}</strong><small>disahkan</small><div class="dash-bar"><i style="width:${pct}%"></i></div></div></div>
+          <div class="dash-sec">${secHead('🔴 Sedang Berlangsung', 'tab-bm-schedule', 'Jadual')}<div class="dash-list">${liveHtml || dashEmpty('Tiada perlawanan badminton sedang berlangsung.')}</div></div>
+          <div class="dash-sec">${secHead('⏭️ Giliran Seterusnya', 'tab-bm-schedule', 'Jadual')}<div class="dash-list">${nextHtml || dashEmpty('Semua perlawanan telah dimainkan.')}</div></div>
+          <div class="dash-sec">${secHead('✅ Keputusan Terkini', 'tab-bm-schedule', 'Semua keputusan')}<div class="dash-list">${recentHtml || dashEmpty('Belum ada keputusan disahkan.')}</div></div>
+          <div class="dash-sec">${secHead('🏆 Carta Ringkas (Top 2)', 'tab-bm-standings', 'Carta Kumpulan')}${groups.length ? `<div class="mini-groups">${groups.join('')}</div>` : dashEmpty('Tiada kumpulan untuk kategori ini.')}</div>
+        </article>`
+      };
+    }
+
+    function bmNoticeHtml() {
+      if (dash.bm.data) return '';
+      if (dash.bm.lama) {
+        return `<div class="data-note warn">ℹ️ Google Sheets masih menjalankan Code.gs lama, jadi skor badminton belum dibaca secara langsung. Jadual &amp; kumpulan asal dipaparkan dahulu. ` +
+          `Master Admin: tampal Code.gs v${BM_MIN_VERSI} &gt; Deploy &gt; Manage deployments &gt; ✏️ Edit &gt; Version: New version &gt; Deploy.</div>`;
+      }
+      if (dash.bm.err) return `<div class="data-note warn">ℹ️ Data badminton terkini belum dapat dibaca (${dashEsc(dash.bm.err)}). Jadual &amp; kumpulan asal dipaparkan.</div>`;
+      return '';
+    }
+
+    function renderDashboard() {
+      const kWrap = document.getElementById('dashKpis');
+      const cWrap = document.getElementById('dashCols');
+      if (!kWrap || !cWrap) return;
+      try {
+        const showF = sukanVisible('FUTSAL'), showB = sukanVisible('BADMINTON');
+        const F = showF ? futsalColumn() : null;
+        const B = showB ? badmintonColumn() : null;
+        const sum = key => (F ? F.stats[key] : 0) + (B ? B.stats[key] : 0);
+        const split = (key, fmt) => `<div class="k-split">${F ? `<span class="k-chip fs">⚽ ${fmt ? fmt(F.stats) : F.stats[key]}</span>` : ''}${B ? `<span class="k-chip bm">🏸 ${fmt ? fmt(B.stats) : B.stats[key]}</span>` : ''}</div>`;
+        kWrap.innerHTML = [
+          `<div class="dash-kpi"><div class="k-label">Perlawanan Disahkan</div><div class="k-val">${sum('done')}<span class="muted" style="font-size:.9rem"> / ${sum('total')}</span></div>${split('done', s => `${s.done}/${s.total}`)}</div>`,
+          `<div class="dash-kpi k-live"><div class="k-label">Sedang Berlangsung</div><div class="k-val">${sum('live')}</div>${split('live')}</div>`,
+          `<div class="dash-kpi"><div class="k-label">Belum Dimainkan</div><div class="k-val">${sum('wait')}</div>${split('wait')}</div>`,
+          `<div class="dash-kpi"><div class="k-label">Pasukan Bertanding</div><div class="k-val">${sum('teams')}</div>${split('teams')}</div>`
+        ].join('');
+        cWrap.classList.toggle('one', !(showF && showB));
+        cWrap.innerHTML = (F ? F.html : '') + (B ? B.html : '');
+        const notice = document.getElementById('dashNotice');
+        if (notice) notice.innerHTML = showB ? bmNoticeHtml() : '';
+        const stat = document.getElementById('dashStatus');
+        if (stat) {
+          const bits = [];
+          if (showF) bits.push(`⚽ ${dash.futsal.at ? dashTime(dash.futsal.at) : (dash.futsal.err ? 'data peranti' : '…')}`);
+          if (showB) bits.push(`🏸 ${dash.bm.at ? dashTime(dash.bm.at) : 'jadual asal'}`);
+          stat.textContent = `Dikemas kini: ${bits.join(' · ')}`;
+        }
+        const sub = document.getElementById('dashSubtitle');
+        if (sub) sub.textContent = showF && showB
+          ? 'Ringkasan langsung Futsal & Badminton: perlawanan semasa, giliran seterusnya, keputusan terkini dan carta.'
+          : `Ringkasan langsung ${showF ? 'Futsal' : 'Badminton'}: perlawanan semasa, giliran seterusnya, keputusan terkini dan carta.`;
+      } catch (err) {
+        console.error('[renderDashboard]', err);
+      }
+    }
+
+    /* ---------------- Paparan badminton ---------------- */
+    function renderBmStandings(model) {
+      const wrap = document.getElementById('bmStandings');
+      if (!wrap) return;
+      const { data, st } = model;
+      wrap.innerHTML = ['SR', 'SM'].filter(dashKatOk).map(kat => {
+        const label = kat === 'SR' ? '🧒 Sekolah Rendah' : '🧑 Sekolah Menengah';
+        const cards = bmGroups(data, kat).map(g => {
+          const s = st[`${kat}|${g}`];
+          const status = s.complete ? '<span class="badge badge-ok">Lengkap</span>' : `<span class="badge badge-pending">${s.played}/${s.total} disahkan</span>`;
+          const body = s.rows.map(r => `<tr class="${r.pos <= 2 && r.P > 0 ? 'qualify' : ''}">
+              <td class="num">${r.pos}${r.seri ? '<small class="muted">=</small>' : ''}</td>
+              <td class="team-cell">${dashEsc(r.nama)}<small>${dashEsc(r.sing)} · ${dashEsc(r.kod)}</small>${r.t.p1 ? `<span class="pl">${dashEsc(r.t.p1)}<br>${dashEsc(r.t.p2)}</span>` : ''}</td>
+              <td class="num">${r.P}</td><td class="num">${r.M}</td><td class="num">${r.K}</td>
+              <td class="num">${r.MD}</td><td class="num">${r.ML}</td><td class="num">${r.BM > 0 ? '+' + r.BM : r.BM}</td>
+              <td class="num pts">${r.Mata}</td></tr>`).join('');
+          return `<div class="card glass group-card"><div class="group-head"><h3><span class="league-group-letter">${dashEsc(g)}</span> Kumpulan ${dashEsc(g)}</h3>${status}</div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th class="num">#</th><th>Pasukan</th>
+              <th class="num" title="Perlawanan">P</th><th class="num" title="Menang">M</th><th class="num" title="Kalah">K</th>
+              <th class="num" title="Mata Dapat">MD</th><th class="num" title="Mata Lawan">ML</th><th class="num" title="Beza Mata">BM</th><th class="num">Mata</th></tr></thead>
+              <tbody>${body}</tbody></table></div></div>`;
+        }).join('');
+        return `<h3 class="card-title bm-section-title" style="margin-top:8px">${label}</h3><div class="standings-grid bm-grid" style="margin-bottom:22px">${cards || '<div class="bm-empty">Tiada kumpulan.</div>'}</div>`;
+      }).join('');
+      const td = data.teams.filter(t => t.status !== 'AKTIF' && dashKatOk(t.kat));
+      if (td.length) wrap.innerHTML += `<p class="muted" style="font-size:.8rem;margin:-8px 0 8px">Tarik diri: ${td.map(t => dashEsc(t.nama)).join(', ')}</p>`;
+      const rules = document.getElementById('bmRules');
+      if (rules) {
+        const by = b => (data.rules || []).filter(r => r.bahagian === b);
+        const li = arr => arr.map(r => `<li>${dashEsc(r.ket)}</li>`).join('');
+        rules.innerHTML = `<h3 class="card-title">📋 Format &amp; Peraturan Badminton</h3>
+          <ul>${li(by('FORMAT'))}${li(by('LIGA'))}${li(by('KELAYAKAN'))}</ul>
+          ${by('SYARAT').length ? `<details><summary>Syarat Penyertaan (${by('SYARAT').length})</summary><ul>${li(by('SYARAT'))}</ul></details>` : ''}
+          ${by('SERVIS').length ? `<details><summary>Peraturan Servis (${by('SERVIS').length})</summary><ul>${li(by('SERVIS'))}</ul></details>` : ''}`;
+      }
+    }
+
+    function bmKoCard(m) {
+      const side = sd => {
+        const cls = bmSideCls(m, sd);
+        const sc = m['s' + sd];
+        return `<div class="ko-team ${cls}"><span class="nm" title="${dashEsc(m['nama' + sd])}">${dashEsc(m['nama' + sd])}</span><span class="sc">${sc !== null && sc !== undefined ? sc : '–'}</span></div>`;
+      };
+      const cls = (bmIsLive(m) ? ' live' : '') + (m.peringkat === 'AKHIR' ? ' final' : '');
+      return `<div class="ko-card${cls}"><div class="ko-meta"><span>${dashEsc(m.ov)} · Gel. ${dashEsc(m.gel)}</span>${bmStatusBadge(m)}</div>${side('1')}${side('2')}</div>`;
+    }
+
+    function renderBmKnockout(model) {
+      const wrap = document.getElementById('bmKnockout');
+      if (!wrap) return;
+      const LAYOUT = { SR: [['SEPARUH AKHIR', ['SF1', 'SF2']], ['AKHIR', ['FINAL']]],
+                       SM: [['SUKU AKHIR', ['QF1', 'QF3', 'QF2', 'QF4']], ['SEPARUH AKHIR', ['SF1', 'SF2']], ['AKHIR', ['FINAL']]] };
+      wrap.innerHTML = ['SR', 'SM'].filter(dashKatOk).map(kat => {
+        const label = kat === 'SR' ? '🧒 Sekolah Rendah' : '🧑 Sekolah Menengah';
+        const ms = model.matches.filter(m => m.kat === kat && !bmIsGroup(m));
+        const rounds = LAYOUT[kat].map(([r, ids]) => ({ r, list: ids.map(id => ms.find(m => m.ov === id)).filter(Boolean) })).filter(x => x.list.length);
+        const final = ms.find(m => m.peringkat === 'AKHIR');
+        const champ = final && final.winner ? `<span class="ko-champ">🏆 Johan: ${dashEsc(final.winner)}</span>` : '';
+        const cols = rounds.map((x, i) => {
+          const hasNext = i < rounds.length - 1;
+          const pairs = [];
+          for (let k = 0; k < x.list.length; k += 2) pairs.push(x.list.slice(k, k + 2));
+          const body = pairs.map(p => `<div class="ko-pair ${hasNext ? 'has-next' : ''} ${p.length === 2 ? 'two' : 'one'}">${p.map(m => `<div class="ko-slot">${bmKoCard(m)}</div>`).join('')}</div>`).join('');
+          return `<div class="ko-round ${i > 0 ? 'has-prev' : ''}"><div class="ko-round-title">${dashEsc(x.r)}</div><div class="ko-round-body">${body}</div></div>`;
+        }).join('');
+        return `<div class="ko-block"><h3 class="card-title bm-section-title">${label}${champ}</h3><div class="ko-scroll"><div class="ko-bracket">${cols}</div></div></div>`;
+      }).join('') || '<div class="bm-empty">Tiada perlawanan kalah mati untuk kategori ini.</div>';
+    }
+
+    function renderBmSchedule(model) {
+      const wrap = document.getElementById('bmSchedule');
+      if (!wrap) return;
+      const q = bmUp((document.getElementById('bmSearch') || {}).value);
+      const gel = (document.getElementById('bmFilterCourt') || {}).value || 'SEMUA';
+      const stF = (document.getElementById('bmFilterStatus') || {}).value || 'SEMUA';
+      const vis = model.matches.filter(m => dashKatOk(m.kat));
+      const sum = document.getElementById('bmScheduleSummary');
+      if (sum) sum.textContent = `${vis.filter(bmApproved).length} / ${vis.length} disahkan`;
+      const list = vis.filter(m => {
+        if (gel !== 'SEMUA' && m.gel !== gel) return false;
+        if (stF === 'DISAHKAN' && !bmApproved(m)) return false;
+        if (stF === 'LIVE' && !bmIsLive(m)) return false;
+        if (stF === 'TAMAT' && !bmIsWaitSah(m)) return false;
+        if (stF === 'BELUM' && (bmApproved(m) || bmIsLive(m) || bmIsWaitSah(m))) return false;
+        if (q) {
+          const hay = [m.ov, m.id, m.nama1, m.nama2, m.sing1, m.sing2, m.kumpulan ? 'KUMPULAN ' + m.kumpulan : m.peringkat].join(' ').toUpperCase();
+          if (hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      });
+      wrap.innerHTML = list.map(m => {
+        const sc = bmScore(m);
+        return `<div class="bm-row ${bmIsLive(m) ? 'live' : ''} ${bmApproved(m) ? 'done' : ''}">
+          <div class="r-id"><b>${dashEsc(m.ov)}</b><small>${dashEsc(m.id)}</small></div>
+          <div><div class="r-stage">${katTag(m.kat)}<span>${dashEsc(bmStageText(m))}</span></div>
+            <div class="dm-teams">${dmTeam(m.nama1, bmSideCls(m, '1'), m.sing1)}${sc ? `<span class="dm-sc">${sc}</span>` : '<span class="dm-vs">VS</span>'}${dmTeam(m.nama2, bmSideCls(m, '2'), m.sing2, true)}</div></div>
+          <div class="r-side"><span class="r-court">Gelanggang ${dashEsc(m.gel)}</span>${bmStatusBadge(m)}</div>
+        </div>`;
+      }).join('') || '<div class="bm-empty">Tiada perlawanan sepadan dengan tapisan.</div>';
+    }
+
+    function renderBadmintonViews() {
+      try {
+        const model = bmModel();
+        renderBmStandings(model);
+        renderBmKnockout(model);
+        renderBmSchedule(model);
+        const n = bmNoticeHtml();
+        document.querySelectorAll('[data-bm-notice]').forEach(el => { el.innerHTML = n; });
+      } catch (err) {
+        console.error('[renderBadmintonViews]', err);
+      }
+    }
+
+    /* ---------------- Permulaan ---------------- */
+    function sukanInit() {
+      dash.sukan = getSukan();
+      document.querySelectorAll('#sportSwitch button').forEach(b => b.addEventListener('click', () => applySukan(b.dataset.sukan)));
+      document.querySelectorAll('#tabNav .tab-btn').forEach(b => b.addEventListener('click', () => setTimeout(() => dashRefresh(true), 0)));
+      document.addEventListener('click', ev => {
+        const t = ev.target.closest && ev.target.closest('[data-open-tab]');
+        if (t) { ev.preventDefault(); openTab(t.dataset.openTab); setTimeout(() => dashRefresh(true), 0); }
+      });
+      const btn = document.getElementById('btnDashRefresh');
+      if (btn) btn.addEventListener('click', async () => { btn.disabled = true; try { await dashRefresh(true); } finally { btn.disabled = false; } });
+      ['bmSearch', 'bmFilterCourt', 'bmFilterStatus'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(id === 'bmSearch' ? 'input' : 'change', () => { try { renderBmSchedule(bmModel()); } catch (e) { console.error(e); } });
+      });
+      applySukan(dash.sukan, { silent: true });
+      dashRefresh(true);
+      setInterval(() => dashRefresh(false), DASH_POLL_MS);
+      setInterval(() => { if (!document.hidden && state.ui.activeTab === 'tab-dashboard') renderDashboard(); }, DASH_LIVE_RENDER_MS);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) dashRefresh(false); });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sukanInit);
+    else setTimeout(sukanInit, 0);
+  </script>
+
+  <script src="admin-pasukan.js"></script>
+  <script src="admin-jadual.js"></script>
+  <script src="admin-skor.js"></script>
 </body>
 </html>

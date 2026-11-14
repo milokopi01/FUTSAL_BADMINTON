@@ -143,6 +143,13 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  setiap gelanggang) & 'kunciAcara' {matchId: gelanggang} (Separuh Akhir /
  *                  Tempat 3/4 / Akhir dikunci ke gelanggang tertentu sebelum dijana).
  *
+ *              + v1.11.0 - DATA BADMINTON (BACA SAHAJA, UNTUK DASHBOARD UTAMA):
+ *                GET ?action=badminton -> { ok, versi, masa, acara, pasukan, jadual, peraturan, gelanggang }
+ *                - Dibaca daripada tab Jadual_Badminton, Pasukan_Badminton, Peraturan_Badminton,
+ *                  Kejohanan (Sukan = BADMINTON) & Gelanggang. Tiada penulisan ke Google Sheets.
+ *                - Disimpan dalam CacheService selama 20 saat (jimat kuota).
+ *                - Fungsi futsal, pengadil, kunci gelanggang & Master Admin TIDAK berubah.
+ *
  *  Lajur dikesan melalui NAMA TAJUK (baris 1), jadi susunan lajur Bahagian 1
  *  boleh dikekalkan. Lajur yang tiada akan ditambah automatik di hujung.
  * =========================================================
@@ -160,9 +167,10 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
+const API_VERSI = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
+// const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -267,14 +275,14 @@ const ADMIN_KUNCI_SAAT = 600;              // tempoh sekatan (10 minit)
 const FIELDS = {
   id:              ['ID Match', 'id', 'idmatch', 'matchid', 'idperlawanan', 'kodmatch'],
   kategori:        ['Kategori', 'kategori'],
-  no:              ['No', 'no', 'bil', 'nomatch', 'noperlawanan'],
+  no:              ['No', 'no', 'bil', 'nomatch', 'noperlawanan', 'noper'],
   peringkat:       ['Peringkat', 'peringkat'],
   kumpulan:        ['Kumpulan', 'kumpulan', 'kump'],
   kodP1:           ['Kod P1', 'kodp1', 'kodpasukan1'],
-  namaP1:          ['Pasukan 1', 'namap1', 'pasukan1', 'pasukana', 'tuanrumah'],
+  namaP1:          ['Pasukan 1', 'namap1', 'pasukan1', 'pasukana', 'tuanrumah', 'namapasukan1'],
   skorP1:          ['Skor P1', 'skorp1', 'skor1', 'skorpasukan1', 'golp1'],
   skorP2:          ['Skor P2', 'skorp2', 'skor2', 'skorpasukan2', 'golp2'],
-  namaP2:          ['Pasukan 2', 'namap2', 'pasukan2', 'pasukanb', 'pelawat'],
+  namaP2:          ['Pasukan 2', 'namap2', 'pasukan2', 'pasukanb', 'pelawat', 'namapasukan2'],
   kodP2:           ['Kod P2', 'kodp2', 'kodpasukan2'],
   gelanggang:      ['Gelanggang', 'gelanggang', 'gel', 'court'],
   fasa:            ['Fasa', 'fasa', 'fasakejohanan'],
@@ -288,6 +296,7 @@ const FIELDS = {
   sahPengadilPada: ['Masa Sah Pengadil', 'masasahpengadil', 'sahpengadilpada'],
   pemenangPenalti: ['Menang Penalti', 'pemenangpenalti', 'menangpenalti', 'penalti'],
   masaMula:        ['Masa Mula', 'masamula'],
+  masaJadual:      ['Masa Jadual', 'masajadual'],
   masaTamat:       ['Masa Tamat', 'masatamat'],
   disahkanOleh:    ['Disahkan Oleh', 'disahkanoleh'],
   disahkanPada:    ['Disahkan Pada', 'disahkanpada'],
@@ -303,7 +312,7 @@ const UPDATABLE = [
   'gelanggang', 'fasa', 'fasaMasa', 'fasaMulaPada', 'status', 'pengesahan', 'pengadil', 'pemenangPenalti',
   'masaMula', 'masaTamat', 'disahkanOleh', 'disahkanPada', 'catatan', 'sahPengadil', 'sahPengadilPada'
 ];
-const DATE_FIELDS = ['fasaMulaPada', 'masaMula', 'masaTamat', 'disahkanPada', 'kemaskini', 'sahPengadilPada'];
+const DATE_FIELDS = ['fasaMulaPada', 'masaMula', 'masaJadual', 'masaTamat', 'disahkanPada', 'kemaskini', 'sahPengadilPada'];
 
 const STATUS_MAP = {
   'BELUMBERMULA': 'MENUNGGU GILIRAN', 'MENUNGGU': 'MENUNGGU GILIRAN', 'MENUNGGUGILIRAN': 'MENUNGGU GILIRAN',
@@ -328,12 +337,20 @@ const FASA_MASA_MAP = {
    ?kategori=SR|SM     -> tapis kategori
    ?gelanggang=A..D    -> tapis gelanggang
    ?action=gelanggang  -> senarai gelanggang (aktif / ditutup) - v1.9.9
+   ?action=badminton   -> data badminton (pasukan, jadual, peraturan) - v1.11.0 (baca sahaja)
    ?callback=namaFungsi -> JSONP
    ========================================================= */
 function doGet(e) {
   const p = (e && e.parameter) || {};
   try {
     const action = String(p.action || 'read').toLowerCase();
+    const sukan = jenisSukan_(p.sukan, action === 'badminton' || action === 'databadminton' ? 'BADMINTON' : 'FUTSAL');
+    if ((action === 'badminton' || action === 'databadminton') && sukan !== 'BADMINTON') throw new Error('Tindakan badminton memerlukan sukan BADMINTON.');
+    if (action === 'pasukan') return output_({ ok: true, versi: API_VERSI, sukan: sukan,
+      pasukan: bacaObjekSheet_(tabSukan_(sukan, 'pasukan')) || [] }, p.callback);
+    if (sukan === 'BADMINTON' && ['read', 'badminton', 'databadminton', 'ping'].indexOf(action) < 0) {
+      throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
+    }
     if (action === 'ping') {
       return output_({ ok: true, message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI,
         sheetPengadil: SHEET_PENGADIL, senaraiGelanggang: bacaGelanggang_(), masa: new Date().toISOString() }, p.callback);
@@ -348,13 +365,16 @@ function doGet(e) {
       return output_({ ok: true, masa: new Date().toISOString(), basiSaat: KUNCI_BASI_SAAT, kunci: statusKunci_(),
         senaraiGelanggang: bacaGelanggang_() }, p.callback);
     }
+    if (action === 'badminton' || action === 'databadminton') {   // v1.11.0 (baca sahaja)
+      return output_(dataBadminton_(), p.callback);
+    }
     if (action !== 'read') {
       return output_({ ok: false, error: 'Tindakan tidak dikenali: ' + action }, p.callback);
     }
 
-    const sheet = getJadualSheet_();
+    const sheet = getJadualSheet_(sukan);
     const table = readTable_(sheet);
-    let rows = table.rows.map(function (r) { return r.data; });
+    let rows = table.rows.map(function (r) { return Object.assign({}, r.data, { sukan: sukan }); });
 
     if (p.id) rows = rows.filter(function (r) { return String(r.id).toUpperCase() === String(p.id).toUpperCase(); });
     if (p.kategori) rows = rows.filter(function (r) { return String(r.kategori).toUpperCase() === String(p.kategori).toUpperCase(); });
@@ -362,16 +382,85 @@ function doGet(e) {
 
     return output_({
       ok: true,
-      sheet: SHEET_JADUAL,
+      sheet: sheet.getName(),
+      versi: API_VERSI,
+      sukan: sukan,
       count: rows.length,
       dikemaskini: new Date().toISOString(),
-      senaraiGelanggang: bacaGelanggang_(),   // v1.9.9
+      senaraiGelanggang: sukan === 'FUTSAL' ? bacaGelanggang_() : undefined,
       matches: p.id ? undefined : rows,
       match: p.id ? (rows[0] || null) : undefined
     }, p.callback);
   } catch (err) {
     return output_({ ok: false, error: String(err && err.message || err) }, p.callback);
   }
+}
+
+/* =========================================================
+   v1.11.0 - DATA BADMINTON (BACA SAHAJA)
+   Dashboard Utama membaca tab badminton melalui GET ?action=badminton.
+   Tajuk lajur (baris 1) dipulangkan apa adanya, cth. ID_Match, Skor_P1, Status_Pengesahan.
+   ========================================================= */
+const SHEET_BM_JADUAL = 'Jadual_Badminton';
+const SHEET_BM_PASUKAN = 'Pasukan_Badminton';
+const SHEET_BM_PERATURAN = 'Peraturan_Badminton';
+const SHEET_KEJOHANAN = 'Kejohanan';
+const SHEET_GELANGGANG_INFO = 'Gelanggang';
+const BM_CACHE_KEY = 'DATA_BADMINTON_V112';
+const BM_CACHE_SAAT = 20;
+
+function bacaObjekSheet_(nama) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nama);
+  if (!sheet) return null;
+  const values = sheet.getDataRange().getValues();
+  if (!values.length) return [];
+  const header = values[0].map(function (h) { return String(h === null || h === undefined ? '' : h).trim(); });
+  const out = [];
+  for (let r = 1; r < values.length; r++) {
+    const row = values[r];
+    if (row[0] === '' || row[0] === null || row[0] === undefined) continue;
+    const o = {};
+    header.forEach(function (h, i) {
+      if (!h) return;
+      let v = row[i];
+      if (v instanceof Date) v = v.toISOString();
+      o[h] = v;
+    });
+    out.push(o);
+  }
+  return out;
+}
+
+function dataBadminton_() {
+  let cache = null;
+  try {
+    cache = CacheService.getScriptCache();
+    const c = cache.get(BM_CACHE_KEY);
+    if (c) { const d = JSON.parse(c); d.cache = true; return d; }
+  } catch (err) { cache = null; }
+  const jadual = bacaObjekSheet_(SHEET_BM_JADUAL);
+  const pasukan = bacaObjekSheet_(SHEET_BM_PASUKAN);
+  if (!jadual || !pasukan) {
+    return { ok: false, kod: 'TIADA_TAB_BADMINTON', versi: API_VERSI,
+      error: 'Tab ' + SHEET_BM_JADUAL + ' / ' + SHEET_BM_PASUKAN + ' tidak dijumpai dalam Google Sheets.' };
+  }
+  const sukanIni = function (r) { return String(r.Sukan || '').trim().toUpperCase() === 'BADMINTON'; };
+  const data = {
+    ok: true,
+    sukan: 'BADMINTON',
+    versi: API_VERSI,
+    masa: new Date().toISOString(),
+    acara: (bacaObjekSheet_(SHEET_KEJOHANAN) || []).filter(sukanIni),
+    pasukan: pasukan,
+    jadual: jadual,
+    peraturan: bacaObjekSheet_(SHEET_BM_PERATURAN) || [],
+    gelanggang: (bacaObjekSheet_(SHEET_GELANGGANG_INFO) || []).filter(sukanIni)
+  };
+  try {
+    const s = JSON.stringify(data);
+    if (cache && s.length < 95000) cache.put(BM_CACHE_KEY, s, BM_CACHE_SAAT);
+  } catch (err) { /* abaikan: cache pilihan sahaja */ }
+  return data;
 }
 
 /* =========================================================
@@ -417,6 +506,31 @@ function doPost(e) {
     }
 
     const action = String(body.action || '').toLowerCase();
+    const sukan = jenisSukan_(body.sukan);
+    // Tolak seluruh permintaan bercampur sebelum sebarang tulisan.
+    semakSukanRekod_(body.matches, sukan);
+    semakSukanRekod_(body.teams || body.pasukan, sukan);
+    semakSukanRekod_([body.match || body], sukan);
+    if (sukan === 'BADMINTON') ubahPapan = false;
+    if (action === 'simpanskorsukan') {
+      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan skor.' });
+      return output_(simpanSkorSukan_(body, sukan));
+    }
+    if (action === 'simpanjadual') {
+      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh mengubah jadual.' });
+      return output_(simpanJadualSukan_(body, sukan));
+    }
+    if (action === 'simpanpasukan' || action === 'syncpasukan') {
+      ubahPapan = false;
+      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan pasukan.' });
+      return output_(simpanPasukanSukan_(body, sukan));
+    }
+    if (sukan === 'BADMINTON' && MATCH_ACTIONS.indexOf(action) < 0 && action !== 'ping') {
+      throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
+    }
+    if (sukan === 'BADMINTON' && !isMasterAdmin_(body) && action !== 'ping') {
+      return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Tulisan Badminton memerlukan kunci Master Admin.' });
+    }
     if (ACTIONS_TANPA_UBAH_PAPAN.indexOf(action) >= 0 ||
         (action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
       ubahPapan = false;
@@ -440,27 +554,32 @@ function doPost(e) {
 
     // FASA 4: hanya kunci Master Admin yang sah boleh mengubah keputusan DISAHKAN
     const admin = isMasterAdmin_(body);
-    const result = upsertMatches_(list, { admin: admin });
+    const result = upsertMatches_(list, { admin: admin, sukan: sukan });
     // v1.9.4: perlawanan yang telah DISAHKAN -> lepaskan kunci gelanggang supaya
     // gelanggang boleh terus ke perlawanan seterusnya.
     // v1.9.5: hanya bila ada keputusan DISAHKAN dalam penghantaran ini (elak bacaan jadual setiap gol)
     const adaSah = Array.isArray(body.matches) && body.matches.some(function (x) {
       return x && String(x.pengesahan || '').toUpperCase() === 'DISAHKAN';
     });
-    if (adaSah) { try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); } }
+    if (adaSah && sukan === 'FUTSAL') { try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); } }
 
     // Carta Liga dikira semula DI PELAYAN daripada Jadual_Perlawanan (bukan dipercayai
     // bulat-bulat daripada peranti) supaya peranti dengan data lama tidak merosakkan carta.
-    const carta = kiraCartaPelayan_(readTable_(getJadualSheet_()));
-    if (carta.length) writeStandings_(carta);
-    else if (Array.isArray(body.standings) && body.standings.length) writeStandings_(body.standings);
-    if (Array.isArray(body.approvalLog) && body.approvalLog.length) writeApprovalLog_(body.approvalLog);
+    if (sukan === 'FUTSAL') {
+      const carta = kiraCartaPelayan_(readTable_(getJadualSheet_()));
+      if (carta.length) writeStandings_(carta);
+      else if (Array.isArray(body.standings) && body.standings.length) writeStandings_(body.standings);
+    }
+    if (Array.isArray(body.approvalLog) && body.approvalLog.length) writeApprovalLog_(body.approvalLog, sukan);
     // FASA 7: log Sahkan / Tolak daripada Peti Kelulusan -> ditambah, bukan ditulis ganti
-    if (Array.isArray(body.logBaharu) && body.logBaharu.length) tambahApprovalLog_(body.logBaharu);
+    if (Array.isArray(body.logBaharu) && body.logBaharu.length) tambahApprovalLog_(body.logBaharu, sukan);
+    if (sukan === 'BADMINTON') { SpreadsheetApp.flush(); CacheService.getScriptCache().remove(BM_CACHE_KEY); }
 
     return output_({
       ok: true,
-      sheet: SHEET_JADUAL,
+      sheet: tabSukan_(sukan, 'jadual'),
+      sukan: sukan,
+      versi: API_VERSI,
       dikemaskini: result.updated,
       ditambah: result.inserted,
       ditolak: result.skipped,
@@ -489,8 +608,10 @@ function doPost(e) {
 function upsertMatches_(list, opts) {
   opts = opts || {};
   const admin = opts.admin === true;
-  const lockedMatches = opts.abaikanKunci ? {} : lockedMatchIds_();
-  const sheet = getJadualSheet_();
+  const sukan = jenisSukan_(opts.sukan);
+  semakSukanRekod_(list, sukan);
+  const lockedMatches = opts.abaikanKunci || sukan === 'BADMINTON' ? {} : lockedMatchIds_();
+  const sheet = getJadualSheet_(sukan);
   const table = readTable_(sheet);
   const values = table.values;            // termasuk baris tajuk
   const colOf = table.colOf;              // medan -> indeks lajur (0-based)
@@ -505,13 +626,13 @@ function upsertMatches_(list, opts) {
 
   list.forEach(function (m) {
     const id = String(m && m.id || '').trim().toUpperCase();
-    if (!/^(SR|SM)-\d{1,2}$/.test(id)) { skipped++; return; }
+    if (!(sukan === 'FUTSAL' ? /^(SR|SM)-\d{1,2}$/ : /^[A-Z0-9][A-Z0-9_-]{0,59}$/).test(id)) { skipped++; return; }
 
     let rowIdx = index[id];
     if (rowIdx === undefined) {
       const blank = new Array(width).fill('');
       blank[colOf.id] = id;
-      blank[colOf.kategori] = id.slice(0, 2);   // SR / SM daripada ID
+      blank[colOf.kategori] = sukan === 'FUTSAL' ? id.slice(0, 2) : String(m.kategori || '');
       values.push(blank);
       rowIdx = values.length - 1;
       index[id] = rowIdx;
@@ -640,8 +761,8 @@ function writeStandings_(standings) {
   sheet.setFrozenRows(1);
 }
 
-function writeApprovalLog_(log) {
-  const sheet = getOrCreateSheet_(SHEET_LOG);
+function writeApprovalLog_(log, sukan) {
+  const sheet = getOrCreateSheet_(tabSukan_(sukan, 'log'));
   const header = ['Masa', 'Match', 'Keputusan', 'Tindakan', 'Oleh'];
   const rows = log.map(function (l) {
     const d = new Date(l.masa);
@@ -657,8 +778,8 @@ function writeApprovalLog_(log) {
 }
 
 // FASA 7: tambah baris log pengesahan (Sahkan / Tolak) tanpa memadam log sedia ada
-function tambahApprovalLog_(log) {
-  const sheet = getOrCreateSheet_(SHEET_LOG);
+function tambahApprovalLog_(log, sukan) {
+  const sheet = getOrCreateSheet_(tabSukan_(sukan, 'log'));
   const header = ['Masa', 'Match', 'Keputusan', 'Tindakan', 'Oleh'];
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
@@ -2442,14 +2563,16 @@ function getOrCreateSheet_(name) {
 }
 
 // Pastikan tab Jadual_Perlawanan wujud & semua lajur yang diperlukan ada
-function getJadualSheet_() {
-  const sheet = getOrCreateSheet_(SHEET_JADUAL);
+function getJadualSheet_(jenis) {
+  const sukan = jenisSukan_(jenis);
+  const sheet = getOrCreateSheet_(tabSukan_(sukan, 'jadual'));
   const lastCol = Math.max(sheet.getLastColumn(), 1);
   const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const isEmpty = header.every(function (h) { return h === '' || h === null; });
 
   if (isEmpty) {
-    const defaults = Object.keys(FIELDS).map(function (f) { return FIELDS[f][0]; });
+    const defaults = Object.keys(FIELDS).map(function (f) { return tajukJadualSukan_(sukan, f); });
+    if (sheet.getMaxColumns() < defaults.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), defaults.length - sheet.getMaxColumns());
     sheet.getRange(1, 1, 1, defaults.length).setValues([defaults]).setFontWeight('bold');
     sheet.setFrozenRows(1);
     return sheet;
@@ -2458,7 +2581,9 @@ function getJadualSheet_() {
   const found = mapHeader_(header);
   const missing = Object.keys(FIELDS).filter(function (f) { return found[f] === undefined; });
   if (missing.length) {
-    const titles = missing.map(function (f) { return FIELDS[f][0]; });
+    const titles = missing.map(function (f) { return tajukJadualSukan_(sukan, f); });
+    const lebar = header.length + titles.length;
+    if (sheet.getMaxColumns() < lebar) sheet.insertColumnsAfter(sheet.getMaxColumns(), lebar - sheet.getMaxColumns());
     sheet.getRange(1, header.length + 1, 1, titles.length).setValues([titles]).setFontWeight('bold');
   }
   return sheet;
@@ -2546,6 +2671,7 @@ function setupSheet() {
   getTangguhSheet_();
   getPembetulanSheet_();
   getSandaranSheet_();
+  setupDuaSukan();
   SpreadsheetApp.getActiveSpreadsheet().toast('Tab ' + SHEET_JADUAL + ', ' + SHEET_PENGADIL + ', ' + SHEET_KUNCI + ', ' + SHEET_TANGGUH + ', ' + SHEET_PEMBETULAN + ' & ' + SHEET_SANDARAN + ' sedia digunakan.', 'Live Futsal PK KBB', 5);
   return sheet.getName();
 }
