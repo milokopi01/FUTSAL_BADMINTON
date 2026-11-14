@@ -1,4 +1,4 @@
-/* Bahagian 4: skor Admin berasingan mengikut sukan. */
+/* Bahagian 4: skor Admin berasingan mengikut sukan. Bahagian 5: simpanan dimaklumkan ke Dashboard. */
 const SKOR_ASAL_FIELDS = ['skorP1','skorP2','status','pengesahan','pemenangPenalti','kemaskini','namaP1','namaP2','versiPembetulan'];
 function binaPayloadSkor(sukan,match,values,adminKey) {
   if (!['FUTSAL','BADMINTON'].includes(sukan)||!adminKey) throw new Error('Sukan dan PIN Master Admin diperlukan.');
@@ -30,8 +30,8 @@ function initAdminSkor() {
       const tr=document.createElement('tr');
       [m.id,m.namaP1,m.skorP1??'—',m.skorP2??'—',m.namaP2,m.pengesahan||m.status].forEach(v=>{const td=document.createElement('td');td.textContent=String(v||v===0?v:'—');tr.append(td);});
       const td=document.createElement('td'),edit=document.createElement('button');edit.type='button';edit.className='btn btn-sm';edit.textContent='✎ Skor';
-      const finalFutsal=sport.value==='FUTSAL'&&m.pengesahan==='DISAHKAN'&&m.status==='SELESAI';edit.disabled=finalFutsal;
-      edit.title=finalFutsal?'Gunakan Pembetulan Markah':'Kemas kini skor';
+      const finalFutsal=sport.value==='FUTSAL'&&m.pengesahan==='DISAHKAN'&&m.status==='SELESAI';edit.disabled=finalFutsal||busy;
+      edit.title=finalFutsal?'Gunakan Pembetulan Markah':'Kemas kini skor';edit.dataset.final=finalFutsal?'1':'0';
       edit.addEventListener('click',()=>{
         if(busy||!canManageSystem())return; selected={...m};form.reset();
         document.getElementById('adminScoreTitle').textContent=sport.value+' · '+m.id+' · '+m.namaP1+' lawan '+m.namaP2;
@@ -39,7 +39,7 @@ function initAdminSkor() {
         form.elements.namedItem('skorP1').value=m.skorP1??'';form.elements.namedItem('skorP2').value=m.skorP2??'';
         form.elements.namedItem('keputusan').value=m.pengesahan==='DISAHKAN'?'DISAHKAN':'SEMENTARA';
         document.getElementById('adminScorePenalty').classList.toggle('hidden',sport.value!=='FUTSAL');
-        form.classList.remove('hidden');form.scrollIntoView({block:'center'});
+        form.classList.remove('hidden');form.scrollIntoView({block:'center',behavior:'smooth'});form.elements.namedItem('skorP1').focus({preventScroll:true});
       });td.append(edit);tr.append(td);rows.append(tr);
     });
     if(!list.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='Tiada perlawanan dalam Google Sheets.';tr.append(td);rows.append(tr);}
@@ -49,14 +49,15 @@ function initAdminSkor() {
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(busy||!selected)return;if(!canManageSystem()){msg('Hanya Master Admin dibenarkan.',true);return;}
     const values=Object.fromEntries(new FormData(form).entries()),s=sport.value,m=selected;
-    busy=true;++seq;sport.disabled=true;refresh.disabled=true;const controls=Array.from(form.querySelectorAll('input,select,button'));controls.forEach(el=>el.disabled=true);
+    busy=true;++seq;sport.disabled=true;refresh.disabled=true;const controls=Array.from(form.querySelectorAll('input,select,button'));controls.forEach(el=>el.disabled=true);rows.querySelectorAll('button').forEach(el=>el.disabled=true);
     try{
       const payload=binaPayloadSkor(s,m,values,await ensureAdminKey());msg('Menyimpan skor '+s+'…');
       const result=await callGas(payload);if(!result.ok||result.sukan!==s||cmpVersi(result.versi||'0','1.14.0')<0)throw new Error(result.error||'Simpanan skor gagal.');
       const list=await read(s),saved=list.find(x=>x.id===m.id);
       if(!saved||Number(saved.skorP1)!==payload.skor.skorP1||Number(saved.skorP2)!==payload.skor.skorP2||(payload.skor.keputusan==='DISAHKAN'&&(saved.pengesahan!=='DISAHKAN'||saved.status!=='SELESAI')))throw new Error('Skor belum dapat disahkan; muat semula sebelum mencuba lagi.');
-      close();render(list);msg('Skor '+s+' · '+m.id+' disimpan dan dibaca semula dari Google Sheets.');
-    }catch(e){msg(e.message||'Simpanan gagal; input dikekalkan.',true);}finally{busy=false;sport.disabled=false;refresh.disabled=false;controls.forEach(el=>el.disabled=false);}
+      close();render(list);msg('Skor '+s+' · '+m.id+' disimpan dan dibaca semula dari Google Sheets. Dashboard awam dikemas kini secara automatik.');
+      if(typeof window.umumkanPerubahan==='function')window.umumkanPerubahan(s,'skor'); // Bahagian 5
+    }catch(e){msg(e.message||'Simpanan gagal; input dikekalkan.',true);}finally{busy=false;sport.disabled=false;refresh.disabled=false;controls.forEach(el=>el.disabled=false);rows.querySelectorAll('button[data-final]').forEach(el=>{el.disabled=el.dataset.final==='1';});}
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAdminSkor);else initAdminSkor();

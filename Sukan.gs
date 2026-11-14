@@ -69,6 +69,7 @@ function setupDuaSukan() {
   sediaTabSukan_(SHEET_GELANGGANG_INFO, ['ID_Gelanggang', 'Sukan', 'Nama_Gelanggang', 'Kategori', 'Aktif']);
   SpreadsheetApp.flush();
   CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  tandaPerubahan_('FUTSAL'); tandaPerubahan_('BADMINTON');   // Bahagian 6: isyarat awal untuk Dashboard
   return { ok: true, versi: API_VERSI, tab: tabs };
 }
 
@@ -135,12 +136,17 @@ function simpanJadualSukan_(body, sukan) {
       if (value && (!/Z$|[+-]\d{2}:\d{2}$/.test(value) || isNaN(new Date(value).getTime()))) throw new Error('Masa jadual tidak sah.');
       next[f] = value ? new Date(value) : '';
     } else {
-      if (value.length > 120 || /^[=+@]/.test(value)) throw new Error('Nilai jadual tidak sah.');
+      if (value.length > 120 || /^[=+@-]/.test(value)) throw new Error('Nilai jadual tidak sah (tidak boleh bermula dengan = + - @).');
       next[f] = f === 'gelanggang' || f === 'kodP1' || f === 'kodP2' ? value.toUpperCase() : value;
     }
   });
   if (!next.gelanggang || !next.namaP1 || !next.namaP2) throw new Error('Gelanggang dan kedua-dua pasukan diperlukan.');
   if (next.namaP1.toUpperCase() === next.namaP2.toUpperCase()) throw new Error('Pasukan 1 dan Pasukan 2 mesti berbeza.');
+  // Bahagian 6: gelanggang Futsal mesti dalam senarai gelanggang sah (elak perlawanan "hilang" dari papan live)
+  if (sukan === 'FUTSAL') {
+    const sah = gelanggangSah_();
+    if (sah.length && sah.indexOf(next.gelanggang) < 0) throw new Error('Gelanggang ' + next.gelanggang + ' tiada dalam senarai gelanggang Futsal (' + sah.join(', ') + ').');
+  }
   const row = table.values[rec.rowIndex].slice();
   fields.forEach(function (f) { row[table.colOf[f]] = next[f]; });
   row[table.colOf.kemaskini] = new Date();
@@ -180,6 +186,11 @@ function simpanSkorSukan_(body, sukan) {
   const row = table.values[rec.rowIndex].slice();
   const set = function (f,v) { row[table.colOf[f]] = v; };
   set('skorP1',s1); set('skorP2',s2); set('pemenangPenalti',penalti); set('kemaskini',now);
+  // Bahagian 5: skor sementara Badminton -> perlawanan dipaparkan sebagai SEDANG BERLANGSUNG di Dashboard
+  if (!final && sukan === 'BADMINTON' && (statusBaris_(d) === 'MENUNGGU GILIRAN' || statusBaris_(d) === '')) {
+    set('status', 'SEDANG BERLANGSUNG');
+    if (!d.masaMula) set('masaMula', now);
+  }
   if (final) {
     set('status','SELESAI'); set('pengesahan','DISAHKAN'); set('fasaMasa','Tamat');
     set('disahkanOleh','Master Admin'); set('disahkanPada',now);
@@ -189,6 +200,11 @@ function simpanSkorSukan_(body, sukan) {
   tambahApprovalLog_([{masa:now.toISOString(),matchId:id,keputusan:s1+' - '+s2,tindakan:final?'SKOR ADMIN DISAHKAN':'SKOR ADMIN SEMENTARA',oleh:'Master Admin'}],sukan);
   SpreadsheetApp.flush();
   if (sukan === 'BADMINTON') CacheService.getScriptCache().remove(BM_CACHE_KEY);
-  else if (final) { rombakJadualPelayan_(); lepasKunciMuktamad_(); }
+  else if (final) {
+    rombakJadualPelayan_(); lepasKunciMuktamad_();
+    // Bahagian 5: Carta Liga di Google Sheets dikira semula selepas keputusan Admin disahkan
+    try { const carta = kiraCartaPelayan_(readTable_(getJadualSheet_())); if (carta.length) writeStandings_(carta); }
+    catch (errC) { console.warn('kiraCartaPelayan_', errC); }
+  }
   return {ok:true,versi:API_VERSI,sukan:sukan,id:id,skorP1:s1,skorP2:s2,keputusan:final?'DISAHKAN':'SEMENTARA'};
 }

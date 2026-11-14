@@ -1,4 +1,12 @@
 /* Bahagian 2: borang pasukan menggunakan API Bahagian 1, tanpa mengubah jadual. */
+// Bahagian 6: crypto.randomUUID tiada pada pelayar lama / sambungan bukan HTTPS -> sandaran selamat
+function idRawak() {
+  try { if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID().toUpperCase(); } catch (e) { /* sandaran */ }
+  const b = new Uint8Array(16);
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b); else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+}
 function binaPayloadPasukan(values, adminKey, id) {
   const sukan = values.sukan;
   if (!['FUTSAL', 'BADMINTON'].includes(sukan)) throw new Error('Sila pilih Futsal atau Badminton.');
@@ -107,7 +115,7 @@ function initAdminPasukan() {
       await readTeams(values.sukan);
       if (!draftId || draftSport !== values.sukan) {
         draftSport = values.sukan;
-        draftId = (values.sukan === 'FUTSAL' ? 'F-' : 'B-') + crypto.randomUUID().toUpperCase();
+        draftId = (values.sukan === 'FUTSAL' ? 'F-' : 'B-') + idRawak();
       }
       const payload = binaPayloadPasukan(values, adminKey, draftId);
       const result = await callGas(payload);
@@ -122,6 +130,7 @@ function initAdminPasukan() {
       playerFields.classList.toggle('hidden', payload.sukan !== 'BADMINTON');
       message(payload.pasukan.Nama_Pasukan + ' didaftarkan untuk ' + payload.sukan + ' dan disahkan dalam Google Sheets.');
       draftId = ''; draftSport = '';
+      if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan(payload.sukan, 'pasukan'); // Bahagian 5
     } catch (err) { message(err.message || 'Pendaftaran gagal. Data borang dikekalkan.', true); }
     finally { lock(false); }
   });

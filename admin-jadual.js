@@ -43,12 +43,12 @@ function initAdminJadual() {
         const td=document.createElement('td'); td.textContent=String(v||'—'); tr.append(td);
       });
       const td=document.createElement('td');
-      const edit=document.createElement('button'); edit.type='button'; edit.className='btn btn-sm'; edit.textContent='✎ Edit'; edit.disabled=!editable(m)||busy;
+      const edit=document.createElement('button'); edit.type='button'; edit.className='btn btn-sm'; edit.textContent='✎ Edit'; edit.disabled=!editable(m)||busy; edit.dataset.editable=editable(m)?'1':'0';
       edit.addEventListener('click',()=>{
         if (!canManageSystem() || busy) return;
         selected={...m}; title.textContent=sport.value+' · '+m.id;
         JADUAL_FIELDS.forEach(f=>{ form.elements.namedItem(f).value=f==='masaJadual'?masaJadualInput(m[f]):String(m[f]||''); });
-        form.classList.remove('hidden'); form.scrollIntoView({block:'center',behavior:'smooth'});
+        form.classList.remove('hidden'); form.scrollIntoView({block:'center',behavior:'smooth'}); form.elements.namedItem('gelanggang').focus({preventScroll:true});
       }); td.append(edit); tr.append(td); rows.append(tr);
     });
     if (!list.length) { const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=8; td.textContent='Tiada jadual dalam Google Sheets untuk sukan ini.'; tr.append(td); rows.append(tr); }
@@ -80,9 +80,10 @@ function initAdminJadual() {
       if(!result.ok||result.sukan!==s||cmpVersi(result.versi||'0','1.13.0')<0)throw new Error(result.error||'Simpanan jadual gagal.');
       const list=await read(s); const saved=list.find(m=>String(m.id)===String(match.id));
       if(!saved||JADUAL_FIELDS.some(f=>String(saved[f]||'').toUpperCase()!==String(payload.jadual[f]||'').toUpperCase()))throw new Error('Jadual belum dapat disahkan. Semak semula sebelum mencuba lagi.');
-      close(); render(list); msg('Jadual '+s+' · '+match.id+' disimpan dan dibaca semula dari Google Sheets.');
+      close(); render(list); msg('Jadual '+s+' · '+match.id+' disimpan dan dibaca semula dari Google Sheets. Dashboard awam dikemas kini secara automatik.');
+      if(typeof window.umumkanPerubahan==='function')window.umumkanPerubahan(s,'jadual'); // Bahagian 5
     } catch(e){msg(e.message||'Simpanan gagal; input dikekalkan.',true);}
-    finally {busy=false;sport.disabled=false;refresh.disabled=false;controls.forEach(el=>el.disabled=false);rows.querySelectorAll('button').forEach(el=>{const tr=el.closest('tr');el.disabled=tr&& !['MENUNGGU GILIRAN','BELUM BERMULA','MENUNGGU','—'].includes(tr.children[6].textContent.toUpperCase());});}
+    finally {busy=false;sport.disabled=false;refresh.disabled=false;controls.forEach(el=>el.disabled=false);rows.querySelectorAll('button[data-editable]').forEach(el=>{el.disabled=el.dataset.editable!=='1';});}
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAdminJadual);else initAdminJadual();

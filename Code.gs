@@ -167,10 +167,12 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
+const API_VERSI = '1.16.0';  // Bahagian 6: keluaran akhir (semakan pepijat & kemasan)
+// const API_VERSI_B5 = '1.15.0';  // Bahagian 5: isyarat perubahan masa nyata untuk Dashboard awam
+// const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -184,6 +186,12 @@ const TANGGUH_PAPAN_MINIT = 20;            // v1.9.2: perlawanan ditangguh dipap
 // v1.9.2: tindakan yang tidak mengubah papan live -> cache tidak dibuang
 const ACTIONS_TANPA_UBAH_PAPAN = ['ping', 'loginpengadil', 'statusgelanggang', 'senaraipengadil', 'logpembetulan',
   'simpansandaran', 'senaraisandaran', 'ambilsandaran', 'padamsandaran', 'senaraigelanggang'];
+// Bahagian 5: isyarat perubahan masa nyata. Setiap penulisan yang mengubah data awam
+// menyimpan cap masa baharu per sukan. Dashboard membaca cap masa ini (sangat ringan,
+// turut disertakan dalam ?action=live) dan hanya membaca data penuh bila cap masa berubah.
+const ACTIONS_TANPA_ISYARAT = ACTIONS_TANPA_UBAH_PAPAN.concat(['logkeluarpengadil', 'simpanpengadil', 'padampengadil', 'syncpengadil']);
+const ISYARAT_KEY = 'ISYARAT_UBAH_';       // + FUTSAL / BADMINTON
+const ISYARAT_CACHE_SAAT = 21600;
 // FASA 6: log pengesahan keputusan oleh pengadil (tambah sahaja, tidak ditulis ganti)
 const SHEET_SAH_PENGADIL = 'Log_Sah_Pengadil';
 const SAH_PENGADIL_HEADER = ['Masa', 'ID Match', 'Gelanggang', 'Pasukan 1', 'Skor', 'Pasukan 2', 'Menang Penalti', 'Pengadil', 'ID Pengadil'];
@@ -344,6 +352,8 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   try {
     const action = String(p.action || 'read').toLowerCase();
+    // Bahagian 5: isyarat perubahan (tiada data sulit; sangat pantas daripada cache)
+    if (action === 'perubahan' || action === 'isyarat') return output_(isyaratPerubahan_(), p.callback);
     const sukan = jenisSukan_(p.sukan, action === 'badminton' || action === 'databadminton' ? 'BADMINTON' : 'FUTSAL');
     if ((action === 'badminton' || action === 'databadminton') && sukan !== 'BADMINTON') throw new Error('Tindakan badminton memerlukan sukan BADMINTON.');
     if (action === 'pasukan') return output_({ ok: true, versi: API_VERSI, sukan: sukan,
@@ -359,7 +369,10 @@ function doGet(e) {
       return output_({ ok: true, senaraiGelanggang: bacaGelanggang_(), masa: new Date().toISOString() }, p.callback);
     }
     if (action === 'live' || action === 'papanlive') {
-      return output_(papanLiveCached_(), p.callback);
+      const papan = papanLiveCached_();
+      // Bahagian 5: isyarat perubahan dihantar bersama papan live -> tiada permintaan tambahan
+      if (papan && papan.ok) { try { papan.isyarat = isyaratRingkas_(); } catch (errI) { /* pilihan sahaja */ } }
+      return output_(papan, p.callback);
     }
     if (action === 'kunci' || action === 'statusgelanggang') {
       return output_({ ok: true, masa: new Date().toISOString(), basiSaat: KUNCI_BASI_SAAT, kunci: statusKunci_(),
@@ -392,7 +405,7 @@ function doGet(e) {
       match: p.id ? (rows[0] || null) : undefined
     }, p.callback);
   } catch (err) {
-    return output_({ ok: false, error: String(err && err.message || err) }, p.callback);
+    return output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err) }, p.callback);
   }
 }
 
@@ -493,6 +506,7 @@ function dataBadminton_() {
 function doPost(e) {
   const lock = LockService.getScriptLock();
   let ubahPapan = true;   // v1.9.2: buang cache papan live hanya bila data papan mungkin berubah
+  let tandaSukan = '';    // Bahagian 5: sukan yang datanya berubah -> isyarat kepada Dashboard
   try {
     lock.waitLock(20000);
   } catch (err) {
@@ -507,6 +521,10 @@ function doPost(e) {
 
     const action = String(body.action || '').toLowerCase();
     const sukan = jenisSukan_(body.sukan);
+    if (ACTIONS_TANPA_ISYARAT.indexOf(action) < 0 &&
+        !(action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
+      tandaSukan = sukan;
+    }
     // Tolak seluruh permintaan bercampur sebelum sebarang tulisan.
     semakSukanRekod_(body.matches, sukan);
     semakSukanRekod_(body.teams || body.pasukan, sukan);
@@ -591,11 +609,15 @@ function doPost(e) {
     });
   } catch (err) {
     console.error(err);
-    return output_({ ok: false, error: String(err && err.message || err) });
+    return output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err) });
   } finally {
     // v1.9.3: papan dibina semula terus ke cache -> dashboard / projektor nampak gol serta-merta
     try { if (ubahPapan) segarkanPapan_(); }
-    finally { lock.releaseLock(); }
+    finally {
+      // Bahagian 5: cap masa ditulis SELEPAS data & cache disegarkan -> Dashboard tidak membaca data lama
+      try { if (tandaSukan && RESPONS_OK_) tandaPerubahan_(tandaSukan); } catch (errI) { console.warn('tandaPerubahan_', errI); }
+      lock.releaseLock();
+    }
   }
 }
 
@@ -1954,6 +1976,59 @@ function segarkanPapan_() {
   }
 }
 
+/* =========================================================
+   Bahagian 5: ISYARAT PERUBAHAN MASA NYATA (Admin -> Dashboard)
+   - tandaPerubahan_(sukan): dipanggil oleh doPost (di bawah LockService) & onEdit.
+   - isyaratPerubahan_()   : ?action=perubahan -> { futsal, badminton } cap masa (ms).
+   - Pelayar membandingkan cap masa; jika berubah, data sukan itu dibaca semula serta-merta.
+   ========================================================= */
+function tandaPerubahan_(sukan) {
+  const s = jenisSukan_(sukan);
+  const token = String(Date.now());
+  PropertiesService.getScriptProperties().setProperty(ISYARAT_KEY + s, token);
+  try { CacheService.getScriptCache().put(ISYARAT_KEY + s, token, ISYARAT_CACHE_SAAT); } catch (err) { /* abaikan */ }
+  return token;
+}
+
+function isyaratRingkas_() {
+  const keys = [ISYARAT_KEY + 'FUTSAL', ISYARAT_KEY + 'BADMINTON'];
+  let cache = null, got = {};
+  try { cache = CacheService.getScriptCache(); got = cache.getAll(keys) || {}; } catch (err) { got = {}; }
+  let props = null;
+  const nilai = function (k) {
+    if (got[k]) return String(got[k]);
+    props = props || PropertiesService.getScriptProperties();
+    const v = props.getProperty(k) || '0';
+    try { if (cache) cache.put(k, v, ISYARAT_CACHE_SAAT); } catch (err) { /* abaikan */ }
+    return v;
+  };
+  return { futsal: nilai(keys[0]), badminton: nilai(keys[1]) };
+}
+
+function isyaratPerubahan_() {
+  const i = isyaratRingkas_();
+  return { ok: true, versi: API_VERSI, masa: new Date().toISOString(), futsal: i.futsal, badminton: i.badminton, selangSaat: 5 };
+}
+
+// Suntingan manual terus di Google Sheets (pencetus mudah onEdit) turut dihantar ke Dashboard.
+// Penulisan oleh skrip sendiri tidak mencetuskan onEdit, jadi tiada isyarat berganda.
+function onEdit(e) {
+  try {
+    const nama = e && e.range ? e.range.getSheet().getName() : '';
+    if (!nama) return;
+    const bm = [SHEET_BM_JADUAL, SHEET_BM_PASUKAN, SHEET_BM_PERATURAN, SHEET_KEJOHANAN, SHEET_GELANGGANG_INFO, 'Log_Pengesahan_Badminton'];
+    const fs = [SHEET_JADUAL, 'Pasukan_Futsal', 'Peraturan_Futsal', SHEET_LOG, SHEET_KUNCI];
+    if (bm.indexOf(nama) >= 0) {
+      try { CacheService.getScriptCache().remove(BM_CACHE_KEY); } catch (err) { /* abaikan */ }
+      tandaPerubahan_('BADMINTON');
+    }
+    if (fs.indexOf(nama) >= 0) {
+      bustPapanCache_();
+      tandaPerubahan_('FUTSAL');
+    }
+  } catch (err) { console.warn('onEdit isyarat', err); }
+}
+
 function bustPapanCache_() {
   try {
     const cache = CacheService.getScriptCache();
@@ -2650,7 +2725,10 @@ function parseBody_(e) {
   throw new Error('Badan permintaan kosong.');
 }
 
+// Bahagian 6: status respons terakhir -> isyarat perubahan hanya dihantar bila penulisan BERJAYA
+let RESPONS_OK_ = false;
 function output_(obj, callback) {
+  RESPONS_OK_ = !!(obj && obj.ok);
   const json = JSON.stringify(obj);
   if (callback && /^[A-Za-z_$][\w$.]{0,63}$/.test(callback)) {
     return ContentService.createTextOutput(callback + '(' + json + ');')

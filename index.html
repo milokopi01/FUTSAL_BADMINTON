@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyzdQcgj7TZ-7SVfppAgEgdR0ND1zYRdIQz0UW69J8e_2shW2elydw2X8SOz3rRiphwsg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1385,6 +1385,78 @@ body.projection-on #projection { display:block; }
       #tab-bm-schedule .filter-bar .input { flex: 1 1 100%; }
       #tab-bm-schedule .filter-bar .select { flex: 1 1 140px; min-width: 0; }
     }
+
+    /* ---------- Bahagian 5: Jadual & Keputusan mengikut sukan + penunjuk masa nyata ---------- */
+    .dash-board { margin-top: 22px; scroll-margin-top: 230px; border-radius: 20px; background: var(--glass); border: 1px solid var(--glass-border); overflow: hidden;
+      --pb-accent: var(--fs); --pb-accent-2: var(--fs-2); --pb-soft: var(--fs-soft); --pb-line: var(--fs-line); transition: border-color var(--t-med); }
+    .dash-board[data-sukan="BADMINTON"] { --pb-accent: var(--bm); --pb-accent-2: var(--bm-2); --pb-soft: var(--bm-soft); --pb-line: var(--bm-line); }
+    .dash-board { border-color: var(--pb-line); }
+    .dash-board-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px;
+      background: linear-gradient(135deg, var(--pb-soft), transparent 70%); }
+    .dash-board-head h3 { font-size: 1.08rem; font-weight: 800; }
+    .dash-board-head p { font-size: .76rem; color: var(--text-2); font-weight: 600; margin-top: 2px; max-width: 60ch; }
+    .dash-board-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 0 18px 14px; border-bottom: 1px solid var(--glass-border); }
+    .dash-board-tools .input { flex: 1 1 220px; min-width: 0; }
+    .seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.28); border: 1px solid var(--glass-border); }
+    .seg button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 0; border-radius: 10px; background: transparent;
+      color: var(--text-1); font: 700 .82rem var(--font-body, inherit); cursor: pointer; white-space: nowrap; transition: background var(--t-med), color var(--t-med), box-shadow var(--t-med); }
+    .seg button:hover { background: rgba(255,255,255,.06); color: var(--text-0); }
+    .seg button:focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 2px; }
+    .seg button[hidden] { display: none; }
+    .seg-sport button[data-dash-sukan="FUTSAL"].active { background: linear-gradient(135deg, var(--fs), var(--fs-2)); color: #06221a; box-shadow: 0 0 14px rgba(46,230,166,.35); }
+    .seg-sport button[data-dash-sukan="BADMINTON"].active { background: linear-gradient(135deg, var(--bm), var(--bm-2)); color: #2a0b3d; box-shadow: 0 0 14px rgba(192,132,252,.4); }
+    .seg-view button.active { background: var(--pb-soft); color: var(--text-0); box-shadow: inset 0 0 0 1px var(--pb-line); }
+    .seg-view .n { font: 800 .68rem var(--font-mono); padding: 1px 7px; border-radius: 999px; background: rgba(0,0,0,.35); color: var(--text-1); }
+    .seg-view button.active .n { color: var(--pb-accent); }
+    .dash-board-list { padding: 14px 18px 18px; display: grid; gap: 8px; min-height: 120px; animation: fade-in var(--t-med) both; }
+    .pb-group { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin: 8px 2px 2px; display: flex; justify-content: space-between; }
+    .pb-group:first-child { margin-top: 0; }
+    .pb-more { justify-self: center; margin-top: 6px; }
+    .pb-row { display: grid; grid-template-columns: 104px minmax(0, 1fr) 150px; gap: 14px; align-items: center; padding: 11px 14px; border-radius: 14px;
+      background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.07); transition: border-color var(--t-med), background var(--t-med); }
+    .pb-row.s-live { border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.07); }
+    .pb-row.s-tunggu { border-color: rgba(250,204,21,.35); }
+    .pb-row.s-sah { border-color: rgba(34,197,94,.25); }
+    .pb-row.flash { animation: pb-flash 2.4s ease-out 1; }
+    @keyframes pb-flash { 0% { box-shadow: 0 0 0 0 var(--pb-accent); background: var(--pb-soft); } 100% { box-shadow: 0 0 0 10px transparent; } }
+    .pb-id b { display: block; font: 800 .95rem var(--font-mono); color: var(--pb-accent); }
+    .pb-id small { display: block; font: 600 .66rem var(--font-mono); color: var(--text-2); margin-top: 1px; }
+    .pb-id .pb-time { color: var(--text-1); }
+    .pb-stage { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .7rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+    .pb-side { display: grid; gap: 5px; justify-items: end; text-align: right; font-size: .74rem; font-weight: 700; color: var(--text-2); }
+    .pb-court { font: 800 .8rem var(--font-mono); color: var(--text-1); }
+    .pb-row.s-live .dm-sc { color: #ffb4b4; }
+    .rt-pill { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; padding: 6px 11px; border-radius: 999px; font-size: .72rem; font-weight: 800;
+      background: rgba(0,0,0,.3); border: 1px solid var(--glass-border); color: var(--text-1); white-space: nowrap; }
+    .rt-pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+    .rt-pill[data-state="live"] { border-color: rgba(34,197,94,.45); color: #bbf7d0; }
+    .rt-pill[data-state="live"] i { background: #22c55e; box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: rt-ping 1.8s infinite; }
+    .rt-pill[data-state="baru"] { border-color: var(--pb-line); color: var(--text-0); background: var(--pb-soft); }
+    .rt-pill[data-state="baru"] i { background: var(--pb-accent); animation: blink-dot .6s 4; }
+    .rt-pill[data-state="poll"] { border-color: rgba(56,189,248,.4); color: #cfeeff; }
+    .rt-pill[data-state="poll"] i { background: #38bdf8; }
+    .rt-pill[data-state="off"] { border-color: rgba(250,204,21,.4); color: #fff3bf; }
+    .rt-pill[data-state="off"] i { background: #facc15; }
+    @keyframes rt-ping { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.6); } 80%, 100% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } }
+    /* Bahagian 6: peralihan sukan yang lebih lancar */
+    body { transition: background-color var(--t-med); }
+    .brand-logo { transition: transform var(--t-med); }
+    body[data-sukan="FUTSAL"] .brand-logo, body[data-sukan="BADMINTON"] .brand-logo { animation: uxPop .45s cubic-bezier(.2,.9,.3,1.3) both; }
+    .tab-btn.sport-off { transition: opacity var(--t-med); }
+    .dash-cols > .dash-col { animation: fade-up var(--t-med) both; }
+    .dash-cols > .dash-col + .dash-col { animation-delay: 60ms; }
+    .seg button, .sport-switch button, .tab-btn { -webkit-tap-highlight-color: transparent; }
+    @media (prefers-reduced-motion: reduce) { .pb-row.flash, .rt-pill i, .dash-board-list, .dash-cols > .dash-col, .brand-logo { animation: none !important; } }
+    @media (max-width: 760px) {
+      .dash-board-head { flex-direction: column; padding: 14px 14px 10px; }
+      .dash-board-tools { padding: 0 14px 12px; }
+      .seg { width: 100%; }
+      .seg button { flex: 1; justify-content: center; padding: 8px 6px; font-size: .78rem; }
+      .dash-board-list { padding: 12px 12px 14px; }
+      .pb-row { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 11px 12px; }
+      .pb-id { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+      .pb-side { grid-auto-flow: column; justify-content: space-between; justify-items: start; text-align: left; }
+    }
   </style>
 </head>
 <body data-category="SEMUA">
@@ -1523,12 +1595,37 @@ body.projection-on #projection { display:block; }
           </div>
           <div class="panel-tools">
             <span class="dash-status" id="dashStatus">Memuatkan data…</span>
+            <button type="button" class="btn btn-sm" id="btnDashJump" title="Pergi ke Jadual &amp; Keputusan mengikut sukan">📋 Jadual &amp; Keputusan</button>
             <button type="button" class="btn btn-sm" id="btnDashRefresh" title="Muat semula data daripada Google Sheets">↻ Muat semula</button>
           </div>
         </div>
         <div id="dashNotice"></div>
         <div class="dash-kpis" id="dashKpis"></div>
         <div class="dash-cols" id="dashCols"></div>
+
+        <!-- Bahagian 5: Jadual & Keputusan mengikut sukan (dikemas kini automatik) -->
+        <section class="dash-board" id="dashBoard" data-sukan="FUTSAL" aria-labelledby="dashBoardTitle">
+          <div class="dash-board-head">
+            <div>
+              <h3 id="dashBoardTitle">📋 Jadual &amp; Keputusan</h3>
+              <p>Lihat jadual dan keputusan Futsal atau Badminton secara berasingan. Skor yang dikemas kini Admin dipaparkan secara automatik.</p>
+            </div>
+            <span class="rt-pill" id="rtPill" data-state="wait" role="status" aria-live="polite"><i aria-hidden="true"></i><span id="rtPillText">Menyambung…</span></span>
+          </div>
+          <div class="dash-board-tools">
+            <div class="seg seg-sport" id="dashSportTabs" role="tablist" aria-label="Pilih sukan untuk jadual &amp; keputusan">
+              <button type="button" role="tab" data-dash-sukan="FUTSAL" aria-selected="true"><span aria-hidden="true">⚽</span> Futsal</button>
+              <button type="button" role="tab" data-dash-sukan="BADMINTON" aria-selected="false"><span aria-hidden="true">🏸</span> Badminton</button>
+            </div>
+            <div class="seg seg-view" id="dashViewTabs" role="tablist" aria-label="Pilih paparan">
+              <button type="button" role="tab" data-dash-view="JADUAL" aria-selected="true">📅 Jadual <span class="n">0</span></button>
+              <button type="button" role="tab" data-dash-view="LIVE" aria-selected="false">🔴 Berlangsung <span class="n">0</span></button>
+              <button type="button" role="tab" data-dash-view="KEPUTUSAN" aria-selected="false">✅ Keputusan <span class="n">0</span></button>
+            </div>
+            <input type="search" class="input" id="dashBoardSearch" placeholder="🔍 Cari pasukan / ID / gelanggang…" aria-label="Cari dalam jadual dan keputusan" />
+          </div>
+          <div class="dash-board-list" id="dashBoardList"></div>
+        </section>
       </section>
 
       <!-- =========================================================
@@ -6595,7 +6692,7 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
-    const GAS_MIN_VERSI = '1.14.0';  // Bahagian 4 memerlukan skor Admin dua sukan
+    const GAS_MIN_VERSI = '1.16.0';  // Bahagian 6: keluaran akhir (Bahagian 5: isyarat perubahan masa nyata)
     const ADMIN_KEY_STORAGE = 'FUTSAL_PK_KBB_ADMIN_KEY';
 
     const EVENTS = {
@@ -11255,6 +11352,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         let data = null;
         try { data = JSON.parse(text); } catch (err) { data = null; }
         if (!data || !data.ok || !data.gelanggang) throw new Error((data && data.error) || 'Pastikan Code.gs Fasa 3 telah di-deploy.');
+        // Bahagian 5: isyarat perubahan masa nyata disertakan dalam papan live (Code.gs 1.15.0+)
+        if (data.isyarat && typeof window.terimaIsyarat === 'function') { try { window.terimaIsyarat(data.isyarat, 'live'); } catch (e) { /* abaikan */ } }
         // Beza jam peranti & pelayan (elak data tempatan "lebih baharu" kerana jam peranti laju)
         const srvMs = data.masa ? new Date(data.masa).getTime() : NaN;
         if (!isNaN(srvMs)) publicLive.offsetMs = srvMs - Date.now();
@@ -15060,6 +15159,23 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
     function sukanVisible(s) { return dash.sukan === 'SEMUA' || dash.sukan === s; }
 
+    // Bahagian 6: tukar sukan -> kekal di jenis paparan yang sama (Carta / Kalah Mati / Jadual)
+    const TAB_SETARA = {
+      'tab-standings': 'tab-bm-standings', 'tab-knockout': 'tab-bm-knockout', 'tab-schedule': 'tab-bm-schedule',
+      'tab-bm-standings': 'tab-standings', 'tab-bm-knockout': 'tab-knockout', 'tab-bm-schedule': 'tab-schedule',
+      'tab-live': 'tab-dashboard'
+    };
+    // Bahagian 6: pilihan sukan utama turut menjadi pilihan awal borang Admin (hanya jika masih kosong)
+    function selarasAdminSukan(k) {
+      if (k !== 'FUTSAL' && k !== 'BADMINTON') return;
+      ['adminTeamSport', 'adminScheduleSport', 'adminScoreSport'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || el.value || el.disabled) return;
+        el.value = k;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+
     // Halaman hadapan: Dashboard Utama (pengadil kekal di Gelanggang Live / Meja Pengadil).
     function defaultHomeTab() {
       try { const s = getSession(); if (s && s.peranan === 'PENGADIL') return 'tab-live'; } catch (e) { /* abaikan */ }
@@ -15086,7 +15202,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (hint) hint.textContent = SUKAN_INFO[k].hint;
       const act = (state.ui && state.ui.activeTab) || '';
       const btn = document.querySelector(`#tabNav .tab-btn[data-tab="${act}"]`);
-      if (btn && btn.classList.contains('sport-off')) openTab('tab-dashboard');
+      if (btn && btn.classList.contains('sport-off')) openTab(TAB_SETARA[act] || 'tab-dashboard');
+      selarasAdminSukan(k);
       renderDashboard();
       renderBadmintonViews();
       if (!opts.silent) dashRefresh(true);
@@ -15113,29 +15230,44 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       } finally { clearTimeout(t); }
     }
 
+    // Bahagian 5: penonton awam di tab Futsal (Carta / Kalah Mati / Jadual) turut menerima data Google Sheets
+    function dashFutsalTabPublic(t) { try { return !getSession() && ['tab-standings', 'tab-knockout', 'tab-schedule'].includes(t); } catch (e) { return false; } }
     function dashNeedsData() {
       const t = (state.ui && state.ui.activeTab) || '';
-      return t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0;
+      return t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0 || dashFutsalTabPublic(t);
     }
 
-    async function dashRefresh(force = false) {
-      if (dash.busy) return;
+    async function dashRefresh(force = false, only = null) {
+      if (dash.busy) { if (force) dash.ulang = true; return; }
       if (!dashNeedsData()) return;
       if (!force && document.hidden) return;
       if (!getGasUrl() || !navigator.onLine) { renderDashboard(); renderBadmintonViews(); return; }
       dash.busy = true;
-      const onDash = state.ui.activeTab === 'tab-dashboard';
+      dash.ulang = false;
+      if (!only) dash.penuhAt = Date.now();
+      const t = state.ui.activeTab;
+      const want = s => sukanVisible(s) && (!only || only.includes(s));
       const jobs = [];
-      if (onDash && sukanVisible('FUTSAL')) {
+      if (want('FUTSAL') && (t === 'tab-dashboard' || dashFutsalTabPublic(t))) {
         jobs.push(dashFetch('read').then(d => {
-          if (d && d.ok && Array.isArray(d.matches)) { dash.futsal.rows = d.matches; dash.futsal.at = Date.now(); dash.futsal.err = ''; }
+          if (d && d.ok && Array.isArray(d.matches)) {
+            rtJejak('FUTSAL', d.matches.map(r => [r.id, r.skorP1, r.skorP2, r.status, r.pengesahan, r.namaP1, r.namaP2, r.gelanggang, r.masaJadual]));
+            dash.futsal.rows = d.matches; dash.futsal.at = Date.now(); dash.futsal.err = '';
+            dash.futsal.srvAt = Date.parse(d.dikemaskini) || 0;
+            fsGabungAwam(d.matches);
+          }
           else dash.futsal.err = (d && d.error) || 'Data futsal tidak dapat dibaca.';
         }).catch(e => { dash.futsal.err = (e && e.message) || 'Ralat rangkaian.'; }));
       }
-      if (sukanVisible('BADMINTON')) {
+      if (want('BADMINTON') && (t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0)) {
         jobs.push(dashFetch('badminton').then(d => {
-          if (d && d.ok && Array.isArray(d.jadual)) {
+          if (d && d.ok && Array.isArray(d.jadual) && !d.jadual.length) {
+            // Bahagian 6: tab Jadual_Badminton wujud tetapi masih kosong -> kekalkan jadual asal
+            dash.bm.err = 'Tab Jadual_Badminton di Google Sheets masih kosong'; dash.bm.lama = false;
+          } else if (d && d.ok && Array.isArray(d.jadual)) {
             dash.bm.data = normBmServer(d); dash.bm.at = Date.now(); dash.bm.err = ''; dash.bm.lama = false;
+            dash.bm.srvAt = Date.parse(d.masa) || 0;
+            rtJejak('BADMINTON', dash.bm.data.matches.map(m => [m.id, m.s1, m.s2, m.status, m.sah, m.nama1, m.nama2, m.gel, m.masa]));
           } else {
             const e = (d && d.error) || 'Data badminton tidak dapat dibaca.';
             dash.bm.lama = /tidak dikenali/i.test(e);
@@ -15147,6 +15279,50 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         dash.busy = false;
         renderDashboard();
         renderBadmintonViews();
+        if (dash.ulang) setTimeout(() => dashRefresh(true), 60);
+      }
+    }
+
+    // Bahagian 5: keputusan rasmi Google Sheets digabung ke paparan Futsal penonton awam
+    // (Carta Liga, Kalah Mati, Jadual Penuh). Peranti log masuk menggunakan pullMatchesFromSheet.
+    function fsGabungAwam(rows) {
+      try {
+        if (getSession() || typeof getMatch !== 'function' || !Array.isArray(rows)) return false;
+        let berubah = false;
+        rows.forEach(row => {
+          const m = getMatch(String(row.id || '').toUpperCase());
+          if (!m) return;
+          const sebelum = JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti]);
+          const st = srvStatus(row.status), sah = String(row.pengesahan || '').toUpperCase();
+          const s1 = srvScore(row.skorP1), s2 = srvScore(row.skorP2);
+          if (m.status === MATCH_STATUS.MENUNGGU || st === MATCH_STATUS.SELESAI) {
+            const nm = v => { const x = String(v || '').trim(); return x && !isPlaceholderName(x) ? x : ''; };
+            const n1 = nm(row.namaP1), n2 = nm(row.namaP2);
+            if (n1) m.namaP1 = n1;
+            if (n2) m.namaP2 = n2;
+          }
+          if (st === MATCH_STATUS.SELESAI && sah === 'DISAHKAN' && s1 !== null && s2 !== null) {
+            Object.assign(m, {
+              skorP1: s1, skorP2: s2, status: MATCH_STATUS.SELESAI, pengesahan: 'DISAHKAN',
+              pemenangPenalti: srvPenalti(row.pemenangPenalti, m),
+              disahkanOleh: row.disahkanOleh || m.disahkanOleh || 'Urusetia',
+              disahkanPada: row.disahkanPada || m.disahkanPada || null
+            });
+          } else if (m.status === MATCH_STATUS.SELESAI && st === MATCH_STATUS.MENUNGGU && sah !== 'DISAHKAN') {
+            // Acara ditetapkan semula di Google Sheets -> buang keputusan lama pada peranti ini
+            Object.assign(m, { status: MATCH_STATUS.MENUNGGU, pengesahan: 'MENUNGGU', skorP1: null, skorP2: null, pemenangPenalti: null });
+          }
+          if (JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti]) !== sebelum) berubah = true;
+        });
+        if (berubah) {
+          try { if (typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams(); } catch (e) { /* abaikan */ }
+          saveState();
+          refreshAllViews();
+        }
+        return berubah;
+      } catch (err) {
+        console.warn('[fsGabungAwam]', err);
+        return false;
       }
     }
 
@@ -15185,7 +15361,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           nama1: bmStr(g('namapasukan1')), nama2: bmStr(g('namapasukan2')),
           s1: bmNum(g('skorp1')), s2: bmNum(g('skorp2')), gel: bmStr(g('gelanggang')),
           status: bmUp(g('statusperlawanan')) || 'BELUM BERMULA', sah: bmUp(g('statuspengesahan')) || 'MENUNGGU',
-          pada: bmStr(g('disahkanpada')) || bmStr(g('kemaskiniterakhir')), catatan: bmStr(g('catatan'))
+          masa: bmStr(g('masajadual')), pada: bmStr(g('disahkanpada')) || bmStr(g('kemaskiniterakhir')), catatan: bmStr(g('catatan'))
         };
       }).filter(m => m.id);
       const rules = (d.peraturan || []).map(o => {
@@ -15288,6 +15464,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     /* ---------------- Model futsal (baca sahaja) ---------------- */
+    // Bahagian 6: pemenang penalti boleh disimpan sebagai 'P1'/'P2' (peranti) atau nama pasukan (Google Sheets)
+    function fsPenSide(r) {
+      const p = bmUp(r.pemenangPenalti);
+      if (!p) return '';
+      if (p === 'P1' || p === 'P2') return p;
+      if (p === bmUp(r.namaP1)) return 'P1';
+      if (p === bmUp(r.namaP2)) return 'P2';
+      return '';
+    }
     function futsalRows() {
       const src = Array.isArray(dash.futsal.rows) && dash.futsal.rows.length ? dash.futsal.rows : null;
       const rows = (src || (state.matches || [])).map(r => {
@@ -15298,7 +15483,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           kumpulan: bmUp(r.kumpulan) === '-' ? '' : bmUp(r.kumpulan),
           kod1: bmUp(r.kodP1), kod2: bmUp(r.kodP2), nama1: nm(r.namaP1, r.kodP1), nama2: nm(r.namaP2, r.kodP2),
           s1: bmNum(r.skorP1), s2: bmNum(r.skorP2), gel: bmUp(r.gelanggang), status: bmUp(r.status), sah: bmUp(r.pengesahan),
-          pen: bmUp(r.pemenangPenalti), pada: r.disahkanPada || r.kemaskini || r.masaTamat || ''
+          pen: fsPenSide(r), pada: r.disahkanPada || r.kemaskini || r.masaTamat || ''
         };
       }).filter(r => r.id);
       return { rows, server: !!src };
@@ -15528,6 +15713,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (sub) sub.textContent = showF && showB
           ? 'Ringkasan langsung Futsal & Badminton: perlawanan semasa, giliran seterusnya, keputusan terkini dan carta.'
           : `Ringkasan langsung ${showF ? 'Futsal' : 'Badminton'}: perlawanan semasa, giliran seterusnya, keputusan terkini dan carta.`;
+        renderPapanSukan();
+        kemasPil();
       } catch (err) {
         console.error('[renderDashboard]', err);
       }
@@ -15647,6 +15834,295 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
     }
 
+    /* =========================================================
+       Bahagian 5: JADUAL & KEPUTUSAN MENGIKUT SUKAN + SEGERAK MASA NYATA
+       - Penonton memilih Futsal / Badminton dan Jadual / Berlangsung / Keputusan.
+       - Code.gs 1.15.0 menyimpan cap masa perubahan per sukan selepas setiap simpanan
+         Admin / pengadil / suntingan manual Sheets. Cap masa disertakan dalam papan live
+         (tiada permintaan tambahan) atau dibaca melalui ?action=perubahan.
+       - Bila cap masa berubah, hanya data sukan berkenaan dibaca semula serta-merta.
+       - Tab lain pada peranti yang sama dimaklumkan melalui BroadcastChannel.
+       ========================================================= */
+    const PAPAN_KEY = 'KARNIVAL_PK_KBB_PAPAN';
+    const RT_POLL_MS = 5000;
+    const RT_FULL_MS = 60000;
+    const RT_FLASH_MS = 4500;
+    const RT_CHANNEL = 'karnival-pk-kbb-segerak';
+    const RT_STORAGE = 'KARNIVAL_PK_KBB_UBAH';
+    const PAPAN_HAD = 12;   // bilangan baris awal; selebihnya melalui butang 'Tunjuk semua'
+    const papan = { sukan: 'FUTSAL', view: 'JADUAL', q: '', semua: false };
+    const rt = { token: { FUTSAL: '', BADMINTON: '' }, sokong: null, busy: false, semakAt: 0, liveAt: 0, ubahAt: 0,
+      gagal: 0, chan: null, sig: {}, flash: {}, idTab: Math.random().toString(36).slice(2) };
+
+    function rtJejak(sukan, list) {
+      const prev = rt.sig[sukan];
+      const next = {};
+      const now = Date.now();
+      let n = 0;
+      list.forEach(a => {
+        const id = String(a[0] || '').toUpperCase();
+        if (!id) return;
+        const s = JSON.stringify(a.slice(1));
+        next[id] = s;
+        if (prev && prev[id] !== undefined && prev[id] !== s) { rt.flash[`${sukan}|${id}`] = now; n++; }
+      });
+      rt.sig[sukan] = next;
+      if (n) rt.ubahAt = now;
+    }
+    function rtFlash(sukan, id) { const t = rt.flash[`${sukan}|${id}`]; return !!t && Date.now() - t < RT_FLASH_MS; }
+
+    function terimaIsyarat(i, sumber) {
+      if (!i) return;
+      rt.sokong = true; rt.semakAt = Date.now(); rt.gagal = 0;
+      if (sumber === 'live') rt.liveAt = Date.now();
+      const ubah = [];
+      [['FUTSAL', 'futsal'], ['BADMINTON', 'badminton']].forEach(([S, k]) => {
+        const v = String(i[k] == null ? '0' : i[k]);
+        const lama = rt.token[S];
+        rt.token[S] = v;
+        if (!lama || lama === v) return;
+        const srvAt = S === 'FUTSAL' ? dash.futsal.srvAt : dash.bm.srvAt;
+        if (srvAt && Number(v) && Number(v) <= srvAt) return;   // data dipaparkan sudah lebih baharu
+        ubah.push(S);
+      });
+      if (ubah.length) rtUbah(ubah, sumber);
+      kemasPil();
+    }
+
+    function rtUbah(list, sumber) {
+      rt.ubahAt = Date.now();
+      dashRefresh(true, list);
+      if (list.includes('FUTSAL')) {
+        try { if (sumber !== 'live' && typeof fetchPublicLive === 'function') fetchPublicLive(); } catch (e) { /* abaikan */ }
+        try { if (getSession() && typeof pullMatchesFromSheet === 'function') pullMatchesFromSheet({ silent: true }); } catch (e) { /* abaikan */ }
+      }
+      kemasPil();
+    }
+
+    // Dipanggil oleh panel Admin selepas simpanan DISAHKAN dibaca semula daripada Google Sheets.
+    function umumkanPerubahan(sukan, jenis) {
+      const S = String(sukan || '').toUpperCase();
+      if (!['FUTSAL', 'BADMINTON'].includes(S)) return;
+      const msg = { sukan: S, jenis: jenis || 'data', at: Date.now(), dari: rt.idTab };
+      try { if (rt.chan) rt.chan.postMessage(msg); else localStorage.setItem(RT_STORAGE, JSON.stringify(msg)); } catch (e) { /* abaikan */ }
+      rtUbah([S], 'tempatan');
+    }
+    function rtTerimaTempatan(msg) {
+      if (!msg || msg.dari === rt.idTab || !['FUTSAL', 'BADMINTON'].includes(msg.sukan)) return;
+      rtUbah([msg.sukan], 'tempatan');
+    }
+
+    async function rtTick() {
+      if (rt.busy || document.hidden || !getGasUrl() || !navigator.onLine) return;
+      if (Date.now() - rt.liveAt < RT_POLL_MS * 2.5) return;                 // isyarat sudah tiba melalui papan live
+      if (rt.sokong === false && Date.now() - rt.semakAt < 300000) return;   // Code.gs lama: cuba semula setiap 5 minit
+      rt.busy = true;
+      try {
+        const d = await dashFetch('perubahan');
+        if (d && d.ok && d.futsal !== undefined) terimaIsyarat(d, 'perubahan');
+        else { rt.sokong = false; rt.semakAt = Date.now(); }
+      } catch (e) { rt.gagal += 1; }
+      finally { rt.busy = false; kemasPil(); }
+    }
+
+    function kemasPil() {
+      const pill = document.getElementById('rtPill'), txt = document.getElementById('rtPillText');
+      if (!pill || !txt) return;
+      let st = 'wait', label = 'Menyambung…';
+      const umur = s => { const n = Math.max(0, Math.round((Date.now() - s) / 1000)); return n < 60 ? `${n} s lalu` : `${Math.round(n / 60)} min lalu`; };
+      if (!getGasUrl()) { st = 'off'; label = 'Data peranti (tiada sambungan Sheets)'; }
+      else if (!navigator.onLine) { st = 'off'; label = 'Luar talian · data terakhir dipaparkan'; }
+      else if (Date.now() - rt.ubahAt < RT_FLASH_MS) { st = 'baru'; label = 'Data baharu diterima'; }
+      else if (rt.sokong && Date.now() - rt.semakAt < 30000) { st = 'live'; label = `Masa nyata · disemak ${umur(rt.semakAt)}`; }
+      else if (rt.sokong === false) { st = 'poll'; label = `Auto-kemas kini setiap ${Math.round(DASH_POLL_MS / 1000)} s`; }
+      else if (rt.gagal > 2) { st = 'off'; label = 'Sambungan perlahan · mencuba semula'; }
+      if (pill.dataset.state !== st) pill.dataset.state = st;
+      if (txt.textContent !== label) txt.textContent = label;
+    }
+
+    function papanMasa(v) {
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      try {
+        return d.toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      } catch (e) { return new Date(d.getTime() + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' '); }
+    }
+
+    function papanItemsFutsal() {
+      const { rows } = futsalRows();
+      const raw = {};
+      (Array.isArray(dash.futsal.rows) && dash.futsal.rows.length ? dash.futsal.rows : (state.matches || [])).forEach(r => { raw[bmUp(r.id)] = r; });
+      const liveMap = {};
+      (futsalLiveEntries() || []).forEach(e => { if (e.matchId && bmUp(e.status) === 'LIVE') liveMap[bmUp(e.matchId)] = e; });
+      return rows.map(m => {
+        const e = liveMap[m.id];
+        let st = 'JADUAL';
+        if (fsApproved(m)) st = 'SAH';
+        else if (e || m.status === 'LIVE') st = 'LIVE';
+        else if (m.status === 'TAMAT - TUNGGU SAH') st = 'TUNGGU';
+        const w = fsWinnerSide(m);
+        return {
+          sukan: 'FUTSAL', id: m.id, label: m.id, sub: '', kat: m.kat, no: m.no, peringkat: m.peringkat, kumpulan: m.kumpulan,
+          gel: e ? e.gelanggang : m.gel, masa: (raw[m.id] || {}).masaJadual || '',
+          fasa: e ? (e.rehat ? 'Rehat' : (e.fasaMasa || 'Live')) : '',
+          n1: m.nama1, n2: m.nama2, s1: e ? (Number(e.skorP1) || 0) : m.s1, s2: e ? (Number(e.skorP2) || 0) : m.s2,
+          pen: m.pen, st, w, tbd1: fsPlaceholder(m.nama1), tbd2: fsPlaceholder(m.nama2), pada: m.pada
+        };
+      });
+    }
+
+    function papanItemsBadminton() {
+      const { matches } = bmModel();
+      return matches.map(m => {
+        let st = 'JADUAL';
+        if (bmApproved(m)) st = 'SAH';
+        else if (bmIsLive(m)) st = 'LIVE';
+        else if (bmIsWaitSah(m)) st = 'TUNGGU';
+        else if (m.status === 'DITANGGUH') st = 'TANGGUH';
+        const w = m.winner ? (m.winner === m.nama1 ? '1' : (m.winner === m.nama2 ? '2' : '')) : '';
+        return {
+          sukan: 'BADMINTON', id: m.id, label: m.ov || m.id, sub: m.ov ? m.id : '', kat: m.kat, no: bmOvRank(m),
+          peringkat: m.peringkat, kumpulan: m.kumpulan, gel: m.gel, masa: m.masa || '', fasa: m.status === 'REHAT' ? 'Rehat' : 'Live',
+          n1: m.nama1, n2: m.nama2, sg1: m.sing1, sg2: m.sing2, s1: m.s1, s2: m.s2, pen: '', st, w,
+          tbd1: !!m.tbd1, tbd2: !!m.tbd2, pada: m.pada
+        };
+      });
+    }
+
+    function papanRow(x) {
+      const ada = v => v !== null && v !== undefined && v !== '';
+      const sc = x.st !== 'JADUAL' && x.st !== 'TANGGUH' && ada(x.s1) && ada(x.s2) ? `${x.s1} : ${x.s2}` : null;
+      const pen = x.st === 'SAH' && x.pen ? ' <small>(pen)</small>' : '';
+      const cls = sd => (x['tbd' + sd] ? 'tbd' : (x.w ? (x.w === sd ? 'win' : 'lose') : ''));
+      const badge = {
+        LIVE: `<span class="badge badge-live badge-dot">${dashEsc(x.fasa || 'Live')}</span>`,
+        TUNGGU: '<span class="badge badge-done badge-dot">Tunggu Sah</span>',
+        SAH: '<span class="badge badge-ok">Disahkan</span>',
+        TANGGUH: '<span class="badge badge-reject">Ditangguh</span>',
+        JADUAL: '<span class="badge badge-pending">Akan Datang</span>'
+      }[x.st];
+      const masa = papanMasa(x.masa);
+      const stage = [x.peringkat, x.kumpulan ? `Kumpulan ${x.kumpulan}` : ''].filter(Boolean).join(' · ');
+      return `<div class="pb-row s-${x.st.toLowerCase()}${rtFlash(x.sukan, x.id) ? ' flash' : ''}">
+        <div class="pb-id"><b>${dashEsc(x.label)}</b>${x.sub ? `<small>${dashEsc(x.sub)}</small>` : ''}${masa ? `<small class="pb-time">🕒 ${dashEsc(masa)}</small>` : ''}</div>
+        <div class="pb-main"><div class="pb-stage">${katTag(x.kat)}<span>${dashEsc(stage)}</span></div>
+          <div class="dm-teams">${dmTeam(x.n1, cls('1'), x.sg1)}${sc ? `<span class="dm-sc">${sc}${pen}</span>` : '<span class="dm-vs">VS</span>'}${dmTeam(x.n2, cls('2'), x.sg2, true)}</div></div>
+        <div class="pb-side"><span class="pb-court">Gel. ${dashEsc(x.gel || '-')}</span>${badge}</div>
+      </div>`;
+    }
+
+    function renderPapanSukan() {
+      const wrap = document.getElementById('dashBoardList');
+      const board = document.getElementById('dashBoard');
+      if (!wrap || !board) return;
+      if (dash.sukan !== 'SEMUA') papan.sukan = dash.sukan;
+      document.querySelectorAll('#dashSportTabs [data-dash-sukan]').forEach(b => {
+        const on = b.dataset.dashSukan === papan.sukan;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.hidden = dash.sukan !== 'SEMUA' && !on;
+      });
+      board.dataset.sukan = papan.sukan;
+      const all = (papan.sukan === 'BADMINTON' ? papanItemsBadminton() : papanItemsFutsal()).filter(x => dashKatOk(x.kat));
+      const sets = {
+        JADUAL: all.filter(x => x.st !== 'SAH'),
+        LIVE: all.filter(x => x.st === 'LIVE' || x.st === 'TUNGGU'),
+        KEPUTUSAN: all.filter(x => x.st === 'SAH')
+      };
+      document.querySelectorAll('#dashViewTabs [data-dash-view]').forEach(b => {
+        const v = b.dataset.dashView, on = v === papan.view;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        const n = b.querySelector('.n');
+        if (n) n.textContent = String((sets[v] || []).length);
+      });
+      const q = papan.q.trim().toUpperCase();
+      const cari = x => !q || [x.id, x.label, x.n1, x.n2, x.sg1, x.sg2, x.gel, x.peringkat, x.kumpulan].join(' ').toUpperCase().includes(q);
+      const urutan = { LIVE: 0, TUNGGU: 1, TANGGUH: 2, JADUAL: 3, SAH: 4 };
+      const katOrd = k => (papan.sukan === 'BADMINTON' ? (k === 'SR' ? 0 : 1) : (k === 'SM' ? 0 : 1));
+      const masaMs = x => { const t = Date.parse(x.masa); return isNaN(t) ? Infinity : t; };
+      let list = (sets[papan.view] || []).filter(cari);
+      if (papan.view === 'KEPUTUSAN') {
+        list.sort((a, b) => ((Date.parse(b.pada) || 0) - (Date.parse(a.pada) || 0)) || (b.no - a.no));
+      } else {
+        list.sort((a, b) => (urutan[a.st] - urutan[b.st]) || (masaMs(a) - masaMs(b)) || (katOrd(a.kat) - katOrd(b.kat)) || (a.no - b.no));
+      }
+      if (!list.length) {
+        const kosong = q ? 'Tiada perlawanan sepadan dengan carian.'
+          : papan.view === 'LIVE' ? `Tiada perlawanan ${papan.sukan === 'FUTSAL' ? 'futsal' : 'badminton'} sedang berlangsung.`
+          : papan.view === 'KEPUTUSAN' ? 'Belum ada keputusan disahkan.' : 'Semua perlawanan telah selesai.';
+        wrap.innerHTML = dashEmpty(kosong);
+        return;
+      }
+      const jumlah = list.length;
+      if (!papan.semua && !q && papan.view !== 'LIVE' && list.length > PAPAN_HAD) list = list.slice(0, PAPAN_HAD);
+      let html = '';
+      if (papan.view === 'LIVE') {
+        html = list.map(papanRow).join('');
+      } else {
+        ['SR', 'SM'].sort((a, b) => katOrd(a) - katOrd(b)).forEach(kat => {
+          const g = list.filter(x => x.kat === kat);
+          if (!g.length) return;
+          html += `<div class="pb-group"><span>${kat === 'SR' ? '🧒 Sekolah Rendah' : '🧑 Sekolah Menengah'}</span><span>${g.length} perlawanan</span></div>` + g.map(papanRow).join('');
+        });
+        const lain = list.filter(x => x.kat !== 'SR' && x.kat !== 'SM');
+        if (lain.length) html += lain.map(papanRow).join('');
+      }
+      if (jumlah > list.length) html += `<button type="button" class="btn pb-more" data-papan-semua="1">Tunjuk semua ${jumlah} perlawanan ↓</button>`;
+      else if (papan.semua && jumlah > PAPAN_HAD && !q) html += `<button type="button" class="btn pb-more" data-papan-semua="0">Ringkaskan senarai ↑</button>`;
+      wrap.innerHTML = html;
+    }
+
+    function papanSimpan() { try { localStorage.setItem(PAPAN_KEY, JSON.stringify({ sukan: papan.sukan, view: papan.view })); } catch (e) { /* abaikan */ } }
+
+    function papanInit() {
+      try {
+        const s = JSON.parse(localStorage.getItem(PAPAN_KEY) || '{}');
+        if (['FUTSAL', 'BADMINTON'].includes(s.sukan)) papan.sukan = s.sukan;
+        if (['JADUAL', 'LIVE', 'KEPUTUSAN'].includes(s.view)) papan.view = s.view;
+      } catch (e) { /* abaikan */ }
+      document.querySelectorAll('#dashSportTabs [data-dash-sukan]').forEach(b => b.addEventListener('click', () => {
+        if (papan.sukan === b.dataset.dashSukan) return;
+        papan.sukan = b.dataset.dashSukan; papan.semua = false; papanSimpan(); renderPapanSukan();
+        dashRefresh(true, [papan.sukan]);
+      }));
+      document.querySelectorAll('#dashViewTabs [data-dash-view]').forEach(b => b.addEventListener('click', () => {
+        papan.view = b.dataset.dashView; papan.semua = false; papanSimpan(); renderPapanSukan();
+      }));
+      const senarai = document.getElementById('dashBoardList');
+      if (senarai) senarai.addEventListener('click', ev => {
+        const t = ev.target.closest && ev.target.closest('[data-papan-semua]');
+        if (!t) return;
+        papan.semua = t.dataset.papanSemua === '1';
+        renderPapanSukan();
+        if (!papan.semua) document.getElementById('dashBoard').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+      const lompat = document.getElementById('btnDashJump');
+      if (lompat) lompat.addEventListener('click', () => {
+        const el = document.getElementById('dashBoard');
+        if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+      const cari = document.getElementById('dashBoardSearch');
+      if (cari) cari.addEventListener('input', () => { papan.q = cari.value || ''; renderPapanSukan(); });
+      // Segerak antara tab pada peranti yang sama (cth. tab Admin -> tab Dashboard)
+      try {
+        if (typeof BroadcastChannel === 'function') {
+          rt.chan = new BroadcastChannel(RT_CHANNEL);
+          rt.chan.onmessage = ev => rtTerimaTempatan(ev.data);
+        }
+      } catch (e) { rt.chan = null; }
+      window.addEventListener('storage', ev => {
+        if (ev.key !== RT_STORAGE || !ev.newValue) return;
+        try { rtTerimaTempatan(JSON.parse(ev.newValue)); } catch (e) { /* abaikan */ }
+      });
+      window.addEventListener('online', () => { kemasPil(); dashRefresh(true); });
+      window.addEventListener('offline', kemasPil);
+      setInterval(rtTick, RT_POLL_MS);
+      setInterval(() => { if (!document.hidden && state.ui.activeTab === 'tab-dashboard') kemasPil(); }, 1000);
+      setTimeout(rtTick, 1500);
+    }
+
     /* ---------------- Permulaan ---------------- */
     function sukanInit() {
       dash.sukan = getSukan();
@@ -15662,9 +16138,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const el = document.getElementById(id);
         if (el) el.addEventListener(id === 'bmSearch' ? 'input' : 'change', () => { try { renderBmSchedule(bmModel()); } catch (e) { console.error(e); } });
       });
+      papanInit();
       applySukan(dash.sukan, { silent: true });
       dashRefresh(true);
-      setInterval(() => dashRefresh(false), DASH_POLL_MS);
+      // Bahagian 5: dengan isyarat masa nyata, bacaan penuh hanya setiap 60 s (suntingan luar / jaminan)
+      setInterval(() => { if (rt.sokong && Date.now() - (dash.penuhAt || 0) < RT_FULL_MS) return; dashRefresh(false); }, DASH_POLL_MS);
       setInterval(() => { if (!document.hidden && state.ui.activeTab === 'tab-dashboard') renderDashboard(); }, DASH_LIVE_RENDER_MS);
       document.addEventListener('visibilitychange', () => { if (!document.hidden) dashRefresh(false); });
     }
@@ -15673,6 +16151,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     else setTimeout(sukanInit, 0);
   </script>
 
+  <script>
+    // Bahagian 6: PWA - service worker rangkaian-dahulu (data Google Sheets tidak pernah di-cache)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw] pendaftaran gagal', err)); });
+    }
+  </script>
   <script src="admin-pasukan.js"></script>
   <script src="admin-jadual.js"></script>
   <script src="admin-skor.js"></script>
