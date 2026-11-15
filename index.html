@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwzKzujJ-P7hjkO187e6c0Vyz_at9RFEWPmRWAfi6jC4r7HNKfj2o_yHCSLqdP5hqMt/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -707,6 +707,20 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .ko-info small { display: block; color: var(--text-2); font-size: .76rem; margin-top: 3px; }
     .btn-kickoff { padding: 14px 28px; font-size: 1.02rem; font-weight: 800; border-radius: 14px; letter-spacing: .02em; }
     .btn-kickoff:not(:disabled) { box-shadow: 0 8px 28px var(--brand-glow); }
+    /* v1.18.0: Meja Pengadil Badminton */
+    .bmref-list { display: grid; gap: 8px; }
+    .bmref-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--glass-border); border-radius: 12px; }
+    .bmref-row.sel { border-color: rgba(46,230,166,.7); background: rgba(46,230,166,.06); }
+    .bmref-row .info { flex: 1 1 220px; min-width: 0; font-size: .88rem; }
+    .bmref-row .info small { display: block; color: var(--text-2); font-size: .74rem; margin-top: 2px; }
+    .bmref-row .sk { font-family: var(--font-mono); font-weight: 800; font-size: 1rem; min-width: 56px; text-align: center; }
+    .bmref-form { margin-top: 14px; padding: 14px; border: 1px solid rgba(46,230,166,.45); border-radius: 14px; }
+    .bmref-score { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 14px; }
+    .bmref-side { text-align: center; }
+    .bmref-side .nm { font-weight: 800; font-size: .86rem; margin-bottom: 6px; overflow-wrap: anywhere; }
+    .bmref-side .ctl { display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .bmref-side input { width: 70px; text-align: center; font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800; }
+    .bmref-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
     .ref-active { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .ref-active .court-letter { color: var(--brand); border-color: rgba(46,230,166,.6); }
     .ref-active-info { flex: 1 1 260px; min-width: 0; font-size: .9rem; }
@@ -930,6 +944,56 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     @media(max-width: 1100px) { .sb-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
     @media(max-width: 600px) { .sb-grid { grid-template-columns: minmax(0,1fr); } .sb-find { width: 100%; } .sb-head h3 { font-size: 1.18rem; } }
     @media(prefers-reduced-motion: reduce) { .sb-card { animation: none; } }
+
+    /* v1.19.0: Simulasi Gelanggang Live Badminton (6 gelanggang) */
+    .courts-grid.bm-courts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .sb-grid.bm-sb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .bm-court .court-letter { font-size: 1.2rem; }
+    .pitch.bm-pitch {
+      background: linear-gradient(135deg, #17406b, #10304f);
+      border-color: rgba(255,255,255,.4);
+    }
+    .pitch.bm-pitch::before {   /* jaring */
+      top: -2px; bottom: -2px; width: 4px; transform: translateX(-50%);
+      background: repeating-linear-gradient(180deg, rgba(255,255,255,.9) 0 3px, rgba(255,255,255,.35) 3px 6px);
+      box-shadow: 0 0 8px rgba(255,255,255,.35); z-index: 1;
+    }
+    .pitch.bm-pitch::after {    /* garisan tepi beregu */
+      left: 0; right: 0; top: 12%; bottom: 12%; width: auto; height: auto; transform: none;
+      border-radius: 0; border: 0; border-top: 2px solid rgba(255,255,255,.3); border-bottom: 2px solid rgba(255,255,255,.3);
+    }
+    .bm-pitch .bm-ln { position: absolute; background: rgba(255,255,255,.3); }
+    .bm-pitch .bm-svc-l, .bm-pitch .bm-svc-r { top: 0; bottom: 0; width: 2px; }
+    .bm-pitch .bm-svc-l { left: 36%; }
+    .bm-pitch .bm-svc-r { left: 64%; }
+    .bm-pitch .bm-back-l, .bm-pitch .bm-back-r { top: 0; bottom: 0; width: 2px; }
+    .bm-pitch .bm-back-l { left: 6%; }
+    .bm-pitch .bm-back-r { right: 6%; }
+    .bm-pitch .bm-mid-l, .bm-pitch .bm-mid-r { top: 50%; height: 2px; transform: translateY(-50%); }
+    .bm-pitch .bm-mid-l { left: 0; width: 36%; }
+    .bm-pitch .bm-mid-r { left: 64%; right: 0; }
+    .bm-pitch .shuttle {
+      position: absolute; left: 30%; top: 40%; z-index: 2; font-size: 1.15rem; line-height: 1;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,.7));
+    }
+    .status-live .bm-pitch .shuttle { animation: shuttle-fly 2.6s ease-in-out infinite; }
+    @keyframes shuttle-fly {
+      0% { left: 22%; top: 62%; transform: rotate(-30deg); }
+      25% { left: 50%; top: 18%; transform: rotate(10deg); }
+      50% { left: 76%; top: 46%; transform: rotate(40deg); }
+      75% { left: 50%; top: 76%; transform: rotate(160deg); }
+      100% { left: 22%; top: 62%; transform: rotate(330deg); }
+    }
+    .bm-court .court-done-note { margin: 0 20px 10px; padding: 8px 10px; border-radius: 10px; font-size: .76rem; color: #fde68a; background: rgba(250,204,21,.08); border: 1px solid rgba(250,204,21,.3); }
+    .bm-court .bm-court-act { padding: 0 20px 18px; }
+    .bm-live-strip .bm-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .bm-live-strip h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 800; }
+    .bm-live-strip p { color: var(--text-2); font-size: .78rem; margin-top: 2px; }
+    #tab-bm-live .live-board { margin-bottom: 16px; }
+    @media (max-width: 1100px) { .courts-grid.bm-courts, .sb-grid.bm-sb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 860px) { .courts-grid.bm-courts { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .sb-grid.bm-sb-grid { grid-template-columns: minmax(0, 1fr); } }
+    @media (prefers-reduced-motion: reduce) { .status-live .bm-pitch .shuttle { animation: none; } }
 
     /* FASA 5: Rehat Kecemasan (penangguhan sementara) */
     .badge-rehat { color: #fde68a; background: rgba(250,204,21,.14); border-color: rgba(250,204,21,.55); }
@@ -1530,6 +1594,9 @@ body.projection-on #projection { display:block; }
           <span aria-hidden="true">📅</span> Jadual Penuh (65 Match)
         </button>
         <span class="tab-group tg-badminton" data-sukan="BADMINTON" aria-hidden="true">🏸 Badminton</span>
+        <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-live" data-sukan="BADMINTON" aria-selected="false">
+          <span aria-hidden="true">📡</span> Simulasi Gelanggang Live
+        </button>
         <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-standings" data-sukan="BADMINTON" aria-selected="false">
           <span aria-hidden="true">🏅</span> Carta Kumpulan
         </button>
@@ -1629,6 +1696,45 @@ body.projection-on #projection { display:block; }
       </section>
 
       <!-- =========================================================
+           v1.19.0 BADMINTON: SIMULASI GELANGGANG LIVE (6 gelanggang + giliran)
+           ========================================================= -->
+      <section class="tab-panel" id="tab-bm-live" role="tabpanel">
+        <div class="panel-head">
+          <div>
+            <h2>🏸 Simulasi Gelanggang Live · Badminton</h2>
+            <p>Gelanggang 1 &amp; 2: Sekolah Rendah · Gelanggang 3 hingga 6: Sekolah Menengah</p>
+          </div>
+          <div class="legend" aria-label="Petunjuk warna gelanggang">
+            <span><i class="l-ready"></i> Kosong / Sedia</span>
+            <span><i class="l-live"></i> Live / Sedang Berlangsung</span>
+            <span><i class="l-done"></i> Tamat · Menunggu Pengesahan</span>
+          </div>
+        </div>
+        <div data-bm-notice></div>
+        <div class="card glass live-board compact bm-live-strip" id="bmLiveStrip" aria-live="polite"></div>
+        <div class="courts-grid bm-courts" id="bmCourtsGrid"></div>
+
+        <div class="card glass standby-board" id="bmStandbyBoard" aria-live="polite">
+          <div class="sb-head">
+            <div>
+              <span class="sb-eyebrow">📣 MAKLUMAN PASUKAN BADMINTON</span>
+              <h3>Giliran anda, gelanggang anda.</h3>
+              <p><strong>Pasukan seterusnya:</strong> sila bersedia di tepi gelanggang badminton yang ditetapkan.</p>
+            </div>
+            <label class="sb-find">
+              <span>🔎 Pasukan anda</span>
+              <input id="bmSbSearch" type="search" placeholder="Cari nama sekolah…" aria-label="Cari nama sekolah badminton" oninput="bmSbFilter(this.value)" />
+              <select id="bmSbTeam" onchange="bmSbSetTeam(this.value)">
+                <option value="">— Pilih sekolah —</option>
+              </select>
+            </label>
+          </div>
+          <div id="bmSbResult"></div>
+          <div class="sb-grid bm-sb-grid" id="bmSbGrid"></div>
+        </div>
+      </section>
+
+      <!-- =========================================================
            v2.0 BADMINTON: CARTA KUMPULAN
            ========================================================= -->
       <section class="tab-panel" id="tab-bm-standings" role="tabpanel">
@@ -1674,6 +1780,8 @@ body.projection-on #projection { display:block; }
           </div>
         </div>
         <div data-bm-notice></div>
+        <!-- v1.18.0: MEJA PENGADIL BADMINTON - hanya untuk pengadil Badminton yang log masuk -->
+        <div class="card glass ref-desk hidden" id="bmRefDesk"></div>
         <div class="filter-bar">
           <input type="search" class="input" id="bmSearch" placeholder="🔍 Cari pasukan / singkatan / P1…" />
           <select class="select" id="bmFilterCourt">
@@ -6709,7 +6817,8 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
-    const GAS_MIN_VERSI = '1.17.0';  // v1.17.0: pengadil ikut sukan (Futsal / Badminton)
+    const GAS_MIN_VERSI = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja
+    // const GAS_MIN_VERSI_170 = '1.17.0';  // v1.17.0: pengadil ikut sukan (Futsal / Badminton)
     // const GAS_MIN_VERSI_LAMA = '1.16.0';  // Bahagian 6: keluaran akhir (Bahagian 5: isyarat perubahan masa nyata)
     const ADMIN_KEY_STORAGE = 'FUTSAL_PK_KBB_ADMIN_KEY';
 
@@ -7977,6 +8086,7 @@ void main() {
         'resolveKnockoutTeams',
         'renderLiveBoard',
         'renderRefDesk',
+        'renderBmRefDesk',        // v1.18.0: Meja Pengadil Badminton
         'renderCourts',
         'renderStandings',
         'renderKnockout',
@@ -8217,9 +8327,13 @@ void main() {
       }
       const cur = state.session && state.session.aksesGelanggang;
       if (refSukanOf(ref) === 'BADMINTON') {
-        showToast(`Selamat datang, ${ref.nama} (Pengadil Badminton). Meja Pengadil gelanggang hanya untuk Futsal; skor Badminton dimasukkan oleh Master Admin.`, 'info', 6500);
+        // v1.18.0: pengadil Badminton terus ke Meja Pengadil Badminton (perlawanan Badminton sahaja)
+        bukaMejaBadminton();
+        showToast(`Selamat datang, ${ref.nama} (Pengadil Badminton). Pilih perlawanan Badminton untuk diadili.`, 'success', 5500);
         return true;
       }
+      // v1.18.0: pengadil Futsal -> paparan Futsal (tab Gelanggang Live tidak tersembunyi)
+      try { if (dash.sukan === 'BADMINTON') applySukan('FUTSAL', { silent: true }); setActiveTab('tab-live'); } catch (e) { /* abaikan */ }
       showToast(cur
         ? `Selamat datang, ${ref.nama}. Anda masih mengawal Gelanggang ${cur}.`
         : (isRefMode()
@@ -10135,6 +10249,245 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return true;
     }
 
+    /* =========================================================
+       v1.18.0: MEJA PENGADIL BADMINTON
+       - Dipaparkan HANYA kepada pengadil yang log masuk sebagai BADMINTON.
+       - Senarai = perlawanan Badminton sahaja (Google Sheets: Jadual_Badminton).
+       - Skor dihantar dengan token sesi; Code.gs menolak pengadil Futsal.
+       - Keputusan "Tamat & Hantar" menunggu pengesahan Master Admin (panel skor).
+       ========================================================= */
+    const bmRef = { owner: null, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false };
+    const BMREF_VERSI = '1.18.0';
+
+    function bukaMejaBadminton() {
+      try { if (dash.sukan === 'FUTSAL') applySukan('BADMINTON', { silent: true }); } catch (e) { /* abaikan */ }
+      setActiveTab('tab-bm-schedule');
+      refreshAllViews();
+      setTimeout(() => {
+        const d = document.getElementById('bmRefDesk');
+        if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+
+    function bmRefStatus(m) {
+      const st = String(m.status || '').trim().toUpperCase(), sah = String(m.pengesahan || '').trim().toUpperCase();
+      if (sah === 'DISAHKAN' || st === 'SELESAI') return 'DISAHKAN';
+      if (sah === 'DITOLAK') return 'DITOLAK';
+      if (st.indexOf('TAMAT') === 0) return 'TUNGGU';
+      if (['SEDANG BERLANGSUNG', 'LIVE', 'REHAT'].includes(st)) return 'LIVE';
+      return 'BELUM';
+    }
+    function bmRefNamaSah(n) {
+      const t = String(n || '').trim();
+      return !!t && t.charAt(0) !== '(' && !/^(JOHAN|NAIB JOHAN|MENANG|KALAH)\b/i.test(t);
+    }
+    function bmRefMine(m, s) { return !!m.pengadil && refNameKey(m.pengadil) === refNameKey(s.nama); }
+    function bmRefBadge(st) {
+      return ({
+        LIVE: '<span class="badge badge-live badge-dot">Live</span>',
+        TUNGGU: '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>',
+        DITOLAK: '<span class="badge">Ditolak · Hantar Semula</span>',
+        BELUM: '<span class="badge">Belum Bermula</span>'
+      })[st] || '';
+    }
+
+    function renderBmRefDesk() {
+      const el = document.getElementById('bmRefDesk');
+      if (!el) return;
+      const s = getSession();
+      if (!s || s.peranan !== 'PENGADIL' || refSukanOf(s) !== 'BADMINTON') {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        delete el.dataset.owner;
+        return;
+      }
+      el.classList.remove('hidden');
+      const owner = s.userId + '|' + (s.token || '');
+      if (bmRef.owner !== owner) {
+        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false });
+      }
+      // Dibina sekali sahaja -> input skor tidak hilang bila paparan lain dikemas kini
+      if (el.dataset.owner === owner) return;
+      el.dataset.owner = owner;
+      bmRefPaint();
+      if (!bmRef.loaded && !bmRef.loading && s.token && getGasUrl()) bmRefLoad();
+    }
+
+    function bmRefPaint() {
+      const el = document.getElementById('bmRefDesk');
+      const s = getSession();
+      if (!el || !s || refSukanOf(s) !== 'BADMINTON') return;
+      const head = `
+        <div class="ref-desk-head">
+          <div>
+            <h3>🏸 Meja Pengadil Badminton · ${escapeHtml(s.nama)}</h3>
+            <p>Anda pengadil Badminton: hanya perlawanan Badminton dipaparkan. Perlawanan Futsal dikendalikan oleh pengadil Futsal sahaja.</p>
+          </div>
+          <button type="button" class="btn btn-sm" onclick="bmRefLoad()" ${bmRef.loading || bmRef.busy ? 'disabled' : ''}>🔄 Muat Semula</button>
+        </div>`;
+      let body = '';
+      if (!getGasUrl()) {
+        body = '<div class="form-msg error">URL Google Apps Script belum ditetapkan. Skor Badminton perlu dihantar terus ke Google Sheets.</div>';
+      } else if (!s.token) {
+        body = '<div class="form-msg error">Log masuk luar talian: log keluar dan log masuk semula dengan internet untuk menghantar skor.</div>';
+      } else {
+        const semua = bmRef.list.filter(m => bmRefStatus(m) !== 'DISAHKAN' && bmRefNamaSah(m.namaP1) && bmRefNamaSah(m.namaP2));
+        const gels = Array.from(new Set(semua.map(m => String(m.gelanggang || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ms', { numeric: true }));
+        const list = semua.filter(m => bmRef.gel === 'SEMUA' || String(m.gelanggang || '').trim() === bmRef.gel);
+        const rank = m => { const st = bmRefStatus(m); return bmRefMine(m, s) && st === 'LIVE' ? 0 : st === 'LIVE' ? 1 : st === 'DITOLAK' ? 2 : st === 'BELUM' ? 3 : 4; };
+        list.sort((a, b) => rank(a) - rank(b) || String(a.masaJadual || '').localeCompare(String(b.masaJadual || '')) || (Number(a.no) || 0) - (Number(b.no) || 0) || String(a.id).localeCompare(String(b.id)));
+        const rows = list.map(m => {
+          const st = bmRefStatus(m);
+          const lain = m.pengadil && !bmRefMine(m, s) && (st === 'LIVE' || st === 'TUNGGU');
+          const sel = bmRef.sel && bmRef.sel.id === m.id;
+          const sk = (m.skorP1 ?? '') === '' && (m.skorP2 ?? '') === '' ? '— : —' : `${m.skorP1 ?? 0} : ${m.skorP2 ?? 0}`;
+          return `
+            <div class="bmref-row${sel ? ' sel' : ''}">
+              <div class="info">
+                <strong>${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
+                <small>${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}</small>
+              </div>
+              <div class="sk">${sk}</div>
+              ${bmRefBadge(st)}
+              <button type="button" class="btn btn-sm ${lain ? '' : 'btn-primary'}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy || (lain && st === 'TUNGGU') ? 'disabled' : ''}>
+                ${st === 'TUNGGU' && !lain ? '✎ Ubah' : lain ? (st === 'TUNGGU' ? '🔒 ' + escapeHtml(m.pengadil) : '👀 Diadili ' + escapeHtml(m.pengadil)) : '🏸 Adili'}
+              </button>
+            </div>`;
+        }).join('');
+        let form = '';
+        const m = bmRef.sel && bmRef.list.find(x => x.id === bmRef.sel.id);
+        if (m) {
+          form = `
+            <div class="bmref-form" id="bmRefForm">
+              <div class="ref-step">Sedang diadili · ${escapeHtml(m.id)}${m.gelanggang ? ' · Gelanggang ' + escapeHtml(m.gelanggang) : ''}</div>
+              <div class="bmref-score">
+                ${[1, 2].map(i => `
+                  <div class="bmref-side">
+                    <div class="nm">${escapeHtml(i === 1 ? m.namaP1 : m.namaP2)}</div>
+                    <div class="ctl">
+                      <button type="button" class="btn btn-sm" onclick="bmRefAdj(${i},-1)" ${bmRef.busy ? 'disabled' : ''} aria-label="Tolak satu">−</button>
+                      <input class="input" type="number" min="0" max="99" step="1" inputmode="numeric" id="bmRefS${i}" value="${escapeHtml(String(bmRef.sel['s' + i]))}" oninput="bmRefInput(${i}, this.value)" ${bmRef.busy ? 'disabled' : ''} aria-label="Skor ${escapeHtml(i === 1 ? m.namaP1 : m.namaP2)}" />
+                      <button type="button" class="btn btn-sm" onclick="bmRefAdj(${i},1)" ${bmRef.busy ? 'disabled' : ''} aria-label="Tambah satu">＋</button>
+                    </div>
+                  </div>`).join('')}
+              </div>
+              <div class="ref-active-actions">
+                <button type="button" class="btn btn-sm" onclick="bmRefSend('SEMASA')" ${bmRef.busy ? 'disabled' : ''}>💾 Simpan Skor Semasa</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="bmRefSend('TAMAT')" ${bmRef.busy ? 'disabled' : ''}>🏁 Tamat &amp; Hantar Keputusan</button>
+                <button type="button" class="btn btn-sm" onclick="bmRefClose()" ${bmRef.busy ? 'disabled' : ''}>✕ Tutup</button>
+              </div>
+              <small style="display:block;color:var(--text-2);font-size:.74rem;margin-top:8px;">Keputusan yang dihantar menunggu pengesahan Master Admin sebelum dikira dalam carta.</small>
+            </div>`;
+        }
+        body = `
+          <div class="bmref-tools">
+            <select class="select" onchange="bmRefCourt(this.value)" aria-label="Tapis gelanggang Badminton" ${bmRef.busy ? 'disabled' : ''}>
+              <option value="SEMUA">Semua Gelanggang Badminton</option>
+              ${gels.map(g => `<option value="${escapeHtml(g)}" ${bmRef.gel === g ? 'selected' : ''}>Gelanggang ${escapeHtml(g)}</option>`).join('')}
+            </select>
+            <span class="badge">${list.length} perlawanan Badminton</span>
+          </div>
+          ${form}
+          <div class="bmref-list" style="margin-top:12px;">${rows || `<div class="form-msg">${bmRef.loading ? 'Membaca jadual Badminton…' : bmRef.loaded ? 'Tiada perlawanan Badminton untuk diadili.' : ''}</div>`}</div>`;
+      }
+      el.innerHTML = `${head}<div class="ref-desk-body"><div class="form-msg ${bmRef.err ? 'error' : bmRef.msg ? 'success' : ''}" id="bmRefMsg" role="status">${escapeHtml(bmRef.msg)}</div>${body}</div>`;
+    }
+
+    function bmRefSetMsg(msg, err = false) { bmRef.msg = msg || ''; bmRef.err = !!err; }
+
+    async function bmRefRead() {
+      const data = await dashFetch('read&sukan=BADMINTON');
+      if (!data || !data.ok || data.sukan !== 'BADMINTON' || !Array.isArray(data.matches)) throw new Error((data && data.error) || 'Jadual Badminton tidak dapat dibaca.');
+      return data.matches;
+    }
+
+    async function bmRefLoad() {
+      if (bmRef.loading || bmRef.busy) return;
+      bmRef.loading = true; bmRefSetMsg('Membaca jadual Badminton…'); bmRefPaint();
+      try {
+        bmRef.list = await bmRefRead();
+        bmRef.loaded = true;
+        bmRefSetMsg('');
+        const s = getSession();
+        // Pulihkan perlawanan yang sedang diadili oleh pengadil ini (cth. selepas muat semula)
+        if (!bmRef.sel && s) {
+          const mine = bmRef.list.find(m => bmRefMine(m, s) && bmRefStatus(m) === 'LIVE');
+          if (mine) bmRef.sel = { id: mine.id, s1: mine.skorP1 ?? 0, s2: mine.skorP2 ?? 0 };
+        }
+        if (bmRef.sel && !bmRef.list.some(m => m.id === bmRef.sel.id && bmRefStatus(m) !== 'DISAHKAN')) bmRef.sel = null;
+      } catch (e) {
+        bmRefSetMsg(e.message || 'Jadual Badminton tidak dapat dibaca.', true);
+      } finally {
+        bmRef.loading = false; bmRefPaint();
+      }
+    }
+
+    function bmRefPick(id) {
+      const s = getSession();
+      if (!s || refSukanOf(s) !== 'BADMINTON') { showToast('Hanya pengadil Badminton boleh mengadili perlawanan Badminton.', 'error'); return; }
+      const m = bmRef.list.find(x => x.id === id);
+      if (!m || bmRef.busy) return;
+      bmRef.sel = { id: m.id, s1: m.skorP1 ?? 0, s2: m.skorP2 ?? 0 };
+      bmRefSetMsg('');
+      bmRefPaint();
+      const f = document.getElementById('bmRefForm');
+      if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function bmRefClose() { if (bmRef.busy) return; bmRef.sel = null; bmRefSetMsg(''); bmRefPaint(); }
+    function bmRefCourt(v) { bmRef.gel = v || 'SEMUA'; bmRefPaint(); }
+    function bmRefInput(i, v) { if (bmRef.sel) bmRef.sel['s' + i] = v; }
+    function bmRefAdj(i, d) {
+      if (!bmRef.sel || bmRef.busy) return;
+      const n = Math.max(0, Math.min(99, (parseInt(bmRef.sel['s' + i], 10) || 0) + d));
+      bmRef.sel['s' + i] = n;
+      const inp = document.getElementById('bmRefS' + i);
+      if (inp) inp.value = n;
+    }
+
+    async function bmRefSend(jenis) {
+      const s = getSession();
+      if (!s || s.peranan !== 'PENGADIL' || refSukanOf(s) !== 'BADMINTON') { showToast('Hanya pengadil Badminton boleh menghantar skor Badminton.', 'error'); return; }
+      if (!bmRef.sel || bmRef.busy) return;
+      if (!s.token) { bmRefSetMsg('Log masuk semula dengan internet untuk menghantar skor.', true); bmRefPaint(); return; }
+      const m = bmRef.list.find(x => x.id === bmRef.sel.id);
+      if (!m) return;
+      const s1 = Number(String(bmRef.sel.s1).trim()), s2 = Number(String(bmRef.sel.s2).trim());
+      if (String(bmRef.sel.s1).trim() === '' || String(bmRef.sel.s2).trim() === '' || !Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0 || s1 > 99 || s2 > 99) {
+        bmRefSetMsg('Skor mesti nombor bulat 0 hingga 99.', true); bmRefPaint(); return;
+      }
+      if (jenis === 'TAMAT') {
+        if (s1 === s2) { bmRefSetMsg('Keputusan Badminton tidak boleh seri.', true); bmRefPaint(); return; }
+        const menang = s1 > s2 ? m.namaP1 : m.namaP2;
+        if (!await uiConfirm(`Tamat & hantar keputusan ${m.id}?\n\n${m.namaP1} ${s1} - ${s2} ${m.namaP2}\nPemenang: ${menang}\n\nKeputusan akan menunggu pengesahan Master Admin.`)) return;
+      }
+      bmRef.busy = true; bmRefSetMsg(jenis === 'TAMAT' ? 'Menghantar keputusan…' : 'Menyimpan skor…'); bmRefPaint();
+      try {
+        const res = await callGas({ action: 'skorPengadilBadminton', sukan: 'BADMINTON', token: s.token, id: m.id, skorP1: s1, skorP2: s2, jenis });
+        if (!res || !res.ok) {
+          const e = String((res && res.error) || '');
+          if (res && res.kod === 'SESI_TAMAT') throw new Error('Sesi pengadil tamat. Sila log keluar dan log masuk semula.');
+          if (/khusus untuk FUTSAL|memerlukan kunci Master Admin|Tindakan tidak dikenali/i.test(e) || (res && res.kod === 'SKRIP_LAMA'))
+            throw new Error(`Google Sheets masih Code.gs versi lama. Master Admin perlu tampal Code.gs v${BMREF_VERSI} > Deploy > Manage deployments > ✏️ Edit > Version: New version > Deploy.`);
+          throw new Error(e || 'Skor gagal dihantar.');
+        }
+        if (res.sukan !== 'BADMINTON' || cmpVersi(res.versi || '0', BMREF_VERSI) < 0) throw new Error('Respons Google Sheets tidak sepadan. Pastikan Code.gs terkini telah di-deploy.');
+        bmRef.list = await bmRefRead();
+        const saved = bmRef.list.find(x => x.id === m.id);
+        if (!saved || Number(saved.skorP1) !== s1 || Number(saved.skorP2) !== s2) throw new Error('Skor belum dapat disahkan dalam Google Sheets. Tekan Muat Semula dan cuba lagi.');
+        if (jenis === 'TAMAT') {
+          bmRef.sel = null;
+          bmRefSetMsg(`✅ Keputusan ${m.id} (${s1} - ${s2}) dihantar. Menunggu pengesahan Master Admin.`);
+        } else {
+          bmRefSetMsg(`✅ Skor ${m.id} (${s1} - ${s2}) disimpan di Google Sheets.`);
+        }
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+      } catch (e) {
+        bmRefSetMsg(e.message || 'Skor gagal dihantar; skor anda dikekalkan.', true);
+      } finally {
+        bmRef.busy = false; bmRefPaint();
+      }
+    }
+
     // Paparan Meja Pengadil (atas kad gelanggang)
     function renderRefDesk() {
       renderRefMobile();   // FASA 6: paparan telefon pengadil
@@ -10148,14 +10501,18 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
       el.classList.remove('hidden');
       if (refSukanOf(s) === 'BADMINTON') {
-        // v1.17.0: pengadil Badminton tidak boleh mengunci / memberi markah di gelanggang Futsal
+        // v1.17.0/v1.18.0: pengadil Badminton tidak boleh mengunci / memberi markah di gelanggang Futsal.
+        // Skor Badminton diberi di Meja Pengadil Badminton (tab Jadual Badminton).
         el.innerHTML = `
-          <div class="ref-active">
+          <div class="ref-active" style="padding:16px 20px;">
             <div class="court-letter">🏸</div>
             <div class="ref-active-info">
               <div class="ref-step" style="margin-bottom:4px;">Pengadil Badminton</div>
               <strong>${escapeHtml(s.nama)}</strong>
-              <small>Meja Pengadil gelanggang di sini untuk Futsal sahaja. Skor Badminton dimasukkan oleh Master Admin di panel skor.</small>
+              <small>Gelanggang di halaman ini ialah Futsal dan hanya dikendalikan oleh pengadil Futsal. Anda hanya boleh mengadili perlawanan Badminton.</small>
+            </div>
+            <div class="ref-active-actions">
+              <button type="button" class="btn btn-primary btn-sm" onclick="bukaMejaBadminton()">🏸 Buka Meja Pengadil Badminton</button>
             </div>
           </div>`;
         return;
@@ -15259,7 +15616,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     const TAB_SETARA = {
       'tab-standings': 'tab-bm-standings', 'tab-knockout': 'tab-bm-knockout', 'tab-schedule': 'tab-bm-schedule',
       'tab-bm-standings': 'tab-standings', 'tab-bm-knockout': 'tab-knockout', 'tab-bm-schedule': 'tab-schedule',
-      'tab-live': 'tab-dashboard'
+      'tab-live': 'tab-bm-live', 'tab-bm-live': 'tab-live'   // v1.19.0: Gelanggang Live Futsal <-> Badminton
     };
     // Bahagian 6: pilihan sukan utama turut menjadi pilihan awal borang Admin (hanya jika masih kosong)
     function selarasAdminSukan(k) {
@@ -15274,7 +15631,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     // Halaman hadapan: Dashboard Utama (pengadil kekal di Gelanggang Live / Meja Pengadil).
     function defaultHomeTab() {
-      try { const s = getSession(); if (s && s.peranan === 'PENGADIL') return 'tab-live'; } catch (e) { /* abaikan */ }
+      try {
+        const s = getSession();
+        if (s && s.peranan === 'PENGADIL') return refSukanOf(s) === 'BADMINTON' ? 'tab-bm-schedule' : 'tab-live';   // v1.18.0
+      } catch (e) { /* abaikan */ }
       return 'tab-dashboard';
     }
 
@@ -15457,7 +15817,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           nama1: bmStr(g('namapasukan1')), nama2: bmStr(g('namapasukan2')),
           s1: bmNum(g('skorp1')), s2: bmNum(g('skorp2')), gel: bmStr(g('gelanggang')),
           status: bmUp(g('statusperlawanan')) || 'BELUM BERMULA', sah: bmUp(g('statuspengesahan')) || 'MENUNGGU',
-          masa: bmStr(g('masajadual')), pada: bmStr(g('disahkanpada')) || bmStr(g('kemaskiniterakhir')), catatan: bmStr(g('catatan'))
+          masa: bmStr(g('masajadual')), pada: bmStr(g('disahkanpada')) || bmStr(g('kemaskiniterakhir')), catatan: bmStr(g('catatan')),
+          pengadil: bmStr(g('namapengadil')) || bmStr(g('pengadil')),
+          kemas: bmStr(g('kemaskiniterakhir')) || bmStr(g('kemaskini'))
         };
       }).filter(m => m.id);
       const rules = (d.peraturan || []).map(o => {
@@ -15917,12 +16279,232 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }).join('') || '<div class="bm-empty">Tiada perlawanan sepadan dengan tapisan.</div>';
     }
 
+    /* =========================================================
+       v1.19.0: SIMULASI GELANGGANG LIVE BADMINTON + GILIRAN PASUKAN
+       - 6 gelanggang (1-2 SR, 3-6 SM) dilukis seperti Gelanggang Live Futsal.
+       - Sumber: Jadual_Badminton (Google Sheets) melalui bmModel(); baca sahaja.
+       - Susunan giliran ikut No. Perlawanan Keseluruhan (P1, P2, ...) kemudian kalah mati.
+       - Gelanggang: LIVE > TAMAT (tunggu sah) > perlawanan pertama belum bermula.
+       ========================================================= */
+    const BM_SB_KEY = 'fpk_kbb_bm_sb_team';
+    function bmSbTeam() { try { return localStorage.getItem(BM_SB_KEY) || ''; } catch (e) { return ''; } }
+    function bmSbSetTeam(name) {
+      try { name ? localStorage.setItem(BM_SB_KEY, name) : localStorage.removeItem(BM_SB_KEY); } catch (e) { /* abaikan */ }
+      try { renderBmLive(bmModel()); } catch (e) { console.error('[bmSbSetTeam]', e); }
+    }
+    function bmSbFilter(query) {
+      const sel = document.getElementById('bmSbTeam');
+      if (!sel) return;
+      const cur = bmSbTeam(), q = String(query || '').trim().toUpperCase();
+      Array.from(sel.options).forEach(o => { o.hidden = !!o.value && o.value !== cur && !o.text.toUpperCase().includes(q); });
+    }
+    function bmIsPending(m) { return !bmApproved(m) && !bmIsLive(m) && !bmIsWaitSah(m) && m.status !== 'DITANGGUH'; }
+    function bmCourtKat(ms) {
+      const k = Array.from(new Set(ms.map(m => m.kat).filter(Boolean)));
+      if (k.length === 1) return k[0] === 'SR' ? 'Sekolah Rendah' : 'Sekolah Menengah';
+      return 'Sekolah Rendah & Menengah';
+    }
+    function bmCourtRows(model) {
+      const vis = model.matches.filter(m => dashKatOk(m.kat) && m.gel);
+      const ids = Array.from(new Set(vis.map(m => String(m.gel)))).sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
+      return ids.map(gel => {
+        const ms = vis.filter(m => String(m.gel) === gel);
+        const live = ms.find(bmIsLive) || null;
+        const pending = ms.filter(bmIsPending);
+        const wait = ms.filter(bmIsWaitSah);
+        const done = live ? null : (wait[wait.length - 1] || null);
+        const cur = live || done || pending[0] || null;
+        const queue = cur && cur === pending[0] ? pending.slice(1) : pending;
+        const st = live ? 'live' : (done ? 'done' : 'ready');
+        return { gel, ms, live, done, cur, queue, st, kat: bmCourtKat(ms),
+          selesai: ms.filter(bmApproved).length, jumlah: ms.length };
+      });
+    }
+    function bmTeamLine(m, sd) {
+      return m['tbd' + sd] ? `<span class="tbd">${dashEsc(m['nama' + sd])}</span>` : dashEsc(m['nama' + sd]);
+    }
+    function bmSbLine(m) {
+      if (!m) return '';
+      const ready = !m.tbd1 && !m.tbd2;
+      return `<div class="sb-match-id">${dashEsc(m.ov)} · ${dashEsc(m.id)}</div>` + (ready
+        ? `<span class="sb-team-name">${dashEsc(m.nama1)}</span><span class="sb-versus">LAWAN</span><span class="sb-team-name">${dashEsc(m.nama2)}</span>`
+        : `<span class="sb-team-name">${bmTeamLine(m, '1')}</span><span class="sb-versus">LAWAN</span><span class="sb-team-name">${bmTeamLine(m, '2')}</span><span class="sb-match-note">Menunggu penetapan pasukan</span>`);
+    }
+    function bmRefBoleh() {
+      try { const s = getSession(); return !!s && s.peranan === 'PENGADIL' && refSukanOf(s) === 'BADMINTON' ? s : null; } catch (e) { return null; }
+    }
+    async function bmLiveAdili(id) {
+      if (!bmRefBoleh()) { showToast('Hanya pengadil Badminton boleh mengadili perlawanan Badminton.', 'error'); return; }
+      bukaMejaBadminton();
+      for (let i = 0; i < 60 && !bmRef.loaded; i++) {
+        if (!bmRef.loading && i > 2) await bmRefLoad();
+        else await new Promise(r => setTimeout(r, 250));
+      }
+      const m = bmRef.list.find(x => String(x.id || '').toUpperCase() === String(id).toUpperCase());
+      if (m) bmRefPick(m.id); else showToast(`Perlawanan ${id} tidak dijumpai dalam jadual Badminton.`, 'warn');
+    }
+
+    function bmCourtCard(c) {
+      const m = c.cur;
+      const ref = bmRefBoleh();
+      const showSc = c.st !== 'ready' && m;
+      const s1 = showSc ? (m.s1 ?? 0) : 0, s2 = showSc ? (m.s2 ?? 0) : 0;
+      const overlay = !m ? 'Tiada perlawanan'
+        : c.st === 'done' ? 'Tamat · Menunggu pengesahan'
+        : c.st === 'ready' ? (m.tbd1 || m.tbd2 ? 'Menunggu penetapan pasukan' : 'Sedia · Menunggu servis mula') : '';
+      const badge = c.st === 'live' ? (m.status === 'REHAT' ? '<span class="badge badge-live badge-dot">Rehat</span>' : '<span class="badge badge-live badge-dot">Live</span>')
+        : c.st === 'done' ? '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>'
+        : '<span class="badge badge-ok badge-dot">Kosong / Sedia</span>';
+      const refM = c.live || c.done;
+      const pengadil = refM && refM.pengadil ? `🧑‍⚖️ Pengadil: ${dashEsc(refM.pengadil)}` : 'Pengadil: belum ditetapkan';
+      const next = c.queue[0];
+      const nextText = next
+        ? `🟡 Standby: <strong>${dashEsc(next.ov)} · ${dashEsc(next.id)}</strong> — ${bmTeamLine(next, '1')} lwn ${bmTeamLine(next, '2')}`
+        : 'Seterusnya: <strong>Tiada</strong>';
+      const fasa = c.st === 'live' ? (m.status === 'REHAT' ? 'Rehat' : 'Sedang berlangsung') : c.st === 'done' ? 'Tamat' : 'Sedia';
+      let act = '';
+      if (ref && m && !m.tbd1 && !m.tbd2) {
+        const mine = c.live && c.live.pengadil && refNameKey(c.live.pengadil) === refNameKey(ref.nama);
+        if (c.st === 'ready' || mine) act = `<button type="button" class="btn btn-primary btn-sm" onclick="bmLiveAdili('${dashEsc(m.id)}')">🏸 ${mine ? 'Sambung adili' : 'Adili perlawanan ini'}</button>`;
+      }
+      return `
+        <article class="court-card bm-court status-${c.st}" data-bm-court="${dashEsc(c.gel)}">
+          <div class="court-head">
+            <div class="court-name">
+              <div class="court-letter">${dashEsc(c.gel)}</div>
+              <div>
+                <h3>Gelanggang ${dashEsc(c.gel)}</h3>
+                <small>${pengadil} · ${dashEsc(c.kat)}</small>
+              </div>
+            </div>
+            ${badge}
+          </div>
+          <div class="pitch bm-pitch" aria-hidden="true">
+            <span class="bm-ln bm-back-l"></span><span class="bm-ln bm-back-r"></span>
+            <span class="bm-ln bm-svc-l"></span><span class="bm-ln bm-svc-r"></span>
+            <span class="bm-ln bm-mid-l"></span><span class="bm-ln bm-mid-r"></span>
+            ${c.st === 'live' && m.status !== 'REHAT' ? '<span class="shuttle">🏸</span>' : ''}
+            ${overlay ? `<div class="pitch-overlay">${dashEsc(overlay)}</div>` : ''}
+          </div>
+          <div class="scoreboard">
+            <div class="team-side">
+              <div class="team-code">${m ? dashEsc(m.sing1 || m.kod1 || '-') : '-'}</div>
+              <div class="team-name">${m ? bmTeamLine(m, '1') : '—'}</div>
+            </div>
+            <div class="score-box" aria-label="Skor"><span>${s1}</span><span class="sep">:</span><span>${s2}</span></div>
+            <div class="team-side right">
+              <div class="team-code">${m ? dashEsc(m.sing2 || m.kod2 || '-') : '-'}</div>
+              <div class="team-name">${m ? bmTeamLine(m, '2') : '—'}</div>
+            </div>
+          </div>
+          <div class="court-meta">
+            <span>${m ? `${dashEsc(m.ov)} · ${dashEsc(m.id)} · ${dashEsc(bmStageText(m))}` : 'Tiada perlawanan'}</span>
+            <span>Fasa: <strong style="color:var(--text-0);">${fasa}</strong> · ${c.selesai}/${c.jumlah} disahkan</span>
+          </div>
+          ${c.st === 'done' ? '<div class="court-done-note">✅ Keputusan telah dihantar pengadil. Menunggu pengesahan Master Admin.</div>' : ''}
+          <div class="court-next">${nextText}</div>
+          ${act ? `<div class="bm-court-act">${act}</div>` : ''}
+        </article>`;
+    }
+
+    function renderBmLive(model) {
+      const grid = document.getElementById('bmCourtsGrid');
+      if (!grid) return;
+      const rows = bmCourtRows(model);
+      // Jalur status ringkas
+      const strip = document.getElementById('bmLiveStrip');
+      if (strip) {
+        const nLive = rows.filter(r => r.st === 'live').length;
+        const nTunggu = model.matches.filter(m => dashKatOk(m.kat) && bmIsWaitSah(m)).length;
+        const sumber = dash.bm.data ? `Disegerak automatik daripada Google Sheets · terakhir ${dashTime(dash.bm.at)}` : 'Jadual asal (belum disambung ke Google Sheets)';
+        strip.innerHTML = `<div class="bm-strip"><div><h3>📺 Papan Live Badminton · Skor &amp; Status Gelanggang</h3><p>${sumber}</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span class="badge ${nLive ? 'badge-live badge-dot' : ''}">${nLive ? nLive + ' gelanggang live' : 'Tiada perlawanan live'}</span>
+            ${nTunggu ? `<span class="badge badge-done">${nTunggu} menunggu pengesahan</span>` : ''}
+            ${bmRefBoleh() ? '<button type="button" class="btn btn-sm" onclick="bukaMejaBadminton()">🏸 Meja Pengadil</button>' : ''}
+            <button type="button" class="btn btn-sm" onclick="dashRefresh(true)" title="Muat semula daripada Google Sheets">↻</button>
+          </div></div>`;
+      }
+      grid.innerHTML = rows.map(bmCourtCard).join('') ||
+        '<div class="card glass empty-state" style="grid-column:1/-1;"><div class="icon">🏸</div><p>Tiada gelanggang badminton untuk kategori ini.</p></div>';
+
+      // Papan giliran pasukan
+      const sbGrid = document.getElementById('bmSbGrid'), resEl = document.getElementById('bmSbResult'), sel = document.getElementById('bmSbTeam');
+      if (!sbGrid || !resEl || !sel) return;
+      const team = bmSbTeam();
+      const norm = x => String(x || '').trim().toUpperCase();
+      const isMine = m => !!team && !!m && ((!m.tbd1 && norm(m.nama1) === norm(team)) || (!m.tbd2 && norm(m.nama2) === norm(team)));
+      const names = new Set();
+      (model.data.teams || []).forEach(t => { if (t.status === 'AKTIF' && dashKatOk(t.kat) && t.nama) names.add(t.nama); });
+      model.matches.forEach(m => { if (!dashKatOk(m.kat)) return; ['1', '2'].forEach(sd => { if (!m['tbd' + sd] && m['nama' + sd]) names.add(m['nama' + sd]); }); });
+      if (team) names.add(team);
+      const list = Array.from(names).sort((a, b) => a.localeCompare(b));
+      const sig = list.join('|');
+      if (sel.dataset.sig !== sig) {
+        sel.innerHTML = '<option value="">— Pilih sekolah —</option>' + list.map(n => `<option value="${dashEsc(n)}">${dashEsc(n)}</option>`).join('');
+        sel.dataset.sig = sig;
+      }
+      if (sel.value !== team) sel.value = team;
+      bmSbFilter((document.getElementById('bmSbSearch') || {}).value || '');
+      const open = new Set(Array.from(sbGrid.querySelectorAll('details[open]')).map(el => el.dataset.court));
+
+      sbGrid.innerHTML = rows.map(c => {
+        const cur = c.cur, sb = c.queue[0] || null, later = c.queue.slice(1, 4), g = dashEsc(c.gel);
+        let tag = '<span class="sb-tag t-ready">Menunggu servis mula</span>';
+        if (c.st === 'live') tag = `<span class="sb-tag t-live">🔴 ${cur.status === 'REHAT' ? 'Rehat' : 'Live'} ${cur.s1 ?? 0}-${cur.s2 ?? 0}</span>`;
+        else if (c.st === 'done') tag = `<span class="sb-tag t-done">Tamat ${cur.s1 ?? 0}-${cur.s2 ?? 0} · tunggu sah</span>`;
+        return `
+          <article class="sb-card" aria-label="Giliran Gelanggang Badminton ${g}">
+            <div class="sb-card-top"><span class="sb-court-letter" aria-hidden="true">${g}</span><div><strong>Gelanggang ${g}</strong><span class="sb-category">${dashEsc(c.kat)}</span></div></div>
+            <div class="sb-stage sb-stage-current ${isMine(cur) ? 'sb-mine' : ''}">
+              <div class="sb-label"><span class="sb-status-dot"></span>SEKARANG · DI GELANGGANG</div>
+              <div class="sb-match">${cur ? bmSbLine(cur) : '<span class="sb-empty">Semua perlawanan gelanggang ini selesai</span>'}</div>
+              ${cur ? tag : ''}
+            </div>
+            <div class="sb-stage sb-standby ${isMine(sb) ? 'sb-mine' : ''}">
+              <div class="sb-label"><span class="sb-status-dot"></span>SETERUSNYA · SILA BERSEDIA</div>
+              ${sb ? `<div class="sb-match">${bmSbLine(sb)}</div><div class="sb-hint">↗ Bersedia di tepi Gelanggang ${g}</div>` : '<div class="sb-empty">Tiada perlawanan seterusnya</div>'}
+            </div>
+            ${later.length ? `<details data-court="${g}" ${open.has(c.gel) ? 'open' : ''}>
+              <summary class="sb-later-toggle">Giliran selepas ini (${later.length})</summary>
+              <ol class="sb-later">${later.map((m, i) => `<li class="${isMine(m) ? 'sb-mine' : ''}"><span class="sb-queue-number">${i + 2}</span><div>${bmSbLine(m)}</div></li>`).join('')}</ol>
+            </details>` : '<div class="sb-stage sb-empty">Tiada giliran tambahan</div>'}
+          </article>`;
+      }).join('') || '<div class="sb-empty">Tiada gelanggang badminton untuk kategori ini.</div>';
+
+      if (!team) { resEl.innerHTML = ''; return; }
+      let found = null;
+      rows.forEach(c => {
+        if (found) return;
+        if (isMine(c.cur)) { found = { c, pos: -1, m: c.cur }; return; }
+        const i = c.queue.findIndex(isMine);
+        if (i >= 0) found = { c, pos: i, m: c.queue[i] };
+      });
+      let cls = '', html = '';
+      const T = `<strong>${dashEsc(team)}</strong>`;
+      if (!found) {
+        html = `ℹ️ ${T} tiada perlawanan Badminton yang belum dimainkan.<small>Semak tab Jadual Badminton untuk keputusan perlawanan anda.</small>`;
+      } else {
+        const g = dashEsc(found.c.gel), m = found.m;
+        const lawan = norm(m.nama1) === norm(team) ? m.nama2 : m.nama1;
+        const vs = `${dashEsc(m.ov)} · ${dashEsc(m.id)} · lawan <strong>${dashEsc(lawan || '-')}</strong>`;
+        if (found.pos === -1 && found.c.st === 'live') { cls = 'is-live'; html = `🔴 ${T} sedang bermain di <strong>Gelanggang ${g}</strong> (${vs}).`; }
+        else if (found.pos === -1 && found.c.st === 'done') { cls = 'is-now'; html = `✅ Perlawanan ${T} di Gelanggang ${g} telah tamat (${vs}).<small>Menunggu pengesahan keputusan oleh Master Admin.</small>`; }
+        else if (found.pos === -1) { cls = 'is-now'; html = `🏸 ${T}: sila masuk ke <strong>Gelanggang ${g}</strong> sekarang (${vs}). Menunggu servis mula.`; }
+        else if (found.pos === 0) { cls = 'is-standby'; html = `🟡 ${T}: sila <strong>STANDBY di tepi Gelanggang ${g}</strong> sekarang. Anda perlawanan seterusnya (${vs}).`; }
+        else { html = `⏳ ${T}: Gelanggang ${g} · ${found.pos} perlawanan lagi sebelum anda masuk standby (${vs}).<small>Paparan ini dikemas kini automatik.</small>`; }
+      }
+      resEl.innerHTML = `<div class="sb-result ${cls}">${html}</div>`;
+    }
+
+
     function renderBadmintonViews() {
       try {
         const model = bmModel();
         renderBmStandings(model);
         renderBmKnockout(model);
         renderBmSchedule(model);
+        renderBmLive(model);   // v1.19.0
         const n = bmNoticeHtml();
         document.querySelectorAll('[data-bm-notice]').forEach(el => { el.innerHTML = n; });
       } catch (err) {

@@ -167,14 +167,15 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
+const API_VERSI = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
+// const API_VERSI_170 = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
 // const API_VERSI_161 = '1.16.1';  // v1.16.1: fungsi Sukan.gs digabung ke Code.gs
 // const API_VERSI_B6 = '1.16.0';  // Bahagian 6: keluaran akhir (semakan pepijat & kemasan)
 // const API_VERSI_B5 = '1.15.0';  // Bahagian 5: isyarat perubahan masa nyata untuk Dashboard awam
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -545,6 +546,12 @@ function doPost(e) {
       ubahPapan = false;
       if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan pasukan.' });
       return output_(simpanPasukanSukan_(body, sukan));
+    }
+    // v1.18.0: skor Badminton oleh PENGADIL BADMINTON sahaja (token sesi). Pengadil Futsal ditolak.
+    if (action === 'skorpengadilbadminton') {
+      ubahPapan = false;
+      if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Skor pengadil Badminton mesti dihantar untuk sukan BADMINTON sahaja.' });
+      return output_(skorPengadilBadminton_(body));
     }
     if (sukan === 'BADMINTON' && MATCH_ACTIONS.indexOf(action) < 0 && action !== 'ping') {
       throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
@@ -3132,4 +3139,80 @@ function simpanSkorSukan_(body, sukan) {
     catch (errC) { console.warn('kiraCartaPelayan_', errC); }
   }
   return {ok:true,versi:API_VERSI,sukan:sukan,id:id,skorP1:s1,skorP2:s2,keputusan:final?'DISAHKAN':'SEMENTARA'};
+}
+
+/* =========================================================
+   v1.18.0: PENGADIL BADMINTON - SKOR PERLAWANAN BADMINTON
+   - Hanya akaun pengadil BADMINTON (token sesi) diterima. Pengadil Futsal ditolak.
+   - jenis 'SEMASA' -> skor sementara (SEDANG BERLANGSUNG di Dashboard).
+   - jenis 'TAMAT'  -> keputusan dihantar (TAMAT, MENUNGGU pengesahan Master Admin).
+   - Satu perlawanan dipegang oleh SATU pengadil. Pengadil lain hanya boleh mengambil
+     alih jika perlawanan terbiar > BM_PENGADIL_TERBIAR_MINIT atau keputusan DITOLAK.
+   - Keputusan DISAHKAN tidak boleh diubah oleh pengadil (Master Admin sahaja).
+   ========================================================= */
+const BM_PENGADIL_TERBIAR_MINIT = 30;
+
+function skorPengadilBadminton_(body) {
+  const sesi = sahkanSesi_(body.token);
+  if (!sesi.ok) return sesi;
+  const ref = sesi.ref;
+  if (ref.sukan !== 'BADMINTON') {
+    return { ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Akaun ' + ref.nama + ' ialah pengadil ' + labelSukan_(ref.sukan) +
+      '. Hanya pengadil Badminton boleh memberi skor perlawanan Badminton.' };
+  }
+  const id = String(body.id || '').trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9_-]{0,59}$/.test(id)) return { ok: false, error: 'ID perlawanan tidak sah.' };
+  const jenis = String(body.jenis || '').trim().toUpperCase();
+  if (jenis !== 'SEMASA' && jenis !== 'TAMAT') return { ok: false, error: 'Jenis penghantaran skor tidak sah.' };
+  const s1 = skorInt_(body.skorP1), s2 = skorInt_(body.skorP2);
+  if (s1 === null || s2 === null) return { ok: false, error: 'Skor mesti nombor bulat 0 hingga 99.' };
+  if (jenis === 'TAMAT' && s1 === s2) return { ok: false, error: 'Keputusan Badminton tidak boleh seri.' };
+
+  const sheet = getJadualSheet_('BADMINTON');
+  const table = readTable_(sheet);
+  const rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  if (!rec) return { ok: false, error: 'Perlawanan ' + id + ' tidak dijumpai dalam jadual Badminton.' };
+  const d = rec.data;
+  const status = statusBaris_(d);
+  const sah = String(d.pengesahan || '').trim().toUpperCase();
+  if (sah === 'DISAHKAN' || status === 'SELESAI') {
+    return { ok: false, kod: 'MUKTAMAD', error: 'Keputusan ' + id + ' telah disahkan Master Admin. Hubungi Master Admin untuk pembetulan.' };
+  }
+  if (!d.namaP1 || !d.namaP2 || isNamaPlaceholder_(d.namaP1) || isNamaPlaceholder_(d.namaP2) ||
+      String(d.namaP1).charAt(0) === '(' || String(d.namaP2).charAt(0) === '(') {
+    return { ok: false, error: 'Pasukan bertanding bagi ' + id + ' belum lengkap.' };
+  }
+  const lama = String(d.pengadil || '').trim();
+  if (lama && refNameKey_(lama) !== refNameKey_(ref.nama) && sah !== 'DITOLAK') {
+    if (status === 'TAMAT - TUNGGU SAH') {
+      return { ok: false, kod: 'DIKUNCI', error: 'Keputusan ' + id + ' telah dihantar oleh pengadil ' + lama + ' dan sedang menunggu pengesahan Master Admin.' };
+    }
+    const kemas = d.kemaskini ? new Date(d.kemaskini).getTime() : 0;
+    if (status === 'LIVE' && kemas && Date.now() - kemas < BM_PENGADIL_TERBIAR_MINIT * 60000) {
+      return { ok: false, kod: 'DIKUNCI', error: 'Perlawanan ' + id + ' sedang diadili oleh pengadil ' + lama + '.' };
+    }
+  }
+
+  const now = new Date();
+  const row = table.values[rec.rowIndex].slice();
+  const set = function (f, v) { if (table.colOf[f] !== undefined) row[table.colOf[f]] = v; };
+  set('skorP1', s1); set('skorP2', s2); set('pengadil', ref.nama); set('kemaskini', now);
+  if (!d.masaMula) set('masaMula', now);
+  if (jenis === 'TAMAT') {
+    set('status', 'TAMAT'); set('pengesahan', 'MENUNGGU'); set('fasaMasa', 'Tamat');
+    set('masaTamat', now); set('sahPengadil', ref.nama); set('sahPengadilPada', now);
+  } else {
+    set('status', 'SEDANG BERLANGSUNG');
+    if (sah === 'DITOLAK' || status === 'TAMAT - TUNGGU SAH') set('pengesahan', 'MENUNGGU');
+    set('sahPengadil', ''); set('sahPengadilPada', '');
+  }
+  sheet.getRange(rec.rowIndex + 1, 1, 1, row.length).setValues([row]);
+  if (jenis === 'TAMAT') {
+    tambahApprovalLog_([{ masa: now.toISOString(), matchId: id, keputusan: s1 + ' - ' + s2,
+      tindakan: 'KEPUTUSAN PENGADIL (TUNGGU SAH)', oleh: 'Pengadil ' + ref.nama }], 'BADMINTON');
+  }
+  SpreadsheetApp.flush();
+  CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  return { ok: true, versi: API_VERSI, sukan: 'BADMINTON', id: id, skorP1: s1, skorP2: s2, jenis: jenis,
+    status: jenis === 'TAMAT' ? 'TAMAT' : 'SEDANG BERLANGSUNG', pengadil: ref.nama };
 }
