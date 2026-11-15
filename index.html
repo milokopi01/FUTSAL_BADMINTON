@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1288,6 +1288,13 @@ body[data-sukan="SEMUA"] .not-semua { display:none !important; }
 .all-sec-head.all-bm-h { border-color:var(--bm-line); background:linear-gradient(135deg, rgba(192,132,252,.16), rgba(244,114,182,.06)); }
 .all-sec-head.all-bm-h .all-sec-ic { background:linear-gradient(135deg, var(--bm), var(--bm-2)); }
 #allBmWrap { margin:22px 0 20px; }
+/* v1.23.1: modal skor Badminton (Master Admin) */
+.bm-adm-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px; }
+.bm-adm-side label { display:block; font-weight:800; font-size:.86rem; margin-bottom:8px; min-height:2.4em; overflow-wrap:anywhere; }
+.bm-adm-row { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; gap:6px; }
+.bm-adm-row .input { text-align:center; font:800 1.6rem var(--font-display); padding:6px; }
+.bm-adm-row .btn { padding:0; font-size:1.3rem; min-height:48px; }
+@media (max-width:420px) { .bm-adm-grid { grid-template-columns:1fr; } }
 /* v1.23.0: mod SEMUA -> Futsal (2 lajur, kiri) + Badminton (3 lajur, kanan) sebelah-menyebelah, macam paparan projektor */
 body[data-sukan="SEMUA"] #tab-live .all-split { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:22px; align-items:start; margin-bottom:22px; }
 body[data-sukan="SEMUA"] #tab-live .all-split #allBmWrap { margin:0; }
@@ -2589,6 +2596,31 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
   <!-- =========================================================
        MODAL: REHAT KECEMASAN (FASA 5 - PENANGGUHAN SEMENTARA)
        ========================================================= -->
+  <!-- v1.23.1: MODAL SKOR BADMINTON (MASTER ADMIN) -->
+  <div class="modal-backdrop" id="bmAdminModal" role="dialog" aria-modal="true" aria-labelledby="bmAdminTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="bmAdminTitle">🏸 Skor Badminton</h3>
+          <p id="bmAdminInfo"></p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="bmAdminModal" aria-label="Tutup">×</button>
+      </div>
+      <div class="bm-adm-grid">
+        <div class="bm-adm-side"><label for="bmAdminS1" id="bmAdminL1">Pasukan 1</label>
+          <div class="bm-adm-row"><button type="button" class="btn" onclick="bmAdminStep(1,-1)" aria-label="Tolak satu mata">−</button><input class="input" id="bmAdminS1" type="number" min="0" max="99" step="1" inputmode="numeric" /><button type="button" class="btn btn-primary" onclick="bmAdminStep(1,1)" aria-label="Tambah satu mata">+</button></div></div>
+        <div class="bm-adm-side"><label for="bmAdminS2" id="bmAdminL2">Pasukan 2</label>
+          <div class="bm-adm-row"><button type="button" class="btn" onclick="bmAdminStep(2,-1)" aria-label="Tolak satu mata">−</button><input class="input" id="bmAdminS2" type="number" min="0" max="99" step="1" inputmode="numeric" /><button type="button" class="btn btn-primary" onclick="bmAdminStep(2,1)" aria-label="Tambah satu mata">+</button></div></div>
+      </div>
+      <div class="form-msg" id="bmAdminMsg"></div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <button type="button" class="btn" data-close-modal="bmAdminModal">Batal</button>
+        <button type="button" class="btn btn-primary" id="bmAdminSave" onclick="bmAdminHantar('SEMENTARA')">💾 Simpan Skor Semasa</button>
+        <button type="button" class="btn btn-warn" id="bmAdminFinal" onclick="bmAdminHantar('DISAHKAN')">🏁 Tamat &amp; Sahkan</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="rehatModal" role="dialog" aria-modal="true" aria-labelledby="rehatTitle">
     <div class="modal">
       <div class="modal-head">
@@ -16993,6 +17025,83 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function bmRefBoleh() {
       try { const s = getSession(); return !!s && s.peranan === 'PENGADIL' && refSukanOf(s) === 'BADMINTON' ? s : null; } catch (e) { return null; }
     }
+    /* v1.23.1: SKOR BADMINTON OLEH MASTER ADMIN (dari kad Simulasi Gelanggang)
+       Guna tindakan sedia ada 'simpanSkorSukan' (Code.gs) -> kunci Master Admin diperlukan.
+       SEMENTARA = perlawanan dipaparkan LIVE; DISAHKAN = keputusan akhir terus disahkan. */
+    function bmAdminBoleh() { try { return typeof canManageSystem === 'function' && canManageSystem(); } catch (e) { return false; } }
+    const bmAdm = { id: null, asal: null, busy: false };
+    async function bmAdminBaca(id) {
+      const data = await dashFetch('read&sukan=BADMINTON');
+      if (!data || !data.ok || !Array.isArray(data.matches)) throw new Error((data && data.error) || 'Gagal membaca jadual Badminton daripada Google Sheets.');
+      if (data.sukan !== 'BADMINTON') throw new Error('Google Apps Script yang aktif masih versi lama (tidak mengenali Badminton). Sila Deploy semula Code.gs terkini sebagai versi baharu, kemudian cuba lagi.');
+      const m = data.matches.find(x => String(x.id || '').toUpperCase() === String(id).toUpperCase());
+      if (!m) throw new Error(`Perlawanan ${id} tidak dijumpai dalam Google Sheets.`);
+      return m;
+    }
+    function bmAdminMsg(t, jenis) { const el = document.getElementById('bmAdminMsg'); if (el) setFormMsg(el, t, jenis || ''); }
+    function bmAdminSibuk(on) {
+      bmAdm.busy = on;
+      document.querySelectorAll('#bmAdminModal input, #bmAdminModal button:not(.modal-close)').forEach(el => { el.disabled = on; });
+    }
+    async function bmAdminBuka(id) {
+      if (!bmAdminBoleh()) { showToast('Hanya Master Admin atau pengadil Badminton boleh mengisi keputusan Badminton.', 'error'); return; }
+      if (!getGasUrl()) { showToast('URL Google Apps Script belum ditetapkan.', 'error'); return; }
+      bmAdm.id = id; bmAdm.asal = null;
+      document.getElementById('bmAdminTitle').textContent = `🏸 ${id}`;
+      document.getElementById('bmAdminInfo').textContent = 'Membaca perlawanan daripada Google Sheets…';
+      ['bmAdminS1', 'bmAdminS2'].forEach(k => { document.getElementById(k).value = ''; });
+      openModal('bmAdminModal');
+      bmAdminMsg(''); bmAdminSibuk(true);
+      try {
+        const m = await bmAdminBaca(id);
+        bmAdm.asal = m;
+        const st = String(m.status || '').toUpperCase(), sah = String(m.pengesahan || '').toUpperCase();
+        document.getElementById('bmAdminTitle').textContent = `🏸 ${m.id} · Gelanggang ${m.gelanggang || '-'}`;
+        document.getElementById('bmAdminInfo').textContent = `${m.peringkat || m.kategori || ''} · Status: ${m.status || 'MENUNGGU GILIRAN'}${m.pengadil ? ' · Pengadil: ' + m.pengadil : ''}`;
+        document.getElementById('bmAdminL1').textContent = m.namaP1 || 'Pasukan 1';
+        document.getElementById('bmAdminL2').textContent = m.namaP2 || 'Pasukan 2';
+        document.getElementById('bmAdminS1').value = m.skorP1 === '' || m.skorP1 == null ? 0 : m.skorP1;
+        document.getElementById('bmAdminS2').value = m.skorP2 === '' || m.skorP2 == null ? 0 : m.skorP2;
+        const belum = !st || st === 'MENUNGGU GILIRAN' || st === 'BELUM';
+        document.getElementById('bmAdminSave').textContent = belum ? '▶ Mulakan Perlawanan (Live)' : '💾 Simpan Skor Semasa';
+        bmAdminSibuk(false);
+        if (sah === 'DISAHKAN') { document.getElementById('bmAdminSave').disabled = true; bmAdminMsg('Keputusan ini telah DISAHKAN. Gunakan Tamat & Sahkan untuk membetulkan skor.', 'error'); }
+        else if (m.pengadil && ['SEDANG BERLANGSUNG', 'LIVE', 'REHAT'].includes(st)) bmAdminMsg(`Perhatian: perlawanan ini sedang diadili oleh ${m.pengadil}.`, 'error');
+      } catch (e) {
+        bmAdminSibuk(false);
+        ['bmAdminSave', 'bmAdminFinal'].forEach(k => { document.getElementById(k).disabled = true; });
+        bmAdminMsg(e.message || 'Gagal membaca perlawanan.', 'error');
+      }
+    }
+    function bmAdminStep(side, d) {
+      if (bmAdm.busy) return;
+      const el = document.getElementById('bmAdminS' + side);
+      el.value = Math.max(0, Math.min(99, (parseInt(el.value, 10) || 0) + d));
+    }
+    async function bmAdminHantar(keputusan) {
+      if (bmAdm.busy || !bmAdm.asal) return;
+      if (!bmAdminBoleh()) { bmAdminMsg('Hanya Master Admin dibenarkan.', 'error'); return; }
+      const m = bmAdm.asal;
+      const v = { skorP1: document.getElementById('bmAdminS1').value, skorP2: document.getElementById('bmAdminS2').value, keputusan };
+      try {
+        if (keputusan === 'DISAHKAN' && !await uiConfirm(`Tamatkan & SAHKAN keputusan ${m.id}?\n\n${m.namaP1} ${v.skorP1} - ${v.skorP2} ${m.namaP2}\n\nKeputusan akan terus dikira dalam carta kumpulan.`)) return;
+        const adminKey = await ensureAdminKey();
+        if (!adminKey) return;
+        const payload = binaPayloadSkor('BADMINTON', m, v, adminKey);
+        bmAdminSibuk(true); bmAdminMsg('Menyimpan ke Google Sheets…', '');
+        const res = await callGas(payload);
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Simpanan skor gagal.');
+        const baru = await bmAdminBaca(m.id);
+        if (Number(baru.skorP1) !== payload.skor.skorP1 || Number(baru.skorP2) !== payload.skor.skorP2) throw new Error('Skor belum dapat disahkan dalam Google Sheets; cuba lagi.');
+        closeModal('bmAdminModal');
+        showToast(keputusan === 'DISAHKAN' ? `✅ ${m.id} disahkan: ${payload.skor.skorP1} - ${payload.skor.skorP2}` : `🏸 ${m.id} dikemas kini: ${payload.skor.skorP1} - ${payload.skor.skorP2} (Live)`, 'success');
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+        try { dashRefresh(true); } catch (e) { /* abaikan */ }
+      } catch (e) {
+        bmAdminMsg(e.message || 'Simpanan gagal; skor dikekalkan.', 'error');
+      } finally { bmAdminSibuk(false); }
+    }
+
     async function bmLiveAdili(id) {
       if (!bmRefBoleh()) { showToast('Hanya pengadil Badminton boleh mengadili perlawanan Badminton.', 'error'); return; }
       bukaMejaBadminton();
@@ -17026,6 +17135,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (ref && m && !m.tbd1 && !m.tbd2) {
         const mine = c.live && c.live.pengadil && refNameKey(c.live.pengadil) === refNameKey(ref.nama);
         if (c.st === 'ready' || mine) act = `<button type="button" class="btn btn-primary btn-sm" onclick="bmLiveAdili('${dashEsc(m.id)}')">🏸 ${mine ? 'Sambung adili' : 'Adili perlawanan ini'}</button>`;
+      }
+      // v1.23.1: Master Admin boleh mula / kemas kini / sahkan mana-mana perlawanan Badminton
+      if (!ref && bmAdminBoleh() && m && !m.tbd1 && !m.tbd2) {
+        const lbl = c.st === 'live' ? '✎ Kemas Kini Skor' : c.st === 'done' ? '✔ Semak &amp; Sahkan Keputusan' : '▶ Mulakan Perlawanan';
+        act = `<button type="button" class="btn btn-primary btn-sm" onclick="bmAdminBuka('${dashEsc(m.id)}')">${lbl}</button>`;
       }
       return `
         <article class="court-card bm-court status-${c.st}" data-bm-court="${dashEsc(c.gel)}">
