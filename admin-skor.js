@@ -7,7 +7,9 @@ function binaPayloadSkor(sukan,match,values,adminKey) {
     if(String(values[f]??'').trim()==='')throw new Error('Kedua-dua skor diperlukan.');
     const n=Number(values[f]); if(!Number.isInteger(n)||n<0||n>99)throw new Error('Skor mesti nombor bulat 0 hingga 99.'); skor[f]=n;
   });
-  if(!['SEMENTARA','DISAHKAN'].includes(skor.keputusan))throw new Error('Pilih jenis keputusan.');
+  // v1.27.2: DITOLAK = Master Admin menolak keputusan Badminton dari Peti Kelulusan (kembali kepada pengadil)
+  if(!['SEMENTARA','DISAHKAN','DITOLAK'].includes(skor.keputusan))throw new Error('Pilih jenis keputusan.');
+  if(skor.keputusan==='DITOLAK'){if(sukan!=='BADMINTON')throw new Error('Tolak keputusan Futsal melalui Peti Kelulusan.');skor.catatan=String(values.catatan||'Skor perlu disemak semula').trim().slice(0,200);}
   if(sukan==='BADMINTON'&&skor.keputusan==='DISAHKAN'&&skor.skorP1===skor.skorP2)throw new Error('Keputusan Badminton tidak boleh seri.');
   const asal={};SKOR_ASAL_FIELDS.forEach(f=>{asal[f]=match[f]??'';});
   return {action:'simpanSkorSukan',sukan,id:match.id,adminKey,asal,skor};

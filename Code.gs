@@ -167,7 +167,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
+const API_VERSI = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
+// const API_VERSI_LAMA = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
 // const API_VERSI_170 = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
 // const API_VERSI_161 = '1.16.1';  // v1.16.1: fungsi Sukan.gs digabung ke Code.gs
 // const API_VERSI_B6 = '1.16.0';  // Bahagian 6: keluaran akhir (semakan pepijat & kemasan)
@@ -3109,6 +3110,8 @@ function simpanSkorSukan_(body, sukan) {
   if (String(d.fasaMasa || '').toUpperCase() === 'REHAT KECEMASAN') throw new Error('Skor dibekukan semasa Rehat Kecemasan.');
   const fields = ['skorP1','skorP2','status','pengesahan','pemenangPenalti'];
   if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
+  // v1.18.1: Tolak keputusan Badminton (Peti Kelulusan) -> kembali kepada pengadil
+  if ((body.skor || {}).keputusan === 'DITOLAK') return tolakKeputusanSukan_(sheet, table, rec, id, sukan, body.skor);
   const x = body.skor || {};
   const s1 = skorInt_(x.skorP1), s2 = skorInt_(x.skorP2);
   if (s1 === null || s2 === null) throw new Error('Skor mesti nombor bulat 0 hingga 99.');
@@ -3224,4 +3227,33 @@ function skorPengadilBadminton_(body) {
   CacheService.getScriptCache().remove(BM_CACHE_KEY);
   return { ok: true, versi: API_VERSI, sukan: 'BADMINTON', id: id, skorP1: s1, skorP2: s2, jenis: jenis,
     status: jenis === 'TAMAT' ? 'TAMAT' : 'SEDANG BERLANGSUNG', pengadil: ref.nama };
+}
+
+
+/* =========================================================
+   v1.18.1: TOLAK KEPUTUSAN BADMINTON (PETI KELULUSAN)
+   - Hanya Master Admin (disemak dalam doPost sebelum simpanSkorSukan_).
+   - Hanya perlawanan TAMAT - TUNGGU SAH (belum disahkan) boleh ditolak.
+   - Status kembali SEDANG BERLANGSUNG, pengesahan DITOLAK -> pengadil boleh hantar semula.
+   ========================================================= */
+function tolakKeputusanSukan_(sheet, table, rec, id, sukan, x) {
+  if (sukan !== 'BADMINTON') throw new Error('Tolak keputusan Futsal menggunakan Peti Kelulusan sedia ada.');
+  const d = rec.data;
+  if (String(d.pengesahan || '').toUpperCase() === 'DISAHKAN' || statusBaris_(d) === 'SELESAI') {
+    throw new Error('Keputusan ' + id + ' telah disahkan dan tidak boleh ditolak.');
+  }
+  if (statusBaris_(d) !== 'TAMAT - TUNGGU SAH') throw new Error('Perlawanan ' + id + ' tidak menunggu pengesahan.');
+  const sebab = String((x && x.catatan) || '').trim().replace(/^[=+@-]+/, '').slice(0, 200) || 'Skor perlu disemak semula';
+  const now = new Date();
+  const row = table.values[rec.rowIndex].slice();
+  const set = function (f, v) { if (table.colOf[f] !== undefined) row[table.colOf[f]] = v; };
+  set('status', 'SEDANG BERLANGSUNG'); set('pengesahan', 'DITOLAK'); set('fasaMasa', '');
+  set('masaTamat', ''); set('sahPengadil', ''); set('sahPengadilPada', '');
+  set('catatan', sebab); set('kemaskini', now);
+  sheet.getRange(rec.rowIndex + 1, 1, 1, row.length).setValues([row]);
+  tambahApprovalLog_([{ masa: now.toISOString(), matchId: id, keputusan: (d.skorP1 === null ? 0 : d.skorP1) + ' - ' + (d.skorP2 === null ? 0 : d.skorP2),
+    tindakan: 'DITOLAK: ' + sebab, oleh: 'Master Admin' }], sukan);
+  SpreadsheetApp.flush();
+  CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  return { ok: true, versi: API_VERSI, sukan: sukan, id: id, keputusan: 'DITOLAK', catatan: sebab };
 }

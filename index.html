@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxVLwi8ZEiyS9vTIsJ1A0cJ7-vfA8fp4SW4--tbLvm5qpJ4DvwhNYvK1f-QyKLhCPJpeg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -8923,7 +8923,7 @@ void main() {
     function updateApprovalBadge() {
       const badge = document.getElementById('approvalCount');
       if (!badge) return;
-      const count = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length;
+      const count = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length + petiBmPending().length;   // v1.27.2: + Badminton
       badge.textContent = String(count);
       badge.classList.toggle('hidden', !(canApprove() && count > 0));
     }
@@ -10138,18 +10138,33 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return 0;
       }
       const pending = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH);
-      if (!pending.length) {
-        showToast('Tiada keputusan menunggu pengesahan.', 'info');
+      // v1.27.2: keputusan Badminton turut disahkan (kunci Master Admin diperlukan oleh Google Sheets)
+      const bmSemua = petiBmPending();
+      const bmPending = canManageSystem() ? bmSemua : [];
+      if (!pending.length && !bmPending.length) {
+        showToast(bmSemua.length ? 'Keputusan Badminton hanya boleh disahkan oleh Master Admin.' : 'Tiada keputusan menunggu pengesahan.', bmSemua.length ? 'warn' : 'info');
         return 0;
       }
-      if (!await uiConfirm(`Sahkan ${pending.length} keputusan sekaligus?`)) return 0;
+      const pecahan = [pending.length ? `${pending.length} Futsal` : '', bmPending.length ? `${bmPending.length} Badminton` : ''].filter(Boolean).join(' + ');
+      if (!await uiConfirm(`Sahkan ${pending.length + bmPending.length} keputusan sekaligus? (${pecahan})`)) return 0;
       let count = 0;
       const done = [];
       pending.forEach(m => { if (approveMatch(m.id, { silent: true })) { count += 1; done.push(m.id); } });
       if (done.length) pushDecisions(done);
       saveState();
       refreshAllViews();
-      showToast(`${count} keputusan disahkan.`, 'success');
+      let bmOk = 0;
+      if (bmPending.length) {
+        const adminKey = await ensureAdminKey();
+        if (adminKey) {
+          for (const m of bmPending) { if (await petiBmSahkan(m.id, { silent: true, adminKey })) bmOk += 1; }
+          await petiBmTarik({ manual: true });
+          renderApprovals(); updateApprovalBadge();
+        }
+      }
+      count += bmOk;
+      const gagalBm = bmPending.length - bmOk;
+      showToast(`${count} keputusan disahkan.` + (gagalBm ? ` ${gagalBm} keputusan Badminton gagal disahkan - cuba lagi.` : ''), gagalBm ? 'warn' : 'success', gagalBm ? 6500 : 4000);
       return count;
     }
 
@@ -10337,8 +10352,24 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return null;
     }
 
-    // Baca Jadual_Perlawanan daripada Google Sheets & kemas kini Peti Kelulusan
+    // v1.27.2: Peti Kelulusan membaca keputusan FUTSAL dan BADMINTON serentak.
+    // Sebelum ini hanya Jadual_Perlawanan (Futsal) dibaca, jadi keputusan Badminton yang
+    // dihantar pengadil ("Tamat · Tunggu Sah") tidak pernah muncul dalam Peti Kelulusan.
     async function pullMatchesFromSheet(opts = {}) {
+      const bolehBm = !!getSession() && canApprove() && !!getGasUrl() && !isShareView();
+      const bmJob = bolehBm ? petiBmTarik(opts) : Promise.resolve(false);
+      petiBm.job = bmJob;
+      const [ok, bmBerubah] = await Promise.all([pullFutsalFromSheet(opts), bmJob.catch(() => false)]);
+      if (bmBerubah) {
+        updateApprovalBadge();
+        renderApprovals();
+        try { if (typeof renderAdmin === 'function') renderAdmin(); } catch (e) { /* abaikan */ }
+      }
+      return ok;
+    }
+
+    // Baca Jadual_Perlawanan (Futsal) daripada Google Sheets & kemas kini Peti Kelulusan
+    async function pullFutsalFromSheet(opts = {}) {
       const url = getGasUrl();
       if (!getSession() || !url || isShareView()) { updateApprovalSyncInfo(); return false; }
       if (resultSync.busy) return false;
@@ -10394,7 +10425,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           }
         }
         if (opts.manual && !changed) {
-          const n = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length;
+          try { if (petiBm.job) await petiBm.job; } catch (e) { /* abaikan */ }
+          const n = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length + petiBmPending().length;
           showToast(n ? `Tiada keputusan baharu. ${n} keputusan masih menunggu pengesahan.` : 'Tiada keputusan baharu daripada pengadil.', 'info');
         }
         return true;
@@ -14595,6 +14627,172 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     /* ---------------------------------------------------------
+       4.4a v1.27.2: KEPUTUSAN BADMINTON DALAM PETI KELULUSAN
+       - Data dibaca daripada tab Jadual_Badminton (GET ?action=badminton).
+       - Perlawanan berstatus TAMAT (dihantar pengadil, belum disahkan) dipaparkan.
+       - Sahkan  -> simpanSkorSukan (keputusan DISAHKAN) - kunci Master Admin.
+       - Tolak   -> simpanSkorSukan (keputusan DITOLAK)  - perlawanan kembali LIVE
+                    kepada pengadil (memerlukan Code.gs 1.18.1).
+       --------------------------------------------------------- */
+    const petiBm = { busy: false, err: '', at: 0, job: null, kenal: null, sibuk: {} };
+
+    function petiBmPending() {
+      try {
+        if (typeof dash === 'undefined' || !dash.bm || !dash.bm.data || typeof bmIsWaitSah !== 'function') return [];
+        return dash.bm.data.matches.filter(bmIsWaitSah)
+          .sort((a, b) => (Date.parse(a.kemas) || 0) - (Date.parse(b.kemas) || 0) || String(a.id).localeCompare(String(b.id)));
+      } catch (e) { return []; }
+    }
+
+    async function petiBmTarik(opts = {}) {
+      if (petiBm.busy) { try { return await petiBm.job; } catch (e) { return false; } }
+      if (!opts.manual && Date.now() - petiBm.at < 12000) return false;
+      if (!getGasUrl() || !navigator.onLine || typeof dashFetch !== 'function') return false;
+      petiBm.busy = true;
+      const sebelum = JSON.stringify(petiBmPending().map(m => [m.id, m.s1, m.s2]));
+      const errSebelum = petiBm.err;
+      try {
+        const d = await dashFetch('badminton');
+        if (d && d.ok && Array.isArray(d.jadual)) {
+          if (d.jadual.length) {
+            dash.bm.data = normBmServer(d); dash.bm.at = Date.now(); dash.bm.err = ''; dash.bm.lama = false;
+            dash.bm.srvAt = Date.parse(d.masa) || 0;
+          }
+          petiBm.err = '';
+        } else {
+          petiBm.err = (d && d.error) || 'Data Badminton tidak dapat dibaca.';
+        }
+      } catch (e) {
+        petiBm.err = (e && e.message) || 'Ralat rangkaian.';
+      } finally {
+        petiBm.busy = false;
+        petiBm.at = Date.now();
+      }
+      const kini = petiBmPending();
+      // Makluman keputusan Badminton baharu (sama seperti Futsal)
+      const ids = kini.map(m => m.id);
+      if (petiBm.kenal && !opts.silent && canApprove()) {
+        const baru = ids.filter(id => !petiBm.kenal.has(id));
+        if (baru.length) showToast(`📥 ${baru.length} keputusan Badminton baharu (${baru.join(', ')}) menunggu pengesahan.`, 'warn', 6000);
+      }
+      petiBm.kenal = new Set(ids);
+      return JSON.stringify(kini.map(m => [m.id, m.s1, m.s2])) !== sebelum || petiBm.err !== errSebelum;
+    }
+
+    function petiBmKad(m) {
+      const admin = canManageSystem();
+      const busy = !!petiBm.sibuk[m.id];
+      const kat = m.kat === 'SR' ? '<span class="badge badge-sr">SR</span>' : '<span class="badge badge-sm">SM</span>';
+      const tahap = typeof bmStageText === 'function' ? bmStageText(m) : (m.peringkat || '');
+      const masa = m.kemas || m.pada;
+      const id = escapeHtml(m.id);
+      return `
+          <div class="card glass approval-item">
+            <div>
+              <div class="ap-title">🏸 ${id}${m.ov ? ' · ' + escapeHtml(m.ov) : ''} · ${escapeHtml(tahap)} <span class="badge">BADMINTON</span> ${kat}</div>
+              <div class="ap-meta">Gelanggang ${escapeHtml(m.gel || '-')} · 🧑‍⚖️ Pengadil: ${escapeHtml(m.pengadil || '-')} · ${formatTime(masa)}</div>
+              <div class="ap-score">${escapeHtml(m.nama1)} <span style="color:var(--brand);">${Number(m.s1) || 0} - ${Number(m.s2) || 0}</span> ${escapeHtml(m.nama2)}</div>
+              ${m.pengadil ? `<div class="ap-meta ap-sah">✅ Dihantar pengadil: <strong>${escapeHtml(m.pengadil)}</strong></div>` : '<div class="ap-meta ap-nosah">⚠ Tiada nama pengadil direkod</div>'}
+              ${admin ? '' : '<div class="ap-meta ap-nosah">🔒 Keputusan Badminton hanya boleh disahkan oleh Master Admin.</div>'}
+            </div>
+            <div class="approval-actions">
+              <button type="button" class="btn btn-success btn-sm" onclick="petiBmSahkan('${id}')" ${admin && !busy ? '' : 'disabled'}>${busy ? '⏳ Menyimpan…' : '✔ Sahkan'}</button>
+              <button type="button" class="btn btn-sm" onclick="petiBmTolak('${id}')" ${admin && !busy ? '' : 'disabled'}>✖ Tolak</button>
+            </div>
+          </div>`;
+    }
+
+    function petiBmSelepas() {
+      renderApprovals();
+      updateApprovalBadge();
+      try { if (typeof renderBadmintonViews === 'function') renderBadmintonViews(); } catch (e) { /* abaikan */ }
+      try { if (typeof renderAdmin === 'function') renderAdmin(); } catch (e) { /* abaikan */ }
+    }
+
+    function petiBmLog(m, tindakan, s1, s2) {
+      const session = getSession();
+      state.approvalLog.unshift({
+        masa: nowIso(), matchId: m.id,
+        keputusan: `${m.namaP1 || m.nama1 || ''} ${s1 ?? 0} - ${s2 ?? 0} ${m.namaP2 || m.nama2 || ''} (Badminton)`,
+        tindakan, oleh: session ? session.nama : 'Master Admin'
+      });
+      if (state.approvalLog.length > 300) state.approvalLog.length = 300;
+      saveState();
+    }
+
+    async function petiBmSahkan(id, opts = {}) {
+      if (!canManageSystem()) { showToast('Keputusan Badminton hanya boleh disahkan oleh Master Admin.', 'error'); return false; }
+      if (petiBm.sibuk[id]) return false;
+      const local = petiBmPending().find(m => m.id === id);
+      if (!opts.silent && local && !await uiConfirm(`Sahkan keputusan Badminton ${id}?\n\n${local.nama1}  ${local.s1 ?? 0} - ${local.s2 ?? 0}  ${local.nama2}\n\nKeputusan akan dikira dalam carta kumpulan.`)) return false;
+      const adminKey = opts.adminKey || await ensureAdminKey();
+      if (!adminKey) return false;
+      petiBm.sibuk[id] = true;
+      if (!opts.silent) renderApprovals();
+      try {
+        const m = await bmAdminBaca(id);
+        const st = String(m.status || '').toUpperCase(), sah = String(m.pengesahan || '').toUpperCase();
+        if (sah === 'DISAHKAN') { if (!opts.silent) showToast(`${id} telah pun disahkan.`, 'info'); return true; }
+        if (st.indexOf('TAMAT') < 0) throw new Error(`${id} tidak lagi menunggu pengesahan (status: ${m.status || '-'}).`);
+        const payload = binaPayloadSkor('BADMINTON', m, { skorP1: m.skorP1, skorP2: m.skorP2, keputusan: 'DISAHKAN' }, adminKey);
+        const res = await callGas(payload);
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Google Sheets menolak pengesahan.');
+        petiBmLog(m, 'DISAHKAN (BADMINTON)', payload.skor.skorP1, payload.skor.skorP2);
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+        if (!opts.silent) showToast(`✅ ${id} (Badminton) disahkan: ${payload.skor.skorP1} - ${payload.skor.skorP2}`, 'success');
+        return true;
+      } catch (e) {
+        showToast(`${id}: ${(e && e.message) || 'Pengesahan gagal.'}`, 'error', 6500);
+        return false;
+      } finally {
+        delete petiBm.sibuk[id];
+        if (!opts.silent) {
+          await petiBmTarik({ manual: true, silent: true });
+          try { if (typeof dashRefresh === 'function') dashRefresh(true); } catch (e) { /* abaikan */ }
+          petiBmSelepas();
+        }
+      }
+    }
+
+    async function petiBmTolak(id) {
+      if (!canManageSystem()) { showToast('Keputusan Badminton hanya boleh ditolak oleh Master Admin.', 'error'); return false; }
+      if (petiBm.sibuk[id]) return false;
+      const reason = await uiPrompt(`Sebab keputusan Badminton ${id} ditolak (akan dipaparkan kepada pengadil):`, 'Skor perlu disemak semula');
+      if (reason === null) return false;
+      const adminKey = await ensureAdminKey();
+      if (!adminKey) return false;
+      petiBm.sibuk[id] = true;
+      renderApprovals();
+      try {
+        const m = await bmAdminBaca(id);
+        const st = String(m.status || '').toUpperCase(), sah = String(m.pengesahan || '').toUpperCase();
+        if (sah === 'DISAHKAN') throw new Error('Keputusan ini telah DISAHKAN dan tidak boleh ditolak.');
+        if (st.indexOf('TAMAT') < 0) throw new Error(`${id} tidak lagi menunggu pengesahan (status: ${m.status || '-'}).`);
+        const payload = binaPayloadSkor('BADMINTON', m, {
+          skorP1: m.skorP1 ?? 0, skorP2: m.skorP2 ?? 0, keputusan: 'DITOLAK', catatan: reason.trim() || 'Skor perlu disemak semula'
+        }, adminKey);
+        const res = await callGas(payload);
+        if (!res || !res.ok) {
+          const err = (res && res.error) || 'Google Sheets menolak permintaan.';
+          if (/keputusan tidak sah/i.test(err)) throw new Error('Google Sheets masih menggunakan Code.gs versi lama. Deploy Code.gs 1.18.1 sebagai versi baharu untuk membolehkan Tolak keputusan Badminton.');
+          throw new Error(err);
+        }
+        petiBmLog(m, `DITOLAK (BADMINTON): ${payload.skor.catatan}`, m.skorP1, m.skorP2);
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+        showToast(`${id} ditolak dan dikembalikan kepada pengadil Badminton untuk semakan.`, 'warn');
+        return true;
+      } catch (e) {
+        showToast(`${id}: ${(e && e.message) || 'Gagal menolak keputusan.'}`, 'error', 7000);
+        return false;
+      } finally {
+        delete petiBm.sibuk[id];
+        await petiBmTarik({ manual: true, silent: true });
+        try { if (typeof dashRefresh === 'function') dashRefresh(true); } catch (e) { /* abaikan */ }
+        petiBmSelepas();
+      }
+    }
+
+    /* ---------------------------------------------------------
        4.4 PETI KELULUSAN URUSETIA
        --------------------------------------------------------- */
     function renderApprovals() {
@@ -14612,7 +14810,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         .filter(m => m.status === MATCH_STATUS.TUNGGU_SAH)
         .sort((a, b) => new Date(a.masaTamat || 0) - new Date(b.masaTamat || 0));
 
-      list.innerHTML = pending.length ? pending.map(m => {
+      const bmPending = petiBmPending();
+      const futsalHtml = pending.map(m => {
         const pen = m.pemenangPenalti
           ? `<div class="ap-meta">🥅 Menang penalti: <strong>${escapeHtml(m.pemenangPenalti === 'P1' ? m.namaP1 : m.namaP2)}</strong></div>` : '';
         const by = m.pengadil || (m.dihantarOleh ? ((getUserById(m.dihantarOleh) || getRefereeById(m.dihantarOleh) || {}).nama || m.dihantarOleh) : 'Pengadil');
@@ -14625,7 +14824,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return `
           <div class="card glass approval-item">
             <div>
-              <div class="ap-title">${escapeHtml(m.id)} · ${escapeHtml(stageLabel(m))} ${m.kategori === 'SR' ? '<span class="badge badge-sr">SR</span>' : '<span class="badge badge-sm">SM</span>'}</div>
+              <div class="ap-title">⚽ ${escapeHtml(m.id)} · ${escapeHtml(stageLabel(m))} <span class="badge">FUTSAL</span> ${m.kategori === 'SR' ? '<span class="badge badge-sr">SR</span>' : '<span class="badge badge-sm">SM</span>'}</div>
               <div class="ap-meta">Gelanggang ${escapeHtml(m.gelanggang)} · 🧑‍⚖️ Pengadil: ${escapeHtml(by)} · ${formatTime(m.masaTamat)}</div>
               <div class="ap-score">${escapeHtml(m.namaP1)} <span style="color:var(--brand);">${Number(m.skorP1) || 0} - ${Number(m.skorP2) || 0}</span> ${escapeHtml(m.namaP2)}</div>
               ${pen}
@@ -14637,7 +14836,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <button type="button" class="btn btn-sm" onclick="rejectMatch('${m.id}')">✖ Tolak</button>
             </div>
           </div>`;
-      }).join('') : `
+      }).join('');
+      const bmHtml = bmPending.map(petiBmKad).join('');
+      const bmNota = petiBm.err && !bmPending.length
+        ? `<div class="card glass approval-item"><div><div class="ap-title">🏸 Badminton</div><div class="ap-meta ap-nosah">⚠ Keputusan Badminton tidak dapat dibaca: ${escapeHtml(petiBm.err)}</div></div></div>` : '';
+
+      list.innerHTML = (pending.length || bmPending.length) ? (futsalHtml + bmHtml + bmNota) : bmNota + `
         <div class="card glass empty-state">
           <div class="icon">📭</div>
           <p>Tiada keputusan menunggu pengesahan.</p>
@@ -14872,7 +15076,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
       set('statTotalMatches', state.matches.length);
       set('statLive', state.matches.filter(m => m.status === MATCH_STATUS.LIVE).length);
-      set('statPending', state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length);
+      set('statPending', state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH).length + petiBmPending().length);
       set('statApproved', state.matches.filter(isApproved).length);
       set('statUsers', state.users.filter(u => u.status === 'AKTIF' && u.peranan !== 'PENGADIL').length);
       set('statReferees', (state.referees || []).filter(r => r.status === 'AKTIF').length);
