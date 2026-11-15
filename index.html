@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -10338,6 +10338,48 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return !!t && t.charAt(0) !== '(' && !/^(JOHAN|NAIB JOHAN|MENANG|KALAH)\b/i.test(t);
     }
     function bmRefMine(m, s) { return !!m.pengadil && refNameKey(m.pengadil) === refNameKey(s.nama); }
+    /* v1.22.0: SATU perlawanan bagi setiap gelanggang (seperti Futsal: 4 gelanggang = 4 pilihan)
+       - Susunan giliran ikut No. Perlawanan Keseluruhan (P1, P2, ...) — sama dengan Papan Live / projektor.
+       - Status diambil daripada jadual Google Sheets yang dibaca oleh pengadil (bmRef.list). */
+    const BM_REF_TERBIAR_MS = 30 * 60000;   // sepadan dengan BM_PENGADIL_TERBIAR_MINIT dalam Code.gs
+    function bmRefRankMap() {
+      const map = {};
+      try { bmModel().matches.forEach((m, i) => { map[String(m.id).toUpperCase()] = i; }); } catch (e) { /* abaikan */ }
+      return map;
+    }
+    function bmRefSlots(s) {
+      const rank = bmRefRankMap();
+      const key = m => { const r = rank[String(m.id).toUpperCase()]; return r === undefined ? 10000 + (Number(m.no) || 0) : r; };
+      const byGel = {};
+      bmRef.list.forEach(m => { const g = String(m.gelanggang || '').trim(); if (g) (byGel[g] = byGel[g] || []).push(m); });
+      return Object.keys(byGel).sort((a, b) => a.localeCompare(b, 'ms', { numeric: true })).map(gel => {
+        const ms = byGel[gel].slice().sort((a, b) => key(a) - key(b) || String(a.id).localeCompare(String(b.id)));
+        const of = st => ms.filter(m => bmRefStatus(m) === st);
+        const live = of('LIVE'), tolak = of('DITOLAK'), belum = of('BELUM'), tunggu = of('TUNGGU');
+        const liveMine = live.find(m => bmRefMine(m, s));
+        const liveLain = live.find(m => !bmRefMine(m, s));
+        let m = null, can = false, reason = '';
+        if (liveMine) { m = liveMine; can = true; }
+        else if (liveLain) {
+          m = liveLain;
+          const kemas = liveLain.kemaskini ? new Date(liveLain.kemaskini).getTime() : 0;
+          const terbiar = !liveLain.pengadil || (kemas && Date.now() - kemas >= BM_REF_TERBIAR_MS);
+          if (terbiar) can = true; else reason = '🔒 Sedang diadili ' + liveLain.pengadil;
+        }
+        else if (tolak.length) { m = tolak[0]; can = true; }
+        else if (belum.length) {
+          m = belum[0];
+          if (bmRefNamaSah(m.namaP1) && bmRefNamaSah(m.namaP2)) can = true;
+          else reason = '⏳ Menunggu penetapan pasukan (kalah mati)';
+        }
+        else reason = tunggu.length ? '✅ Semua perlawanan dimainkan · menunggu pengesahan' : '✅ Semua perlawanan gelanggang ini selesai';
+        const next = belum.find(x => x !== m) || null;
+        return { gel, m, can, reason, next, baki: belum.filter(x => x !== m).length, kat: ms[0] ? (ms[0].kategori || '') : '' };
+      });
+    }
+    function bmRefKat(k) { const u = String(k || '').toUpperCase(); return u === 'SR' ? 'Sekolah Rendah' : u === 'SM' ? 'Sekolah Menengah' : String(k || ''); }
+    function bmRefMyLive(s) { return bmRef.list.find(m => bmRefMine(m, s) && bmRefStatus(m) === 'LIVE') || null; }
+
     function bmRefBadge(st) {
       return ({
         LIVE: '<span class="badge badge-live badge-dot">Live</span>',
@@ -10390,26 +10432,30 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       } else if (!s.token) {
         body = '<div class="form-msg error">Log masuk luar talian: log keluar dan log masuk semula dengan internet untuk menghantar skor.</div>';
       } else {
-        const semua = bmRef.list.filter(m => bmRefStatus(m) !== 'DISAHKAN' && bmRefNamaSah(m.namaP1) && bmRefNamaSah(m.namaP2));
-        const gels = Array.from(new Set(semua.map(m => String(m.gelanggang || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ms', { numeric: true }));
-        const list = semua.filter(m => bmRef.gel === 'SEMUA' || String(m.gelanggang || '').trim() === bmRef.gel);
-        const rank = m => { const st = bmRefStatus(m); return bmRefMine(m, s) && st === 'LIVE' ? 0 : st === 'LIVE' ? 1 : st === 'DITOLAK' ? 2 : st === 'BELUM' ? 3 : 4; };
-        list.sort((a, b) => rank(a) - rank(b) || String(a.masaJadual || '').localeCompare(String(b.masaJadual || '')) || (Number(a.no) || 0) - (Number(b.no) || 0) || String(a.id).localeCompare(String(b.id)));
-        const rows = list.map(m => {
+        const slots = bmRefSlots(s);
+        const gels = slots.map(x => x.gel);
+        const list = slots.filter(x => bmRef.gel === 'SEMUA' || x.gel === bmRef.gel);
+        const myLive = bmRefMyLive(s);
+        const rows = list.map(x => {
+          const m = x.m;
+          if (!m) return `
+            <div class="bmref-row">
+              <div class="info"><strong>Gelanggang ${escapeHtml(x.gel)}</strong><small>${escapeHtml(x.reason)}</small></div>
+            </div>`;
           const st = bmRefStatus(m);
-          const lain = m.pengadil && !bmRefMine(m, s) && (st === 'LIVE' || st === 'TUNGGU');
           const sel = bmRef.sel && bmRef.sel.id === m.id;
+          const sibuk = !!myLive && myLive.id !== m.id;
           const sk = (m.skorP1 ?? '') === '' && (m.skorP2 ?? '') === '' ? '— : —' : `${m.skorP1 ?? 0} : ${m.skorP2 ?? 0}`;
           return `
             <div class="bmref-row${sel ? ' sel' : ''}">
               <div class="info">
-                <strong>${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
-                <small>${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}</small>
+                <strong>Gelanggang ${escapeHtml(x.gel)} · ${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
+                <small>${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}${x.reason ? ' · ' + escapeHtml(x.reason) : ''}${x.next ? ' · Seterusnya: ' + escapeHtml(x.next.id) : ''}</small>
               </div>
               <div class="sk">${sk}</div>
               ${bmRefBadge(st)}
-              <button type="button" class="btn btn-sm ${lain ? '' : 'btn-primary'}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy || (lain && st === 'TUNGGU') ? 'disabled' : ''}>
-                ${st === 'TUNGGU' && !lain ? '✎ Ubah' : lain ? (st === 'TUNGGU' ? '🔒 ' + escapeHtml(m.pengadil) : '👀 Diadili ' + escapeHtml(m.pengadil)) : '🏸 Adili'}
+              <button type="button" class="btn btn-sm ${x.can && !sibuk ? 'btn-primary' : ''}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy || !x.can || sibuk ? 'disabled' : ''}>
+                ${!x.can ? '🔒 Belum boleh' : sibuk ? '🔒 Tamatkan perlawanan anda' : st === 'LIVE' && bmRefMine(m, s) ? '▶ Sambung' : '🏸 Adili'}
               </button>
             </div>`;
         }).join('');
@@ -10444,7 +10490,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <option value="SEMUA">Semua Gelanggang Badminton</option>
               ${gels.map(g => `<option value="${escapeHtml(g)}" ${bmRef.gel === g ? 'selected' : ''}>Gelanggang ${escapeHtml(g)}</option>`).join('')}
             </select>
-            <span class="badge">${list.length} perlawanan Badminton</span>
+            <span class="badge">${list.length} gelanggang · 1 perlawanan setiap gelanggang</span>
           </div>
           ${form}
           <div class="bmref-list" style="margin-top:12px;">${rows || `<div class="form-msg">${bmRef.loading ? 'Membaca jadual Badminton…' : bmRef.loaded ? 'Tiada perlawanan Badminton untuk diadili.' : ''}</div>`}</div>`;
@@ -10488,7 +10534,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const m = bmRef.list.find(x => x.id === id);
       if (!m || bmRef.busy) return;
       const st = bmRefStatus(m);
-      if (m.pengadil && !bmRefMine(m, s) && st === 'TUNGGU') { showToast(`Keputusan ${m.id} telah dihantar oleh ${m.pengadil}.`, 'warn'); return; }
+      // v1.22.0: hanya perlawanan SEMASA setiap gelanggang boleh dipilih
+      const slot = bmRefSlots(s).find(x => x.m && x.m.id === m.id);
+      if (!slot || !slot.can) {
+        showToast(slot && slot.reason ? `${m.id}: ${slot.reason.replace(/^\S+\s/, '')}` : `${m.id} belum tiba giliran. Ikut susunan perlawanan gelanggang.`, 'warn', 4500);
+        return;
+      }
+      const myLive = bmRefMyLive(s);
+      if (myLive && myLive.id !== m.id) { showToast(`Anda sedang mengadili ${myLive.id} (Gelanggang ${myLive.gelanggang}). Tamatkan perlawanan itu dahulu.`, 'warn', 4500); return; }
       bmRef.sel = { id: m.id, s1: m.skorP1 ?? 0, s2: m.skorP2 ?? 0, started: (st === 'LIVE' && bmRefMine(m, s)) || st === 'TUNGGU' || st === 'DITOLAK' };
       bmRef.fin = null; bmRef.resit = null;
       bmRefSetMsg('');
@@ -10602,42 +10655,41 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function bmMobilePickView(s) {
-      const semua = bmRef.list.filter(m => bmRefStatus(m) !== 'DISAHKAN' && bmRefNamaSah(m.namaP1) && bmRefNamaSah(m.namaP2));
-      const gels = Array.from(new Set(semua.map(m => String(m.gelanggang || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ms', { numeric: true }));
+      const slots = bmRefSlots(s);
+      const gels = slots.map(x => x.gel);
       if (bmRef.gel !== 'SEMUA' && !gels.includes(bmRef.gel)) bmRef.gel = 'SEMUA';
-      const ikutGel = semua.filter(m => bmRef.gel === 'SEMUA' || String(m.gelanggang || '').trim() === bmRef.gel);
-      const dikunci = m => {
-        const st = bmRefStatus(m);
-        return !!m.pengadil && !bmRefMine(m, s) && (st === 'LIVE' || st === 'TUNGGU');
-      };
-      const rank = m => { const st = bmRefStatus(m); return bmRefMine(m, s) && st === 'LIVE' ? 0 : st === 'DITOLAK' ? 1 : bmRefMine(m, s) && st === 'TUNGGU' ? 2 : st === 'LIVE' ? 3 : 4; };
-      const sorter = (a, b) => rank(a) - rank(b) || String(a.masaJadual || '').localeCompare(String(b.masaJadual || '')) || (Number(a.no) || 0) - (Number(b.no) || 0) || String(a.id).localeCompare(String(b.id));
-      const avail = ikutGel.filter(m => !dikunci(m)).sort(sorter);
-      const others = ikutGel.filter(dikunci).sort(sorter);
-      const cards = avail.map(m => {
+      const ikutGel = slots.filter(x => bmRef.gel === 'SEMUA' || x.gel === bmRef.gel);
+      const myLive = bmRefMyLive(s);
+      const avail = ikutGel.filter(x => x.can);
+      const others = ikutGel.filter(x => !x.can);
+      const cards = avail.map(x => {
+        const m = x.m;
         const st = bmRefStatus(m);
         const mine = bmRefMine(m, s);
+        const sibuk = !!myLive && myLive.id !== m.id;
         const cls = st === 'DITOLAK' ? 'urgent' : st === 'LIVE' ? 'live' : '';
-        const tag = st === 'DITOLAK' ? '⚠ Ditolak · hantar semula' : st === 'TUNGGU' ? '⏳ Tunggu sah' : st === 'LIVE' ? (mine ? '🔴 LIVE · anda' : '🔴 LIVE') : '🟢 Sedia';
-        const cta = st === 'DITOLAK' ? '✎ Betulkan &amp; Hantar Semula' : st === 'TUNGGU' ? '✎ Ubah Keputusan' : st === 'LIVE' ? (mine ? '▶ Sambung Mengadili' : '🤝 Ambil Alih Perlawanan') : '🏸 Adili Perlawanan Ini';
+        const tag = st === 'DITOLAK' ? '⚠ Ditolak · hantar semula' : st === 'LIVE' ? (mine ? '🔴 LIVE · anda' : '🔴 LIVE · tiada pengadil') : '🟢 Sedia';
+        const cta = sibuk ? '🔒 Tamatkan perlawanan anda dahulu' : st === 'DITOLAK' ? '✎ Betulkan &amp; Hantar Semula' : st === 'LIVE' ? (mine ? '▶ Sambung Mengadili' : '🤝 Ambil Alih Perlawanan') : '🏸 Adili Perlawanan Ini';
         const sk = st !== 'BELUM' ? ` · Skor ${m.skorP1 ?? 0} - ${m.skorP2 ?? 0}` : '';
+        const nx = x.next ? `<span class="rm-pick-meta">Seterusnya: ${escapeHtml(x.next.id)} · ${escapeHtml(x.next.namaP1)} lwn ${escapeHtml(x.next.namaP2)}</span>` : '';
         return `
-          <button type="button" class="rm-pick ${cls}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy ? 'disabled' : ''}>
+          <button type="button" class="rm-pick ${cls}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy || sibuk ? 'disabled' : ''}>
             <span class="rm-pick-top">
-              <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
-              <span class="rm-pick-court">${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) : 'Badminton'}<small>${escapeHtml(m.kategori || '')}${m.masaJadual ? ' · ' + escapeHtml(m.masaJadual) : ''}</small></span>
+              <span class="court-letter">${escapeHtml(x.gel)}</span>
+              <span class="rm-pick-court">Gelanggang ${escapeHtml(x.gel)}<small>${escapeHtml(bmRefKat(m.kategori))}${m.masaJadual ? ' · ' + escapeHtml(m.masaJadual) : ''}</small></span>
               <span class="lock-chip ${st === 'DITOLAK' ? 'stale' : 'free'}">${escapeHtml(tag)}</span>
             </span>
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
             <span class="rm-pick-meta">${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
+            ${nx}
             <span class="rm-pick-cta">${cta}</span>
           </button>`;
       }).join('');
-      const otherRows = others.map(m => `
+      const otherRows = others.map(x => `
           <div class="rm-other-row">
-            <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
-            <div><strong>${escapeHtml(m.id)} · ${escapeHtml(m.namaP1)} lwn ${escapeHtml(m.namaP2)}</strong>
-              <small>🔒 Diadili ${escapeHtml(m.pengadil)} · ${bmRefStatus(m) === 'TUNGGU' ? 'Tunggu pengesahan' : 'Sedang berlangsung'} · Skor ${m.skorP1 ?? 0} - ${m.skorP2 ?? 0}</small></div>
+            <span class="court-letter">${escapeHtml(x.gel)}</span>
+            <div><strong>Gelanggang ${escapeHtml(x.gel)}${x.m ? ' · ' + escapeHtml(x.m.id) + ' · ' + escapeHtml(x.m.namaP1) + ' lwn ' + escapeHtml(x.m.namaP2) : ''}</strong>
+              <small>${escapeHtml(x.reason)}${x.m && bmRefStatus(x.m) === 'LIVE' ? ' · Skor ' + (x.m.skorP1 ?? 0) + ' - ' + (x.m.skorP2 ?? 0) : ''}</small></div>
           </div>`).join('');
       const chips = gels.length > 1 ? `
           <div class="rm-chips" role="group" aria-label="Pilih gelanggang">
@@ -10648,7 +10700,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       else if (!s.token) empty = 'Log masuk luar talian.<br>Log keluar dan log masuk semula dengan internet.';
       else if (bmRef.loading && !bmRef.loaded) empty = 'Membaca jadual Badminton...';
       else if (bmRef.err && !bmRef.loaded) empty = escapeHtml(bmRef.msg || 'Jadual Badminton tidak dapat dibaca.') + '<br>Tekan 🔄 untuk cuba lagi.';
-      else empty = 'Tiada perlawanan Badminton sedia untuk diadili sekarang.<br>Tekan 🔄 untuk semak semula.';
+      else empty = 'Tiada gelanggang Badminton yang sedia untuk diadili sekarang.<br>Tekan 🔄 untuk semak semula.';
       const desktopExit = !isPhoneDevice()
         ? `<button type="button" class="rm-btn rm-btn-ghost" onclick="refSetMode('penuh')">🖥 Kembali ke Paparan Penuh</button>` : '';
       return {
@@ -10663,10 +10715,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           </div>
           <p class="rm-sync">${escapeHtml(bmMobileSyncText(s))}</p>
           <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
-          <p class="rm-sub">Ketik satu perlawanan Badminton. Paparan akan fokus pada perlawanan itu sahaja.</p>
+          <p class="rm-sub">Satu perlawanan bagi setiap gelanggang (${slots.length} gelanggang), ikut giliran jadual. Ketik perlawanan di gelanggang anda.</p>
           ${chips}
           <div class="rm-list">${cards || `<div class="rm-empty"><div class="icon">🏸</div>${empty}</div>`}</div>
-          ${others.length ? `<details class="rm-others"><summary>Diadili pengadil lain (${others.length})</summary>${otherRows}</details>` : ''}
+          ${others.length ? `<details class="rm-others" open><summary>Gelanggang lain (${others.length})</summary>${otherRows}</details>` : ''}
           ${desktopExit}`
       };
     }
