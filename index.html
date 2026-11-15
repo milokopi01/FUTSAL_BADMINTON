@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1621,6 +1621,343 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       .pb-side { grid-auto-flow: column; justify-content: space-between; justify-items: start; text-align: left; }
     }
   </style>
+
+    /* =========================================================
+       v1.24.0 PAPARAN WIDESCREEN AUTO-FIT PENUH SKRIN & SIMETRI
+       ========================================================= */
+    /* Luaskan kontena pada komputer/monitor supaya memenuhi skrin dan simetri */
+    @media (min-width: 1024px) {
+      .container {
+        width: min(99vw, 1920px) !important;
+        max-width: none !important;
+        padding-inline: 16px !important;
+      }
+    }
+
+    /* Mod Auto-Fit Skrin Komputer (Tiada Scroll) */
+    html.autofit-active, body.autofit-active {
+      overflow: hidden !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+    }
+    body.autofit-active .container {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding-inline: 12px !important;
+    }
+    body.autofit-active .app-header {
+      padding-top: 4px !important;
+      padding-bottom: 2px !important;
+    }
+    body.autofit-active .header-inner {
+      padding-block: 2px !important;
+      gap: 10px !important;
+    }
+    body.autofit-active .brand {
+      gap: 8px !important;
+    }
+    body.autofit-active .brand-logo {
+      font-size: 1.4rem !important;
+    }
+    body.autofit-active .brand h1 {
+      font-size: 1.05rem !important;
+      line-height: 1.2 !important;
+    }
+    body.autofit-active .brand p {
+      display: none !important;
+    }
+    body.autofit-active .category-switch button {
+      padding: 4px 10px !important;
+      font-size: 0.78rem !important;
+    }
+    body.autofit-active .sport-bar {
+      padding-block: 2px !important;
+      margin-bottom: 2px !important;
+    }
+    body.autofit-active .sport-switch button {
+      padding: 4px 12px !important;
+      font-size: 0.78rem !important;
+    }
+    body.autofit-active .sport-hint {
+      font-size: 0.75rem !important;
+    }
+    body.autofit-active .tab-nav {
+      padding-block: 2px !important;
+      margin-bottom: 4px !important;
+      gap: 4px !important;
+    }
+    body.autofit-active .tab-btn {
+      padding: 4px 10px !important;
+      font-size: 0.78rem !important;
+    }
+    body.autofit-active .cat-ribbon {
+      display: none !important;
+    }
+    body.autofit-active .app-footer {
+      display: none !important;
+    }
+    body.autofit-active #tab-live .panel-head {
+      margin-bottom: 4px !important;
+      padding-bottom: 2px !important;
+    }
+    body.autofit-active #tab-live .panel-head h2 {
+      font-size: 1.1rem !important;
+    }
+    body.autofit-active #tab-live .panel-head p {
+      display: none !important;
+    }
+    body.autofit-active #tab-live .legend {
+      font-size: 0.72rem !important;
+      gap: 8px !important;
+    }
+
+    /* Bar Kawalan Auto-Fit Skrin */
+    .live-autofit-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 6px 14px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .af-pill-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .af-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid rgba(46, 230, 166, 0.4);
+      background: rgba(46, 230, 166, 0.1);
+      color: var(--text-0);
+      transition: all 0.2s ease;
+    }
+    .af-toggle-btn:hover {
+      background: rgba(46, 230, 166, 0.2);
+    }
+    .af-toggle-btn.active {
+      background: linear-gradient(135deg, rgba(46, 230, 166, 0.25), rgba(19, 184, 214, 0.25));
+      border-color: var(--court-ready, #22c55e);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+    }
+    .af-indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+      display: inline-block;
+    }
+    .af-toggle-btn.active .af-indicator-dot {
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: blink-dot 1.2s infinite;
+    }
+    .af-title {
+      color: var(--text-1);
+    }
+    .af-status-val {
+      color: #22c55e;
+      font-weight: 800;
+    }
+    .af-scale-info {
+      font-size: 0.74rem;
+      font-family: var(--font-mono, monospace);
+      color: var(--text-2);
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+    }
+    .af-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-af-fs {
+      font-size: 0.78rem;
+      padding: 5px 12px;
+    }
+
+    /* Live Stage Wrapper */
+    .live-stage-wrap {
+      width: 100%;
+      transform-origin: top center;
+      transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* Susunan Simetri Sempurna Futsal & Badminton */
+    body[data-sukan="SEMUA"] #tab-live .all-split {
+      display: grid !important;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+      gap: 14px !important;
+      align-items: stretch !important;
+      margin-bottom: 12px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live #courtsGrid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+      align-items: stretch !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live #allBmGrid {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+      align-items: stretch !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .court-card {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+
+    /* Kad Gelanggang Padat & Jelas untuk Skrin Penuh */
+    @media (min-width: 1024px) {
+      .court-card {
+        border-radius: 12px !important;
+      }
+      .court-head {
+        padding: 8px 12px 2px !important;
+        gap: 6px !important;
+      }
+      .court-head h3 {
+        font-size: 0.92rem !important;
+        margin: 0 !important;
+        line-height: 1.15 !important;
+      }
+      .court-head small {
+        font-size: 0.7rem !important;
+      }
+      .court-letter {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 1.05rem !important;
+        border-radius: 8px !important;
+      }
+      .pitch {
+        height: 38px !important;
+        margin: 4px 10px !important;
+        border-radius: 6px !important;
+      }
+      .scoreboard {
+        padding: 2px 10px 4px !important;
+        gap: 6px !important;
+      }
+      .scoreboard .team-name {
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+      }
+      .scoreboard .team-code {
+        font-size: 0.65rem !important;
+      }
+      .scoreboard .score-box {
+        font-size: 1.75rem !important;
+        padding: 2px 8px !important;
+        border-radius: 8px !important;
+      }
+      .court-meta {
+        padding: 3px 10px !important;
+        font-size: 0.72rem !important;
+      }
+      .court-next {
+        padding: 4px 10px 6px !important;
+        font-size: 0.72rem !important;
+      }
+    }
+
+    /* Giliran Seterusnya Simetri dengan Gelanggang */
+    body[data-sukan="SEMUA"] #tab-live .all-queue {
+      padding: 10px 14px 12px !important;
+      margin-bottom: 8px !important;
+      border-radius: 12px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-head {
+      margin-bottom: 8px !important;
+      gap: 8px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-head h3 {
+      font-size: 1.02rem !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-head p {
+      font-size: 0.76rem !important;
+      margin: 0 !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-split {
+      display: grid !important;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+      gap: 14px !important;
+      align-items: stretch !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-fs .aq-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-bm .aq-grid {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-card {
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      border-radius: 8px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-top {
+      padding: 6px 8px !important;
+      gap: 6px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-letter {
+      flex: 0 0 24px !important;
+      height: 24px !important;
+      font-size: 0.82rem !important;
+      border-radius: 6px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-top strong {
+      font-size: 0.8rem !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-top small {
+      font-size: 0.64rem !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-next {
+      padding: 6px 8px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-lbl {
+      font-size: 0.6rem !important;
+      margin-bottom: 2px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-id {
+      font-size: 0.64rem !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-teams {
+      font-size: 0.78rem !important;
+      line-height: 1.25 !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-later {
+      padding: 4px 8px 6px !important;
+      gap: 4px !important;
+    }
+    body[data-sukan="SEMUA"] #tab-live .aq-later li {
+      padding-top: 3px !important;
+      font-size: 0.7rem !important;
+    }
+
 </head>
 <body data-category="SEMUA">
 
@@ -1936,7 +2273,27 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
         <!-- MEJA PENGADIL (Fasa 2): dipaparkan hanya selepas pengadil log masuk -->
         <div class="card glass ref-desk hidden" id="refDesk"></div>
 
-        <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })"><span class="not-semua">▣ Paparan Projektor (Skrin Penuh)</span><span class="only-semua-in">▣ Paparan Projektor · Semua Gelanggang (Futsal + Badminton)</span></button>
+        <!-- v1.24.0: BAR KAWALAN AUTO-FIT SKRIN PENUH (TIADA SCROLL) -->
+        <div class="live-autofit-bar" id="liveAutoFitBar">
+          <div class="af-pill-group">
+            <button type="button" class="af-toggle-btn active" id="btnLiveAutoFit" onclick="toggleAutoFitLive()" title="Padankan paparan ke saiz skrin komputer tanpa perlu skrol">
+              <span class="af-indicator-dot"></span>
+              <span class="af-title">Auto-Fit Skrin Komputer:</span>
+              <strong class="af-status-val" id="afStatusVal">AKTIF (Tiada Scroll)</strong>
+            </button>
+            <span class="af-scale-info" id="afScaleInfo">Skala: 100%</span>
+          </div>
+          <div class="af-actions">
+            <button type="button" class="btn btn-sm btn-af-fs" onclick="toggleLiveFullscreen()" title="Skrin Penuh (F11)">
+              ⛶ Skrin Penuh
+            </button>
+            <button type="button" class="btn btn-sm tv-launch" onclick="setProjection(true, { fullscreen: true })" title="Mod projektor dewan skrin gelap">
+              <span class="not-semua">▣ Projektor</span><span class="only-semua-in">▣ Projektor Dewan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="live-stage-wrap" id="liveStageWrap">
         <!-- v1.20.0: mod SEMUA -> semua gelanggang Futsal & Badminton dalam satu halaman -->
         <div class="all-split" id="allSplit">
           <div class="all-fs-col">
@@ -1973,6 +2330,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <div id="sbResult"></div>
           <div class="sb-grid" id="sbGrid"></div>
         </div>
+      </div>
       </section>
 
       <!-- =========================================================
@@ -8322,6 +8680,7 @@ void main() {
         btn.setAttribute('aria-selected', active ? 'true' : 'false');
       });
       state.ui.activeTab = tabId;
+      try { if (typeof fitLiveStage === 'function') setTimeout(fitLiveStage, 50); } catch (e) {}
       saveState();
       if (tabId === 'tab-approval' && canApprove()) pullMatchesFromSheet();
     }
@@ -13152,7 +13511,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <section class="aq-sec aq-bm"><h4 class="aq-sec-h">🏸 Badminton <small>${bmRows.length} gelanggang</small></h4><div class="aq-grid" style="--aq-cols:3">${bmCards}</div></section>
         </div>`;
       targets.forEach(el => { if (el._html !== html) { el.innerHTML = html; el._html = html; } });
-      try { if (typeof projectionOn === 'function' && projectionOn()) scheduleProjFit(); } catch (e) { /* abaikan */ }
+      try { if (typeof projectionOn === 'function' && projectionOn()) scheduleProjFit(); } catch (e) { /* abaikan */ }\n      try { if (typeof fitLiveStage === 'function') fitLiveStage(); } catch (e) {}
     }
 
     function renderStandby() {
@@ -17622,5 +17981,119 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
   <script src="admin-pasukan.js"></script>
   <script src="admin-jadual.js"></script>
   <script src="admin-skor.js"></script>
+
+  <script>
+    /* =========================================================
+       v1.24.0 AUTO-FIT FULL SCREEN ENGINE (KOMPUTER & MONITOR)
+       ========================================================= */
+    let autoFitActive = localStorage.getItem('karnival_autofit_live') !== 'off';
+    let autoFitTimer = null;
+
+    function isDesktopFitView() {
+      return window.innerWidth >= 960;
+    }
+
+    function updateAutoFitUI() {
+      const btn = document.getElementById('btnLiveAutoFit');
+      const statusVal = document.getElementById('afStatusVal');
+      const active = autoFitActive && isDesktopFitView();
+      if (btn) btn.classList.toggle('active', active);
+      if (statusVal) {
+        statusVal.textContent = active ? 'AKTIF (Tiada Scroll)' : 'BIASA (Boleh Scroll)';
+        statusVal.style.color = active ? 'var(--court-ready, #22c55e)' : 'var(--text-2)';
+      }
+      document.documentElement.classList.toggle('autofit-active', active);
+      document.body.classList.toggle('autofit-active', active);
+    }
+
+    function fitLiveStage() {
+      updateAutoFitUI();
+      const stage = document.getElementById('liveStageWrap');
+      if (!stage) return;
+
+      const active = autoFitActive && isDesktopFitView();
+      const liveTab = document.getElementById('tab-live');
+      const isLiveActive = liveTab && (liveTab.classList.contains('active') ||
+        location.hash === '#tab-live' ||
+        (!location.hash && document.querySelector('.tab-btn[data-tab="tab-live"]')?.classList.contains('active')));
+
+      if (!active || !isLiveActive) {
+        stage.style.transform = '';
+        stage.style.transformOrigin = '';
+        stage.style.marginBottom = '';
+        stage.style.width = '';
+        const scaleInfo = document.getElementById('afScaleInfo');
+        if (scaleInfo) scaleInfo.textContent = 'Skala: 100%';
+        return;
+      }
+
+      // Ukur ketinggian sebenar
+      stage.style.transform = 'none';
+      stage.style.width = '100%';
+      stage.style.marginBottom = '0px';
+
+      const vh = window.innerHeight;
+      const rect = stage.getBoundingClientRect();
+      const topOffset = Math.max(0, rect.top);
+      const availableH = vh - topOffset - 10;
+      const naturalH = stage.scrollHeight || 1;
+
+      if (availableH <= 0 || naturalH <= 0) return;
+
+      // Kira nisbah skala tepat
+      let scale = Math.min(1.0, availableH / naturalH);
+      if (scale < 0.50) scale = 0.50; // elak terlalu kecil pada resolusi amat rendah
+
+      stage.style.transformOrigin = 'top center';
+      stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
+
+      const marginComp = Math.round((scale - 1) * naturalH);
+      stage.style.marginBottom = marginComp + 'px';
+
+      const scaleInfo = document.getElementById('afScaleInfo');
+      if (scaleInfo) {
+        scaleInfo.textContent = 'Skala: ' + Math.round(scale * 100) + '%';
+      }
+    }
+
+    function toggleAutoFitLive() {
+      autoFitActive = !autoFitActive;
+      localStorage.setItem('karnival_autofit_live', autoFitActive ? 'on' : 'off');
+      fitLiveStage();
+      if (typeof showToast === 'function') {
+        showToast(autoFitActive
+          ? 'Auto-Fit Diaktifkan: paparan gelanggang diselaraskan supaya muat skrin komputer tanpa scroll.'
+          : 'Auto-Fit Dimatikan: kembali kepada paparan skrol biasa.', 'info');
+      }
+    }
+
+    async function toggleLiveFullscreen() {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        }
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('Tekan kekunci F11 untuk paparan skrin penuh.', 'info');
+      }
+      setTimeout(fitLiveStage, 250);
+    }
+
+    window.addEventListener('resize', () => {
+      clearTimeout(autoFitTimer);
+      autoFitTimer = setTimeout(fitLiveStage, 100);
+    });
+    document.addEventListener('fullscreenchange', () => {
+      setTimeout(fitLiveStage, 200);
+    });
+    window.addEventListener('hashchange', () => {
+      setTimeout(fitLiveStage, 150);
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(fitLiveStage, 300);
+    });
+  </script>
+
 </body>
 </html>
