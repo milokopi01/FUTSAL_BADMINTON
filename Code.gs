@@ -167,13 +167,14 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.16.1';  // v1.16.1: fungsi Sukan.gs digabung ke Code.gs (baiki 'jenisSukan_ is not defined' semasa log masuk pengadil)
+const API_VERSI = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
+// const API_VERSI_161 = '1.16.1';  // v1.16.1: fungsi Sukan.gs digabung ke Code.gs
 // const API_VERSI_B6 = '1.16.0';  // Bahagian 6: keluaran akhir (semakan pepijat & kemasan)
 // const API_VERSI_B5 = '1.15.0';  // Bahagian 5: isyarat perubahan masa nyata untuk Dashboard awam
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -217,7 +218,8 @@ const API_TOKEN = '';
 const MASTER_ADMIN_PIN_DEFAULT = '101010';
 
 /** Lajur tab Senarai_Pengadil (ikut susunan ini). */
-const PENGADIL_HEADER = ['ID Pengadil', 'Nama Ringkas', 'Kata Laluan', 'Status', 'Dicipta Pada', 'Dikemaskini Pada', 'Log Masuk Terakhir'];
+// v1.17.0: lajur 'Sukan' (FUTSAL / BADMINTON) ditambah di HUJUNG; akaun lama tanpa nilai = FUTSAL.
+const PENGADIL_HEADER = ['ID Pengadil', 'Nama Ringkas', 'Kata Laluan', 'Status', 'Dicipta Pada', 'Dikemaskini Pada', 'Log Masuk Terakhir', 'Sukan'];
 const PENGADIL_ACTIONS = [
   'loginpengadil', 'senaraipengadil', 'simpanpengadil', 'padampengadil', 'syncpengadil',
   // Fasa 2: kunci gelanggang
@@ -1007,6 +1009,9 @@ function getPengadilSheet_() {
   if (first.join('') === '') {
     sheet.getRange(1, 1, 1, PENGADIL_HEADER.length).setValues([PENGADIL_HEADER]).setFontWeight('bold');
     sheet.setFrozenRows(1);
+  } else if (String(first[7] || '') === '') {
+    // v1.17.0: tab lama -> tambah tajuk lajur Sukan sahaja (data sedia ada tidak diubah)
+    sheet.getRange(1, 8).setValue('Sukan').setFontWeight('bold');
   }
   // Lajur Kata Laluan sebagai teks biasa (kekalkan sifar di hadapan, cth: 0123)
   sheet.getRange(1, 3, sheet.getMaxRows(), 1).setNumberFormat('@');
@@ -1029,7 +1034,8 @@ function readPengadil_() {
         status: String(r[3] || 'AKTIF').toUpperCase() === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF',
         dicipta: toIso_(r[4]),
         dikemaskini: toIso_(r[5]),
-        loginTerakhir: toIso_(r[6])
+        loginTerakhir: toIso_(r[6]),
+        sukan: sukanPengadil_(r[7])
       });
     });
   }
@@ -1041,7 +1047,7 @@ function writePengadil_(sheet, list) {
   if (last >= 2) sheet.getRange(2, 1, last - 1, PENGADIL_HEADER.length).clearContent();
   if (!list.length) return;
   const rows = list.map(function (p) {
-    return [p.id, p.nama, String(p.password), p.status, toDate_(p.dicipta), toDate_(p.dikemaskini), toDate_(p.loginTerakhir)];
+    return [p.id, p.nama, String(p.password), p.status, toDate_(p.dicipta), toDate_(p.dikemaskini), toDate_(p.loginTerakhir), sukanPengadil_(p.sukan)];
   });
   sheet.getRange(2, 3, rows.length, 1).setNumberFormat('@');
   sheet.getRange(2, 1, rows.length, PENGADIL_HEADER.length).setValues(rows);
@@ -1056,6 +1062,8 @@ function validatePengadil_(p, existing) {
   if (!/^\S{4,20}$/.test(password)) return { error: 'Kata laluan mesti 4 hingga 20 aksara tanpa ruang (' + nama + ').' };
   const dup = existing.some(function (e) { return e.id !== p.id && refNameKey_(e.nama) === refNameKey_(nama); });
   if (dup) return { error: 'Nama "' + nama + '" telah digunakan oleh pengadil lain.' };
+  const sukanTxt = String(p.sukan || '').trim().toUpperCase();
+  if (sukanTxt && sukanTxt !== 'FUTSAL' && sukanTxt !== 'BADMINTON') return { error: 'Sukan pengadil mesti FUTSAL atau BADMINTON (' + nama + ').' };
   return {
     data: {
       id: String(p.id || '').trim().toUpperCase(),
@@ -1064,9 +1072,28 @@ function validatePengadil_(p, existing) {
       status: String(p.status || 'AKTIF').toUpperCase() === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF',
       dicipta: p.dicipta || null,
       dikemaskini: p.dikemaskini || null,
-      loginTerakhir: p.loginTerakhir || null
+      loginTerakhir: p.loginTerakhir || null,
+      sukan: sukanPengadil_(sukanTxt)
     }
   };
+}
+
+// v1.17.0: sukan akaun pengadil. Kosong / tidak dikenali = FUTSAL (akaun lama).
+function sukanPengadil_(v) {
+  return String(v || '').trim().toUpperCase() === 'BADMINTON' ? 'BADMINTON' : 'FUTSAL';
+}
+
+function labelSukan_(sukan) {
+  return sukan === 'BADMINTON' ? 'Badminton' : 'Futsal';
+}
+
+// v1.17.0: sesi pengadil untuk kawalan gelanggang FUTSAL (kunci, skor live, rehat, ambil alih).
+function sahkanSesiFutsal_(token) {
+  const sesi = sahkanSesi_(token);
+  if (sesi.ok && sesi.ref.sukan !== 'FUTSAL') {
+    return { ok: false, kod: 'SUKAN_LAIN', error: 'Akaun ' + sesi.ref.nama + ' ialah pengadil ' + labelSukan_(sesi.ref.sukan) + '. Hanya pengadil Futsal boleh mengawal gelanggang Futsal.' };
+  }
+  return sesi;
 }
 
 function nextPengadilId_(list) {
@@ -1105,6 +1132,7 @@ function simpanPengadil_(p) {
     return { ok: false, kod: 'GAGAL_TULIS', error: 'Akaun ' + data.nama + ' gagal ditulis ke tab ' + SHEET_PENGADIL + '. Cuba lagi.' };
   }
   kemasKunciPengadil_(data);
+  if (data.sukan !== 'FUTSAL') lepasKunciPengadil_(data.id);   // v1.17.0: bukan pengadil Futsal -> lepaskan kunci gelanggang Futsal
   return { ok: true, disahkan: true, sheet: SHEET_PENGADIL, jumlah: db.list.length, pengadil: publicPengadilAdmin_(data) };
 }
 
@@ -1142,7 +1170,7 @@ function syncPengadil_(list) {
   }
   // Lepaskan kunci milik pengadil yang dipadam / digantung
   const aktif = {};
-  clean.forEach(function (p) { if (p.status === 'AKTIF') aktif[p.id] = p.nama; });
+  clean.forEach(function (p) { if (p.status === 'AKTIF' && p.sukan === 'FUTSAL') aktif[p.id] = p.nama; });
   const kdb = readKunci_();
   gelanggangSah_().forEach(function (g) {
     const k = kdb.map[g];
@@ -1173,6 +1201,14 @@ function loginPengadil_(body) {
     return { ok: false, error: 'Akaun pengadil ini telah digantung. Hubungi Master Admin.' };
   }
   cache.remove(lockKey);
+  // v1.17.0: sukan dipilih semasa log masuk MESTI sama dengan sukan akaun (elak tertukar).
+  // Aplikasi lama tidak menghantar sukanPengadil -> dianggap FUTSAL.
+  const dipilih = sukanPengadil_(body.sukanPengadil);
+  if (ref.sukan !== dipilih) {
+    return { ok: false, kod: 'SUKAN_TIDAK_SEPADAN', sukanAkaun: ref.sukan,
+      error: 'Akaun ' + ref.nama + ' didaftar sebagai pengadil ' + labelSukan_(ref.sukan).toUpperCase() +
+        '. Pilih "' + labelSukan_(ref.sukan) + '" semasa log masuk.' };
+  }
   const now = new Date();
   db.sheet.getRange(ref.row, 7).setValue(now).setNumberFormat('dd/MM/yyyy HH:mm:ss');
   // Kata laluan TIDAK dipulangkan kepada peranti pengadil.
@@ -1181,7 +1217,7 @@ function loginPengadil_(body) {
     ok: true,
     token: ciptaSesi_(ref),
     sesiTamat: new Date(now.getTime() + SESI_TEMPOH_JAM * 3600 * 1000).toISOString(),
-    pengadil: { id: ref.id, nama: ref.nama, status: ref.status, loginTerakhir: now.toISOString() },
+    pengadil: { id: ref.id, nama: ref.nama, status: ref.status, sukan: ref.sukan, loginTerakhir: now.toISOString() },
     kunci: statusKunci_()
   };
 }
@@ -1189,7 +1225,7 @@ function loginPengadil_(body) {
 // Data penuh untuk Master Admin (termasuk kata laluan)
 function publicPengadilAdmin_(p) {
   return {
-    id: p.id, nama: p.nama, password: p.password, status: p.status,
+    id: p.id, nama: p.nama, password: p.password, status: p.status, sukan: sukanPengadil_(p.sukan),
     dicipta: p.dicipta || null, dikemaskini: p.dikemaskini || null, loginTerakhir: p.loginTerakhir || null
   };
 }
@@ -1599,7 +1635,7 @@ function kemasKunciPengadil_(p) {
 function kunciGelanggang_(body) {
   const g = normGelanggang_(body.gelanggang);
   if (!g) return { ok: false, error: 'Gelanggang tidak sah.' };
-  const sesi = sahkanSesi_(body.token);
+  const sesi = sahkanSesiFutsal_(body.token);
   if (!sesi.ok) return sesi;
   const ref = sesi.ref;
   const db = readKunci_();
@@ -1713,7 +1749,7 @@ function lepasGelanggang_(body) {
 function skorLive_(body) {
   const g = normGelanggang_(body.gelanggang);
   if (!g) return { ok: false, error: 'Gelanggang tidak sah.' };
-  const sesi = sahkanSesi_(body.token);
+  const sesi = sahkanSesiFutsal_(body.token);
   if (!sesi.ok) return sesi;
   const ref = sesi.ref;
   const db = readKunci_();
@@ -2200,7 +2236,7 @@ function normFasaKod_(v) {
 function sesiDanKunci_(body) {
   const g = normGelanggang_(body.gelanggang);
   if (!g) return { ralat: { ok: false, error: 'Gelanggang tidak sah.' } };
-  const sesi = sahkanSesi_(body.token);
+  const sesi = sahkanSesiFutsal_(body.token);
   if (!sesi.ok) return { ralat: sesi };
   const db = readKunci_();
   return { g: g, ref: sesi.ref, db: db, k: db.map[g] };

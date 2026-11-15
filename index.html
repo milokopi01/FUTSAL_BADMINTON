@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzOnwy95bm_0QgKeyBoP_udPD7YleTfdKbPCJZzY8F5FL5aCbH-Lz9uTPr6oB-01rQrNQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2035,6 +2035,7 @@ body.projection-on #projection { display:block; }
                       <th class="num">Bil</th>
                       <th>ID</th>
                       <th>Nama Ringkas</th>
+                      <th>Sukan</th>
                       <th>Kata Laluan</th>
                       <th>Status</th>
                       <th>Log Masuk Terakhir</th>
@@ -2221,6 +2222,14 @@ body.projection-on #projection { display:block; }
         </div>
         <div id="loginRefFields" class="hidden">
           <div class="field">
+            <label for="loginRefSukan">Log Masuk Sebagai Pengadil</label>
+            <select class="select" id="loginRefSukan">
+              <option value="FUTSAL">⚽ Pengadil Futsal</option>
+              <option value="BADMINTON">🏸 Pengadil Badminton</option>
+            </select>
+            <span class="field-hint">Pilih sukan yang sama seperti didaftarkan oleh Master Admin.</span>
+          </div>
+          <div class="field">
             <label for="loginRefName">Nama Ringkas Pengadil</label>
             <input type="text" class="input" id="loginRefName" maxlength="30" autocomplete="username" placeholder="cth: Cikgu Ali" />
           </div>
@@ -2228,7 +2237,7 @@ body.projection-on #projection { display:block; }
             <label for="loginRefPassword">Kata Laluan</label>
             <input type="password" class="input" id="loginRefPassword" maxlength="20" autocomplete="current-password" placeholder="••••••" />
           </div>
-          <span class="field-hint">Selepas log masuk, pilih gelanggang dan tekan <strong>⚽ Sepak Mula</strong> untuk mengunci gelanggang.</span>
+          <span class="field-hint">Pengadil Futsal: selepas log masuk, pilih gelanggang dan tekan <strong>⚽ Sepak Mula</strong> untuk mengunci gelanggang.</span>
         </div>
         <div class="form-msg" id="loginMsg"></div>
         <div class="modal-foot">
@@ -2278,12 +2287,20 @@ body.projection-on #projection { display:block; }
       <div class="modal-head">
         <div>
           <h3 id="refereeModalTitle">🧑‍⚖️ Tambah Pengadil</h3>
-          <p>Masukkan nama ringkas dan tetapkan kata laluan pengadil.</p>
+          <p>Pilih sukan, masukkan nama ringkas dan tetapkan kata laluan pengadil.</p>
         </div>
         <button type="button" class="modal-close" data-close-modal="refereeModal" aria-label="Tutup">×</button>
       </div>
       <form id="refereeForm" autocomplete="off">
         <input type="hidden" id="refEditId" value="" />
+        <div class="field">
+          <label for="refSukan">Daftar Sebagai Pengadil</label>
+          <select class="select" id="refSukan">
+            <option value="FUTSAL">⚽ Futsal</option>
+            <option value="BADMINTON">🏸 Badminton</option>
+          </select>
+          <span class="field-hint">Pengadil mesti memilih sukan yang sama semasa log masuk.</span>
+        </div>
         <div class="field">
           <label for="refName">Nama Ringkas</label>
           <input type="text" class="input" id="refName" maxlength="30" placeholder="cth: Cikgu Ali" />
@@ -6692,7 +6709,8 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
-    const GAS_MIN_VERSI = '1.16.0';  // Bahagian 6: keluaran akhir (Bahagian 5: isyarat perubahan masa nyata)
+    const GAS_MIN_VERSI = '1.17.0';  // v1.17.0: pengadil ikut sukan (Futsal / Badminton)
+    // const GAS_MIN_VERSI_LAMA = '1.16.0';  // Bahagian 6: keluaran akhir (Bahagian 5: isyarat perubahan masa nyata)
     const ADMIN_KEY_STORAGE = 'FUTSAL_PK_KBB_ADMIN_KEY';
 
     const EVENTS = {
@@ -8095,6 +8113,8 @@ void main() {
       const submitBtn = document.getElementById('btnLoginSubmit');
       const nama = normalizeRefName(nameEl ? nameEl.value : '');
       const password = pwEl ? pwEl.value : '';
+      const sukanEl = document.getElementById('loginRefSukan');
+      const sukanPilih = refSukanOf({ sukan: sukanEl ? sukanEl.value : 'FUTSAL' });
 
       if (nama.length < 2) {
         setFormMsg(msgEl, 'Sila masukkan nama ringkas pengadil.', 'error');
@@ -8114,8 +8134,19 @@ void main() {
       if (url && navigator.onLine) {
         setFormMsg(msgEl, 'Menyemak akaun pengadil...', '');
         if (submitBtn) submitBtn.disabled = true;
-        const res = await callGas({ action: 'loginPengadil', nama, password });
+        const res = await callGas({ action: 'loginPengadil', nama, password, sukanPengadil: sukanPilih });
         if (submitBtn) submitBtn.disabled = false;
+        if (res.ok && res.pengadil && refSukanOf(res.pengadil) !== sukanPilih) {
+          // Code.gs lama tidak menyemak sukan -> jangan benarkan tertukar
+          setFormMsg(msgEl, `Google Sheets masih Code.gs versi lama yang belum mengenali pengadil ${refSukanLabel(sukanPilih)}. Master Admin perlu Deploy Code.gs terkini (New version).`, 'error');
+          return false;
+        }
+        if (res.kod === 'SUKAN_TIDAK_SEPADAN') {
+          // Kata laluan betul tetapi sukan salah dipilih -> bukan cubaan gagal
+          setFormMsg(msgEl, res.error, 'error');
+          if (sukanEl) sukanEl.focus();
+          return false;
+        }
         if (res.ok && res.pengadil) {
           ref = cacheReferee(res.pengadil, password);
           token = res.token || null;
@@ -8146,6 +8177,11 @@ void main() {
       if (ref.status !== 'AKTIF') {
         return loginFailed(msgEl, 'Akaun pengadil ini telah digantung. Hubungi Master Admin.', pwEl);
       }
+      if (refSukanOf(ref) !== sukanPilih) {
+        setFormMsg(msgEl, `Akaun ${ref.nama} didaftar sebagai pengadil ${refSukanLabel(refSukanOf(ref)).toUpperCase()}. Pilih "${refSukanLabel(refSukanOf(ref))}" semasa log masuk.`, 'error');
+        if (sukanEl) sukanEl.focus();
+        return false;
+      }
 
       loginGuard.attempts = 0;
       loginGuard.lockedUntil = 0;
@@ -8157,6 +8193,7 @@ void main() {
         userId: ref.id,
         nama: ref.nama,
         peranan: 'PENGADIL',
+        sukan: refSukanOf(ref),                    // v1.17.0: FUTSAL / BADMINTON
         aksesEvent: held ? held.eventId : null,
         aksesGelanggang: held ? held.id : null,   // diisi selepas "Sepak Mula"
         token: token,                              // token sesi pelayan (null = mod peranti ini)
@@ -8179,6 +8216,10 @@ void main() {
         showToast('Log masuk luar talian: gelanggang tidak boleh dikunci sehingga anda log masuk semula dengan internet.', 'warn', 6000);
       }
       const cur = state.session && state.session.aksesGelanggang;
+      if (refSukanOf(ref) === 'BADMINTON') {
+        showToast(`Selamat datang, ${ref.nama} (Pengadil Badminton). Meja Pengadil gelanggang hanya untuk Futsal; skor Badminton dimasukkan oleh Master Admin.`, 'info', 6500);
+        return true;
+      }
       showToast(cur
         ? `Selamat datang, ${ref.nama}. Anda masih mengawal Gelanggang ${cur}.`
         : (isRefMode()
@@ -9892,6 +9933,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         showToast('Hanya pengadil yang telah log masuk boleh menekan Sepak Mula.', 'error');
         return false;
       }
+      if (refSukanOf(s0) === 'BADMINTON') {
+        showToast('Anda log masuk sebagai Pengadil Badminton. Hanya pengadil Futsal boleh Sepak Mula di gelanggang Futsal.', 'error', 5000);
+        return false;
+      }
       if (kickoffBusy) return false;
       let court = getCourt(courtId);
       if (!court) {
@@ -10102,6 +10147,19 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return;
       }
       el.classList.remove('hidden');
+      if (refSukanOf(s) === 'BADMINTON') {
+        // v1.17.0: pengadil Badminton tidak boleh mengunci / memberi markah di gelanggang Futsal
+        el.innerHTML = `
+          <div class="ref-active">
+            <div class="court-letter">🏸</div>
+            <div class="ref-active-info">
+              <div class="ref-step" style="margin-bottom:4px;">Pengadil Badminton</div>
+              <strong>${escapeHtml(s.nama)}</strong>
+              <small>Meja Pengadil gelanggang di sini untuk Futsal sahaja. Skor Badminton dimasukkan oleh Master Admin di panel skor.</small>
+            </div>
+          </div>`;
+        return;
+      }
 
       const url = getGasUrl();
       const syncText = !url
@@ -10243,6 +10301,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function isRefMode() {
       const s = getSession();
       if (!s || s.peranan !== 'PENGADIL') return false;
+      if (refSukanOf(s) === 'BADMINTON') return false;   // v1.17.0: paparan telefon pengadil = Futsal sahaja
       if (isPhoneDevice()) return true;
       return !!(state.ui && state.ui.refMode === 'telefon');
     }
@@ -10290,6 +10349,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     async function refereePickMatch(courtId) {
       const s0 = getSession();
       if (!s0 || s0.peranan !== 'PENGADIL') return false;
+      if (refSukanOf(s0) === 'BADMINTON') {
+        showToast('Anda log masuk sebagai Pengadil Badminton. Hanya pengadil Futsal boleh mengadili gelanggang Futsal.', 'error', 5000);
+        return false;
+      }
       if (kickoffBusy || rehatBusy) return false;
       const held = refHeldCourt();
       if (held && held.id !== courtId) {
@@ -13895,11 +13958,23 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // Simpan maklumat pengadil daripada pelayan ke dalam peranti ini
+    // v1.17.0: sukan akaun pengadil (akaun lama tanpa sukan = FUTSAL)
+    function refSukanOf(r) {
+      return String((r && r.sukan) || '').toUpperCase() === 'BADMINTON' ? 'BADMINTON' : 'FUTSAL';
+    }
+    function refSukanLabel(sukan) {
+      return sukan === 'BADMINTON' ? 'Badminton' : 'Futsal';
+    }
+    function sessionSukan() {
+      const s = getSession();
+      return s && s.peranan === 'PENGADIL' ? refSukanOf(s) : null;
+    }
+
     function cacheReferee(data, password) {
       let ref = getRefereeById(data.id) ||
         state.referees.find(r => refNameKey(r.nama) === refNameKey(data.nama));
       if (!ref) {
-        ref = { id: data.id, nama: data.nama, password: password, status: 'AKTIF', dicipta: nowIso(), dikemaskini: nowIso(), loginTerakhir: null };
+        ref = { id: data.id, nama: data.nama, password: password, status: 'AKTIF', sukan: refSukanOf(data), dicipta: nowIso(), dikemaskini: nowIso(), loginTerakhir: null };
         state.referees.push(ref);
       }
       Object.assign(ref, {
@@ -13907,6 +13982,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         id: data.id || ref.id,
         nama: data.nama || ref.nama,
         status: data.status || ref.status,
+        sukan: data.sukan ? refSukanOf(data) : refSukanOf(ref),
         password: password !== undefined ? password : (data.password !== undefined ? data.password : ref.password)
       });
       return ref;
@@ -13963,6 +14039,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const ref = refId ? getRefereeById(refId) : null;
       document.getElementById('refEditId').value = ref ? ref.id : '';
       document.getElementById('refName').value = ref ? ref.nama : '';
+      document.getElementById('refSukan').value = ref ? refSukanOf(ref) : 'FUTSAL';
       document.getElementById('refPassword').value = ref ? ref.password : generateRefPassword();
       document.getElementById('refereeModalTitle').textContent = ref ? `✏️ Ubah Pengadil (${ref.id})` : '🧑‍⚖️ Tambah Pengadil';
       document.getElementById('btnRefereeSubmit').textContent = ref ? 'Simpan Perubahan' : 'Tambah Pengadil';
@@ -13982,6 +14059,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const editId = document.getElementById('refEditId').value;
       const nama = normalizeRefName(document.getElementById('refName').value);
       const password = document.getElementById('refPassword').value.trim();
+      const sukan = refSukanOf({ sukan: document.getElementById('refSukan').value });
       const err = validateReferee(nama, password, editId || null);
       if (err) {
         setFormMsg(msgEl, err, 'error');
@@ -13995,8 +14073,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return false;
       }
       const draft = editing
-        ? Object.assign({}, editing, { nama, password, dikemaskini: now })
-        : { id: generateRefereeId(), nama, password, status: 'AKTIF', dicipta: now, dikemaskini: now, loginTerakhir: null, diciptaOleh: getSession().userId };
+        ? Object.assign({}, editing, { nama, password, sukan, dikemaskini: now })
+        : { id: generateRefereeId(), nama, password, sukan, status: 'AKTIF', dicipta: now, dikemaskini: now, loginTerakhir: null, diciptaOleh: getSession().userId };
 
       let serverRef = null;
       if (getGasUrl()) {
@@ -14020,6 +14098,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           setRefSyncInfo(`⚠ Gagal simpan ${nama}: ${why}`);
           return false;
         }
+        if (refSukanOf(res.pengadil) !== sukan) {
+          // Code.gs lama (sebelum v1.17.0) tidak menyimpan lajur Sukan
+          setFormMsg(msgEl, `❌ Google Sheets tidak menyimpan sukan ${refSukanLabel(sukan)}: Code.gs masih versi lama. Tampal Code.gs terkini > Deploy > Manage deployments > ✏️ Edit > Version: New version > Deploy, kemudian simpan semula.`, 'error');
+          return false;
+        }
         serverRef = res.pengadil;
       }
 
@@ -14027,8 +14110,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (editing) {
         ref = editing;
         const oldName = ref.nama;
-        Object.assign(ref, { nama, password, dikemaskini: now });
+        Object.assign(ref, { nama, password, sukan, dikemaskini: now });
         state.courts.forEach(c => { if (c.pengadilId === ref.id) c.pengadil = nama; });
+        if (state.session && state.session.userId === ref.id) state.session.sukan = sukan;
         if (state.session && state.session.userId === ref.id) state.session.nama = nama;
         showToast(oldName !== nama ? `${oldName} kini dikenali sebagai ${nama}.` : `Maklumat ${nama} dikemas kini.`, 'success');
       } else {
@@ -14084,7 +14168,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           return false;
         }
         const fromServer = (sp) => ({
-          id: sp.id, nama: sp.nama, password: String(sp.password), status: sp.status || 'AKTIF',
+          id: sp.id, nama: sp.nama, password: String(sp.password), status: sp.status || 'AKTIF', sukan: refSukanOf(sp),
           dicipta: sp.dicipta || null, dikemaskini: sp.dikemaskini || null, loginTerakhir: sp.loginTerakhir || null,
           sheetSync: true
         });
@@ -14241,14 +14325,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!body) return;
       const q = refNameKey((document.getElementById('refereeSearch') || {}).value || '');
       const list = state.referees
-        .filter(r => !q || refNameKey(r.nama).includes(q) || String(r.id).toLowerCase().includes(q))
+        .filter(r => !q || refNameKey(r.nama).includes(q) || String(r.id).toLowerCase().includes(q) || refSukanOf(r).toLowerCase().includes(q))
         .slice()
         .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
       const summary = document.getElementById('refereeSummary');
       if (summary) {
         const aktif = state.referees.filter(r => r.status === 'AKTIF').length;
-        summary.textContent = `${state.referees.length} pengadil · ${aktif} aktif`;
+        const bm = state.referees.filter(r => refSukanOf(r) === 'BADMINTON').length;
+        summary.textContent = `${state.referees.length} pengadil (⚽ ${state.referees.length - bm} Futsal · 🏸 ${bm} Badminton) · ${aktif} aktif`;
       }
       const btnAll = document.getElementById('btnToggleRefPw');
       if (btnAll) btnAll.textContent = refPwShowAll ? '🙈 Sembunyi Kata Laluan' : '👁 Tunjuk Semua Kata Laluan';
@@ -14259,7 +14344,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
 
       if (!list.length) {
-        body.innerHTML = `<tr class="empty-row"><td colspan="7">${state.referees.length ? 'Tiada pengadil sepadan dengan carian.' : 'Belum ada akaun pengadil. Tekan "＋ Tambah Pengadil" untuk mula.'}</td></tr>`;
+        body.innerHTML = `<tr class="empty-row"><td colspan="8">${state.referees.length ? 'Tiada pengadil sepadan dengan carian.' : 'Belum ada akaun pengadil. Tekan "＋ Tambah Pengadil" untuk mula.'}</td></tr>`;
         return;
       }
       body.innerHTML = list.map((r, i) => {
@@ -14274,6 +14359,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               ${r.sheetSync === true
                 ? '<span class="badge badge-ok" title="Disimpan dalam Google Sheets - boleh log masuk dari mana-mana peranti">☁ Sheets</span>'
                 : '<span class="badge badge-reject" title="Belum ada dalam Google Sheets - hanya boleh log masuk di peranti ini">⚠ Peranti ini sahaja</span>'}</td>
+            <td>${refSukanOf(r) === 'BADMINTON' ? '<span class="badge">🏸 Badminton</span>' : '<span class="badge">⚽ Futsal</span>'}</td>
             <td>
               <span class="pw-cell">
                 <span>${show ? escapeHtml(r.password) : '••••••'}</span>
