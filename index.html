@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1254,6 +1254,40 @@ body.projection-on #projection { display:block; }
 .tv-fs-hint small { font:500 .75rem var(--font-body, inherit); color:var(--text-1); }
 #projection.need-fs .tv-fs-hint { display:flex; }
 #projection.idle .tv-tools, #projection.idle .tv-fs-hint { opacity:0; pointer-events:none; }
+/* v1.20.0: projektor ikut pilihan sukan (SEMUA = Futsal + Badminton dalam satu skrin) */
+#projection .proj-body { display:block; }
+#projection .proj-sec { min-width:0; }
+#projection .proj-sec-h { display:none; align-items:baseline; gap:10px; margin:0 0 10px; font:800 1.25rem/1.1 var(--font-display); letter-spacing:.02em; }
+#projection .proj-sec-h small { font:600 .85rem var(--font-body, inherit); color:var(--text-1); }
+#projection .proj-sec-fs .proj-sec-h span { color:var(--brand); }
+#projection .proj-sec-bm .proj-sec-h span { color:var(--bm); }
+#projection .proj-sec-bm { display:none; }
+#projection .bm-court-act { display:none !important; }
+#projection.pm-BADMINTON .proj-sec-fs { display:none; }
+#projection.pm-BADMINTON .proj-sec-bm { display:block; }
+#projection.pm-BADMINTON #tvStandbySlot { display:none; }
+#projection.pm-SEMUA .proj-body { display:grid; grid-template-columns:var(--proj-split, 2fr 3fr); gap:22px; align-items:start; }
+#projection.pm-SEMUA .proj-sec-bm { display:block; }
+#projection.pm-SEMUA .proj-sec-h { display:flex; padding-bottom:8px; border-bottom:2px solid var(--glass-border-strong); }
+#projection.pm-SEMUA .proj-sec-fs .proj-sec-h { border-color:rgba(46,230,166,.45); }
+#projection.pm-SEMUA .proj-sec-bm .proj-sec-h { border-color:var(--bm-line); }
+#projection.pm-SEMUA #tvStandbySlot { display:none; }
+#projection.pm-SEMUA .court-head h3 { font-size:1.12rem; }
+#projection.pm-SEMUA .team-side .team-name { font-size:1.02rem; }
+#projection.pm-SEMUA .score-box { font-size:2.5rem; }
+/* v1.20.0: tab Simulasi Gelanggang Live dalam mod SEMUA */
+.only-semua, .only-semua-in, .only-semua-flex { display:none !important; }
+body[data-sukan="SEMUA"] .only-semua { display:block !important; }
+body[data-sukan="SEMUA"] .only-semua-in { display:inline !important; }
+body[data-sukan="SEMUA"] .only-semua-flex { display:flex !important; }
+body[data-sukan="SEMUA"] .not-semua { display:none !important; }
+.all-sec-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:4px 0 12px; padding:10px 14px; border-radius:14px;
+  font:800 1.05rem/1.2 var(--font-display); border:1px solid rgba(46,230,166,.35); background:linear-gradient(135deg, rgba(46,230,166,.12), rgba(56,189,248,.05)); }
+.all-sec-head small { font:600 .8rem var(--font-body, inherit); color:var(--text-2); }
+.all-sec-head .all-sec-ic { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; font-size:1.05rem; background:linear-gradient(135deg, var(--brand), #38bdf8); }
+.all-sec-head.all-bm-h { border-color:var(--bm-line); background:linear-gradient(135deg, rgba(192,132,252,.16), rgba(244,114,182,.06)); }
+.all-sec-head.all-bm-h .all-sec-ic { background:linear-gradient(135deg, var(--bm), var(--bm-2)); }
+#allBmWrap { margin:22px 0 20px; }
   </style>
   <style>
     /* ===== v1.9 SAMBUTAN GOL & SEPAK MULA ===== */
@@ -1627,16 +1661,25 @@ body.projection-on #projection { display:block; }
     <div class="proj-stage" id="projStage">
       <header class="tv-head">
         <div class="tv-brand">
-          <span class="tv-logo" aria-hidden="true">⚽</span>
+          <span class="tv-logo" id="tvLogo" aria-hidden="true">⚽</span>
           <div>
-            <h2>Futsal Pendidikan Khas KBB 2026</h2>
-            <p>Peringkat Daerah Kulim Bandar Baharu · Gelanggang A &amp; B: Sekolah Menengah · C &amp; D: Sekolah Rendah</p>
+            <h2 id="tvTitle">Futsal Pendidikan Khas KBB 2026</h2>
+            <p id="tvSub">Peringkat Daerah Kulim Bandar Baharu · Gelanggang A &amp; B: Sekolah Menengah · C &amp; D: Sekolah Rendah</p>
           </div>
         </div>
         <div class="tv-live-count" id="tvLiveCount"></div>
         <div class="tv-clock" id="tvClock" aria-label="Masa sekarang">--:--</div>
       </header>
-      <div class="proj-courts" id="tvGrid"></div>
+      <div class="proj-body" id="tvBody">
+        <section class="proj-sec proj-sec-fs">
+          <h3 class="proj-sec-h"><span>⚽ Futsal</span><small id="tvFsInfo"></small></h3>
+          <div class="proj-courts" id="tvGrid"></div>
+        </section>
+        <section class="proj-sec proj-sec-bm">
+          <h3 class="proj-sec-h"><span>🏸 Badminton</span><small id="tvBmInfo"></small></h3>
+          <div class="proj-courts" id="tvBmGrid"></div>
+        </section>
+      </div>
       <div id="tvStandbySlot"></div>
       <footer class="tv-foot"><span><i class="tv-dot tv-dot-now"></i> Semasa di gelanggang &nbsp; · &nbsp; <i class="tv-dot tv-dot-next"></i> Seterusnya: sila bersedia</span><span id="tvUpdated">Menunggu data langsung</span></footer>
     </div>
@@ -1717,6 +1760,7 @@ body.projection-on #projection { display:block; }
         </div>
         <div data-bm-notice></div>
         <div class="card glass live-board compact bm-live-strip" id="bmLiveStrip" aria-live="polite"></div>
+        <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })"><span class="not-semua">▣ Paparan Projektor Badminton (Skrin Penuh)</span><span class="only-semua-in">▣ Paparan Projektor · Semua Gelanggang (Futsal + Badminton)</span></button>
         <div class="courts-grid bm-courts" id="bmCourtsGrid"></div>
 
         <div class="card glass standby-board" id="bmStandbyBoard" aria-live="polite">
@@ -1815,8 +1859,9 @@ body.projection-on #projection { display:block; }
       <section class="tab-panel" id="tab-live" role="tabpanel">
         <div class="panel-head">
           <div>
-            <h2>Simulasi Gelanggang Live</h2>
-            <p>Gelanggang A &amp; B: Sekolah Menengah · Gelanggang C &amp; D: Sekolah Rendah</p>
+            <h2><span class="not-semua">Simulasi Gelanggang Live</span><span class="only-semua-in">Simulasi Gelanggang Live · Semua Permainan</span></h2>
+            <p class="not-semua">Gelanggang A &amp; B: Sekolah Menengah · Gelanggang C &amp; D: Sekolah Rendah</p>
+            <p class="only-semua">⚽ Futsal: A &amp; B Sekolah Menengah · C &amp; D Sekolah Rendah &nbsp;|&nbsp; 🏸 Badminton: 1 &amp; 2 Sekolah Rendah · 3 hingga 6 Sekolah Menengah</p>
           </div>
           <div class="legend" aria-label="Petunjuk warna gelanggang">
             <span><i class="l-ready"></i> Kosong / Sedia</span>
@@ -1830,9 +1875,15 @@ body.projection-on #projection { display:block; }
         <!-- MEJA PENGADIL (Fasa 2): dipaparkan hanya selepas pengadil log masuk -->
         <div class="card glass ref-desk hidden" id="refDesk"></div>
 
-        <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })">▣ Paparan Projektor (Skrin Penuh)</button>
+        <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })"><span class="not-semua">▣ Paparan Projektor (Skrin Penuh)</span><span class="only-semua-in">▣ Paparan Projektor · Semua Gelanggang (Futsal + Badminton)</span></button>
+        <!-- v1.20.0: mod SEMUA -> semua gelanggang Futsal & Badminton dalam satu halaman -->
+        <div class="all-sec-head all-fs only-semua-flex"><span class="all-sec-ic">⚽</span><span>Futsal</span><small>Gelanggang A – D</small></div>
         <div class="courts-grid" id="courtsGrid">
           <!-- Kad gelanggang A, B, C, D dijana oleh JavaScript (renderCourts) -->
+        </div>
+        <div class="all-bm only-semua" id="allBmWrap">
+          <div class="all-sec-head all-bm-h"><span class="all-sec-ic">🏸</span><span>Badminton</span><small>Gelanggang 1 – 6</small><button type="button" class="btn btn-sm" style="margin-left:auto;" onclick="openTab('tab-bm-live')">Giliran Badminton ›</button></div>
+          <div class="courts-grid bm-courts" id="allBmGrid"></div>
         </div>
 
         <!-- MAKLUMAN STANDBY (Fasa 7): untuk pengurus pasukan -->
@@ -15768,6 +15819,48 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     //  - Kad dikemas kini di tempat (hanya kad yang berubah dilukis semula) -> tiada kelipan.
     //  - Kursor & butang disembunyikan selepas 3 saat tanpa pergerakan tetikus.
     function projectionOn(){return document.body.classList.contains('projection-on');}
+    // v1.20.0: mod projektor ikut pilihan sukan (SEMUA / FUTSAL / BADMINTON)
+    function projMode(){ try{ return (typeof dash!=='undefined' && dash && ['SEMUA','FUTSAL','BADMINTON'].includes(dash.sukan)) ? dash.sukan : 'SEMUA'; }catch(e){ return 'SEMUA'; } }
+    const PROJ_HEAD = {
+      SEMUA: { logo:'🏆', title:'Karnival Sukan Pendidikan Khas KBB 2026', sub:'Futsal &amp; Badminton · Peringkat Daerah Kulim Bandar Baharu · Semua gelanggang secara langsung' },
+      FUTSAL: { logo:'⚽', title:'Futsal Pendidikan Khas KBB 2026', sub:'Peringkat Daerah Kulim Bandar Baharu · Gelanggang A &amp; B: Sekolah Menengah · C &amp; D: Sekolah Rendah' },
+      BADMINTON: { logo:'🏸', title:'Badminton Pendidikan Khas KBB 2026', sub:'Peringkat Daerah Kulim Bandar Baharu · Gelanggang 1 &amp; 2: Sekolah Rendah · 3 hingga 6: Sekolah Menengah' }
+    };
+    function applyProjMode(){
+      const el=document.getElementById('projection'); if(!el)return;
+      const k=projMode();
+      ['SEMUA','FUTSAL','BADMINTON'].forEach(x=>el.classList.toggle('pm-'+x, x===k));
+      const h=PROJ_HEAD[k];
+      const L=document.getElementById('tvLogo'), T=document.getElementById('tvTitle'), S=document.getElementById('tvSub');
+      if(L&&L.textContent!==h.logo)L.textContent=h.logo;
+      if(T&&T.innerHTML!==h.title)T.innerHTML=h.title;
+      if(S&&S.innerHTML!==h.sub)S.innerHTML=h.sub;
+    }
+    // Kad gelanggang Badminton untuk projektor (dikemas kini di tempat -> tiada kelipan)
+    function renderProjBm(){
+      const k=projMode();
+      const grid=document.getElementById('tvBmGrid');
+      if(!grid||k==='FUTSAL'||typeof bmCourtRows!=='function'||typeof bmModel!=='function')return 0;
+      let rows=[];
+      try{ rows=bmCourtRows(bmModel()); }catch(e){ console.error('[renderProjBm]',e); return 0; }
+      const ids=rows.map(r=>r.gel).join(',');
+      if(grid.dataset.courts!==ids){
+        grid.innerHTML=rows.map(r=>`<div class="proj-slot" data-slot="${escapeHtml(r.gel)}"></div>`).join('') ||
+          '<div class="sb-empty">Tiada gelanggang badminton untuk kategori ini.</div>';
+        grid.dataset.courts=ids;
+      }
+      grid.style.setProperty('--proj-cols', String(rows.length<=3?Math.max(1,rows.length):3));
+      let live=0;
+      rows.forEach(r=>{
+        const slot=grid.querySelector(`.proj-slot[data-slot="${r.gel}"]`); if(!slot)return;
+        const html=bmCourtCard(r);
+        if(slot._html!==html){ slot.innerHTML=html; slot._html=html; }
+        if(r.st==='live')live+=1;
+      });
+      const info=document.getElementById('tvBmInfo');
+      if(info){ const t=`${rows.length} gelanggang${live?' · '+live+' live':''}`; if(info.textContent!==t)info.textContent=t; }
+      return live;
+    }
     function setProjection(on, opts = {}) {
       document.body.classList.toggle('projection-on',on);
       const board=document.getElementById('standbyBoard');
@@ -15775,11 +15868,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       else document.getElementById('standbyHome').after(board);
       const g=document.getElementById('tvGrid');
       if(on) {
+        applyProjMode();
         renderStandby(); renderProjection({rebuild:true}); fetchPublicLive(); updateProjectionChrome(); projectionPoke();
+        try{ if(projMode()!=='FUTSAL' && typeof dashRefresh==='function') setTimeout(()=>dashRefresh(true),0); }catch(e){}
         fitProjection(true);
         if(opts.fullscreen) projectionFullscreen({ silent:true });
       } else {
         disposeTvScenes(); g.innerHTML=''; delete g.dataset.courts;
+        const bg=document.getElementById('tvBmGrid'); if(bg){ bg.innerHTML=''; delete bg.dataset.courts; }
         if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
       }
       updateProjectionWakeLock();
@@ -15800,13 +15896,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if(!projectionOn())return;
       const grid=document.getElementById('tvGrid');
       if(!grid)return;
+      applyProjMode();
+      const mode=projMode();
+      if(opts.rebuild){ const bg=document.getElementById('tvBmGrid'); if(bg){ bg.innerHTML=''; delete bg.dataset.courts; } }
       const ids=state.courts.map(c=>c.id).join(',');
       if(opts.rebuild || grid.dataset.courts!==ids || !grid.querySelector('.proj-slot')){
         grid.innerHTML=state.courts.map(c=>`<div class="proj-slot" data-slot="${escapeHtml(c.id)}"></div>`).join('');
         grid.dataset.courts=ids;
-        grid.style.setProperty('--proj-cols', String(courtGridCols(state.courts.length)));
       }
+      // SEMUA: Futsal 2 lajur (kiri) + Badminton 3 lajur (kanan) dalam satu skrin
+      const fsCols = mode==='SEMUA' ? (state.courts.length<=4?2:3) : courtGridCols(state.courts.length);
+      grid.style.setProperty('--proj-cols', String(fsCols));
+      const body=document.getElementById('tvBody');
+      if(body) body.style.setProperty('--proj-split', `${fsCols}fr 3fr`);
       let live=0;
+      const bmLive = renderProjBm();
       state.courts.forEach(c=>{
         const slot=grid.querySelector(`.proj-slot[data-slot="${c.id}"]`);
         if(!slot)return;
@@ -15815,6 +15919,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const v=courtDisplay(c).v;
         if(v.status===COURT_STATUS.LIVE && !isCourtPaused(v)) live+=1;
       });
+      const fsInfo=document.getElementById('tvFsInfo');
+      if(fsInfo){ const t=`${state.courts.length} gelanggang${live?' · '+live+' live':''}`; if(fsInfo.textContent!==t)fsInfo.textContent=t; }
+      if(mode==='BADMINTON') live=bmLive; else if(mode==='SEMUA') live+=bmLive;
       const lc=document.getElementById('tvLiveCount');
       if(lc){ const t=live?`🔴 ${live} LIVE`:'Tiada perlawanan live'; if(lc.textContent!==t)lc.textContent=t; lc.classList.toggle('zero',!live); }
       updateCourtTimers();
@@ -16074,9 +16181,17 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     // Bahagian 5: penonton awam di tab Futsal (Carta / Kalah Mati / Jadual) turut menerima data Google Sheets
     function dashFutsalTabPublic(t) { try { return !getSession() && ['tab-standings', 'tab-knockout', 'tab-schedule'].includes(t); } catch (e) { return false; } }
+    // v1.20.0: data Badminton juga diperlukan di tab Gelanggang Live (mod SEMUA) & paparan projektor
+    function bmAllWanted() {
+      try {
+        const t = (state.ui && state.ui.activeTab) || '';
+        if (!sukanVisible('BADMINTON')) return false;
+        return (typeof projectionOn === 'function' && projectionOn()) || (t === 'tab-live' && dash.sukan === 'SEMUA');
+      } catch (e) { return false; }
+    }
     function dashNeedsData() {
       const t = (state.ui && state.ui.activeTab) || '';
-      return t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0 || dashFutsalTabPublic(t);
+      return t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0 || dashFutsalTabPublic(t) || bmAllWanted();
     }
 
     async function dashRefresh(force = false, only = null) {
@@ -16101,7 +16216,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           else dash.futsal.err = (d && d.error) || 'Data futsal tidak dapat dibaca.';
         }).catch(e => { dash.futsal.err = (e && e.message) || 'Ralat rangkaian.'; }));
       }
-      if (want('BADMINTON') && (t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0)) {
+      if (want('BADMINTON') && (t === 'tab-dashboard' || t.indexOf('tab-bm-') === 0 || bmAllWanted())) {
         jobs.push(dashFetch('badminton').then(d => {
           if (d && d.ok && Array.isArray(d.jadual) && !d.jadual.length) {
             // Bahagian 6: tab Jadual_Badminton wujud tetapi masih kosong -> kekalkan jadual asal
@@ -16811,8 +16926,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <button type="button" class="btn btn-sm" onclick="dashRefresh(true)" title="Muat semula daripada Google Sheets">↻</button>
           </div></div>`;
       }
-      grid.innerHTML = rows.map(bmCourtCard).join('') ||
+      const cardsHtml = rows.map(bmCourtCard).join('') ||
         '<div class="card glass empty-state" style="grid-column:1/-1;"><div class="icon">🏸</div><p>Tiada gelanggang badminton untuk kategori ini.</p></div>';
+      grid.innerHTML = cardsHtml;
+      // v1.20.0: mod SEMUA -> gelanggang Badminton turut dipaparkan di tab Simulasi Gelanggang Live
+      const allGrid = document.getElementById('allBmGrid');
+      if (allGrid) {
+        const want = dash.sukan === 'SEMUA' ? cardsHtml : '';
+        if (allGrid._html !== want) { allGrid.innerHTML = want; allGrid._html = want; }
+      }
+      try { if (typeof projectionOn === 'function' && projectionOn()) renderProjection(); } catch (e) { /* abaikan */ }
 
       // Papan giliran pasukan
       const sbGrid = document.getElementById('bmSbGrid'), resEl = document.getElementById('bmSbResult'), sel = document.getElementById('bmSbTeam');
