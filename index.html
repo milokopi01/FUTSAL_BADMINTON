@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxVLwi8ZEiyS9vTIsJ1A0cJ7-vfA8fp4SW4--tbLvm5qpJ4DvwhNYvK1f-QyKLhCPJpeg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1382,14 +1382,23 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     .kfx-title{font:900 clamp(1.8rem,7vw,3.2rem)/1.05 var(--font-display);margin:4px 0}
     .kfx-teams{font:700 clamp(.9rem,2.8vw,1.15rem)/1.25 var(--font-display);word-break:break-word}
     .kfx-teams span{opacity:.75;font-weight:600;margin:0 4px}
-    .court-card.goal-fx,.tv-card.goal-fx{animation:goalCard .55s ease-in-out infinite alternate !important;border-color:#2ee6a6 !important}
-    @keyframes goalCard{from{box-shadow:0 0 0 2px rgba(46,230,166,.55),0 0 28px rgba(46,230,166,.45)}to{box-shadow:0 0 0 5px rgba(255,181,71,.85),0 0 70px rgba(46,230,166,.85)}}
-    .court-card.goal-fx .score-box,.tv-card.goal-fx .score-box{animation:goalScore .45s ease-in-out infinite alternate}
-    @keyframes goalScore{to{transform:scale(1.12)}}
+    /* v1.26.0: goal Futsal / mata Badminton -> kotak gelanggang & nombor skor BERKELIP 5 saat (tiada sepanduk / notifikasi) */
+    .court-card.goal-fx,.tv-card.goal-fx{animation:scoreCardBlink .5s steps(1,end) 10 !important;outline:4px solid transparent;outline-offset:-2px}
+    @keyframes scoreCardBlink{
+      0%{outline-color:#ffd23f;box-shadow:0 0 0 3px rgba(255,210,63,.55),0 0 60px rgba(255,210,63,.65),inset 0 0 40px rgba(255,210,63,.22)}
+      50%{outline-color:transparent;box-shadow:0 0 0 0 rgba(255,210,63,0)}
+    }
+    .court-card.goal-fx .pitch,.tv-card.goal-fx .pitch{animation:scorePitchBlink .5s steps(1,end) 10}
+    @keyframes scorePitchBlink{0%{filter:brightness(1.45) saturate(1.2)}50%{filter:none}}
+    .score-box > span.sc-hit{display:inline-block;animation:scoreNumBlink .5s steps(1,end) 10}
+    @keyframes scoreNumBlink{
+      0%{color:#ffd23f;text-shadow:0 0 14px #ffd23f,0 0 30px rgba(255,210,63,.8);transform:scale(1.22)}
+      50%{color:inherit;text-shadow:none;transform:none;opacity:.2}
+    }
     .sound-btn.needs-tap{animation:soundTap 1.2s ease-in-out infinite;border-color:var(--accent) !important;color:var(--accent) !important}
     @keyframes soundTap{50%{box-shadow:0 0 0 4px rgba(255,181,71,.25)}}
     @media (prefers-reduced-motion: reduce){
-      .goal-fx-banner,.kick-fx-banner,.gfx-title,.court-card.goal-fx,.tv-card.goal-fx,.court-card.goal-fx .score-box,.tv-card.goal-fx .score-box{animation:none !important}
+      .goal-fx-banner,.kick-fx-banner,.gfx-title{animation:none !important}
       .gfx-confetti{display:none}
     }
   </style>
@@ -2030,6 +2039,86 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     #tab-live .bm-pitch .shuttle { font-size: clamp(1.1rem, 2.6vh, 1.9rem) !important; }
   </style>
 
+
+  <!-- v1.27.0: PAPARAN TELEFON MESRA PENGGUNA (paparan komputer tidak berubah) -->
+  <style id="mobile-friendly-style">
+    /* Telefon & tablet: Futsal dan Badminton disusun atas-bawah, bukan sebelah-menyebelah */
+    @media (max-width: 959px) {
+      body[data-sukan="SEMUA"] #tab-live .all-split {
+        grid-template-columns: minmax(0, 1fr) !important; gap: 18px !important; align-items: start !important;
+      }
+      body[data-sukan="SEMUA"] #tab-live #courtsGrid,
+      body[data-sukan="SEMUA"] #tab-live #allBmGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important;
+      }
+      body[data-sukan="SEMUA"] #tab-live .court-card { height: auto !important; justify-content: flex-start !important; }
+      body[data-sukan="SEMUA"] #tab-live .all-split .all-sec-head { margin-bottom: 10px !important; }
+    }
+
+    @media (max-width: 640px) {
+      /* Bar Auto-Fit & butang projektor hanya untuk komputer / skrin dewan */
+      #liveAutoFitBar, .tv-launch { display: none !important; }
+      .app-header { background: rgba(7, 11, 22, 0.96) !important; }
+      /* --- Bahagian atas lebih padat --- */
+      .app-header { transition: transform .25s ease; will-change: transform; }
+      .header-inner { padding: 10px 0 8px !important; gap: 8px !important; }
+      .brand { gap: 10px !important; }
+      .brand-logo { width: 38px !important; height: 38px !important; font-size: 1.2rem !important; border-radius: 11px !important; }
+      .brand-text h1 { font-size: .92rem !important; line-height: 1.25 !important; }
+      .brand-text p { display: none !important; }
+      .category-switch { padding: 3px !important; }
+      .category-switch button { padding: 7px 6px !important; font-size: .76rem !important; }
+      .header-actions .btn, .header-actions .access-badge { padding-top: 7px !important; padding-bottom: 7px !important; font-size: .78rem !important; }
+      .sport-bar { margin: 0 !important; padding: 0 0 6px !important; }
+      .sport-switch { width: 100%; }
+      .sport-switch button { flex: 1 1 0; justify-content: center; padding: 7px 8px !important; font-size: .8rem !important; }
+      .sport-hint { display: none !important; }
+      .tab-nav { padding: 4px 0 8px !important; gap: 5px !important; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+      .tab-btn { padding: 8px 12px !important; font-size: .8rem !important; scroll-snap-align: center; }
+      .tab-group { font-size: .66rem !important; padding: 5px 9px !important; }
+      /* Bila skrol ke bawah: bahagian atas disorok, hanya baris tab kekal */
+      .app-header.hdr-collapsed { transform: translateY(calc(-1 * var(--hdr-collapse, 0px))); }
+
+      /* --- Kandungan --- */
+      .cat-ribbon { margin-top: 10px !important; padding: 8px 12px !important; font-size: .74rem !important; }
+      .panel-head h2 { font-size: 1.1rem !important; line-height: 1.3 !important; }
+      .panel-head p { font-size: .8rem !important; }
+      .legend { gap: 6px 12px !important; font-size: .74rem !important; }
+      .live-count, .badge { white-space: nowrap; }
+      .live-board { padding: 12px 14px !important; }
+
+      /* --- Kad gelanggang: satu lajur, padang besar & jelas --- */
+      body[data-sukan="SEMUA"] #tab-live #courtsGrid,
+      body[data-sukan="SEMUA"] #tab-live #allBmGrid,
+      .courts-grid, .courts-grid.bm-courts { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; }
+      #tab-live .court-card > .pitch, #tab-bm-live .court-card > .pitch,
+      #tab-live .pitch, #tab-bm-live .pitch {
+        height: auto !important; aspect-ratio: 2 / 1; min-height: 130px !important; margin: 8px 12px !important;
+      }
+      .court-head { padding: 12px 14px 4px !important; }
+      .court-head h3 { font-size: 1rem !important; }
+      .pitch-overlay { font-size: .78rem !important; letter-spacing: .1em !important; padding: 0 10px; text-align: center; line-height: 1.3; }
+      .scoreboard { gap: 8px !important; padding: 6px 12px !important; }
+      .scoreboard .score-box { font-size: 2.1rem !important; padding: 6px 12px !important; }
+      .team-side .team-name { font-size: .86rem !important; line-height: 1.25 !important; overflow-wrap: anywhere; }
+      .court-meta { flex-wrap: wrap; gap: 4px 10px !important; padding: 4px 14px !important; font-size: .74rem !important; }
+      .court-next { padding: 8px 14px 10px !important; font-size: .76rem !important; }
+      .court-card .btn { min-height: 40px; }
+
+      /* --- Giliran seterusnya --- */
+      .all-queue { padding: 12px !important; }
+      .aq-split { gap: 12px !important; }
+      .aq-grid { grid-template-columns: minmax(0, 1fr) !important; }
+
+      /* --- Jadual: boleh leret ke tepi dengan lancar --- */
+      .table-wrap { -webkit-overflow-scrolling: touch; }
+      .data-table th, .data-table td { padding: 9px 8px !important; }
+
+      /* --- Butang & pop-up mudah ditekan --- */
+      .modal { width: calc(100vw - 20px) !important; max-height: calc(100dvh - 24px); overflow-y: auto; }
+      input, select, textarea { font-size: 16px !important; } /* elak zum automatik iPhone */
+    }
+  </style>
 </head>
 <body data-category="SEMUA">
 
@@ -9496,7 +9585,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="team-name">${match ? escapeHtml(match.namaP1) : '—'}</div>
             </div>
             <div class="score-box" aria-label="Skor">
-              <span>${s1}</span><span class="sep">:</span><span>${s2}</span>
+              <span${scoreHitCls('F:' + court.id, 1)}>${s1}</span><span class="sep">:</span><span${scoreHitCls('F:' + court.id, 2)}>${s2}</span>
             </div>
             <div class="team-side right">
               <div class="team-code">${match ? escapeHtml(match.kodP2) : '-'}</div>
@@ -13101,7 +13190,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     const GOAL_FX_MS = 5000;
     const KICK_FX_MS = 3500;
     const SOUND_PREF_KEY = 'fpk_kbb_bunyi';
-    const goalFxUntil = {};            // gelanggang -> masa tamat sambutan
+    const scoreFx = {};                // v1.26.0: 'F:A' / 'B:1' -> { until, side, t }
     const fxPrev = {};                 // gelanggang -> { matchId, s1, s2, live }
     let fxPrimed = false;
     const liveSound = {
@@ -13149,8 +13238,53 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (ready) fxPrimed = true;
     }
 
-    function goalFxActive(courtId) {
-      return (goalFxUntil[courtId] || 0) > Date.now();
+    function scoreFxOn(key) {
+      const f = scoreFx[key];
+      return f && f.until > Date.now() ? f : null;
+    }
+    function goalFxActive(courtId) { return !!scoreFxOn('F:' + courtId); }
+    // Kelas untuk nombor skor pasukan yang baru menjaring / dapat mata
+    function scoreHitCls(key, side) {
+      const f = scoreFxOn(key);
+      return f && f.side === side ? ' class="sc-hit"' : '';
+    }
+    // Kotak gelanggang + nombor skor berkelip selama GOAL_FX_MS (5 saat)
+    function triggerScoreFx(key, side, selector) {
+      if (!fxEnabledHere()) return;
+      const old = scoreFx[key];
+      if (old && old.t) clearTimeout(old.t);
+      const apply = on => document.querySelectorAll(selector).forEach(card => {
+        if (on) { card.classList.remove('goal-fx'); void card.offsetWidth; }   // mula semula kelipan
+        card.classList.toggle('goal-fx', on);
+        card.querySelectorAll('.score-box > span:not(.sep)').forEach((sp, i) => {
+          if (on) sp.classList.remove('sc-hit');
+          sp.classList.toggle('sc-hit', on && i === side - 1);
+        });
+      });
+      const f = { until: Date.now() + GOAL_FX_MS, side };
+      f.t = setTimeout(() => { if (!scoreFxOn(key)) apply(false); }, GOAL_FX_MS + 60);
+      scoreFx[key] = f;
+      apply(true);
+    }
+    const futsalFxSel = id => `.court-card[data-court="${id}"], .tv-card[data-court="${id}"]`;
+    const bmFxSel = gel => `[data-bm-court="${gel}"]`;
+
+    // v1.26.0: kesan mata baharu Badminton (dari data Google Sheets)
+    const bmFxPrev = {};
+    function detectBmPoints(rows) {
+      const ready = !!(typeof dash !== 'undefined' && dash && dash.bm && dash.bm.data);
+      rows.forEach(c => {
+        const m = c.cur;
+        const cur = { id: m ? m.id : null, live: c.st === 'live' && !!m && m.status !== 'REHAT',
+          s1: m ? fxNum(m.s1) : null, s2: m ? fxNum(m.s2) : null, ready };
+        const prev = bmFxPrev[c.gel];
+        if (ready && prev && prev.ready && cur.live && prev.live && cur.id && prev.id === cur.id &&
+            prev.s1 !== null && prev.s2 !== null && cur.s1 !== null && cur.s2 !== null) {
+          if (cur.s1 > prev.s1) triggerScoreFx('B:' + c.gel, 1, bmFxSel(c.gel));
+          else if (cur.s2 > prev.s2) triggerScoreFx('B:' + c.gel, 2, bmFxSel(c.gel));
+        }
+        bmFxPrev[c.gel] = cur;
+      });
     }
 
     function fxLayer() {
@@ -13211,41 +13345,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       try { if (navigator.vibrate) navigator.vibrate([400, 150, 400]); } catch (err) { /* abaikan */ }
     }
 
+    // v1.26.0: tiada lagi sepanduk "GOAL!" / notifikasi. Kotak gelanggang & nombor skor berkelip 5 saat + bunyi.
     function celebrateGoal(court, e, side, cur) {
-      const n = fxMatchNames(court, e);
-      const team = side === 1 ? n.p1 : n.p2;
-      showToast(`⚽ GOAL! ${team} · Gelanggang ${court.id} · ${cur.s1} - ${cur.s2}`, 'success', GOAL_FX_MS);
       if (!fxEnabledHere()) return;
-      goalFxUntil[court.id] = Date.now() + GOAL_FX_MS;
-      const colors = ['#2ee6a6', '#13b8d6', '#ffb547', '#f43f5e', '#ffffff', '#facc15'];
-      let confetti = '';
-      for (let i = 0; i < 26; i++) {
-        confetti += `<span style="left:${Math.round(Math.random() * 100)}%;background:${colors[i % colors.length]};animation-delay:${(Math.random() * 1.2).toFixed(2)}s;animation-duration:${(1.8 + Math.random() * 1.4).toFixed(2)}s;transform:rotate(${Math.round(Math.random() * 360)}deg)"></span>`;
-      }
-      // Gol berturut di gelanggang sama: ganti sepanduk lama (tidak bertindih)
-      document.querySelectorAll(`.goal-fx-banner[data-court="${court.id}"]`).forEach(x => x.remove());
-      const el = document.createElement('div');
-      el.className = 'goal-fx-banner';
-      el.dataset.court = court.id;
-      el.innerHTML = `<div class="gfx-confetti" aria-hidden="true">${confetti}</div>
-        <div class="gfx-kicker">Gelanggang ${escapeHtml(court.id)} · ${escapeHtml(e.matchId || '')}</div>
-        <div class="gfx-title">⚽ GOAL!</div>
-        <div class="gfx-team">${escapeHtml(team)}</div>
-        <div class="gfx-score"><span class="gfx-name">${escapeHtml(n.p1)}</span><b>${cur.s1}</b><i>:</i><b>${cur.s2}</b><span class="gfx-name">${escapeHtml(n.p2)}</span></div>`;
-      const layer = fxLayer();
-      const flash = document.createElement('div');
-      flash.className = 'livefx-flash';
-      layer.appendChild(flash);
-      setTimeout(() => flash.remove(), 1300);
-      layer.appendChild(el);
-      fxRemoveLater(el, GOAL_FX_MS);
-      document.querySelectorAll(`.court-card[data-court="${court.id}"], .tv-card[data-court="${court.id}"]`)
-        .forEach(c => c.classList.add('goal-fx'));
-      setTimeout(() => {
-        if (goalFxActive(court.id)) return;
-        document.querySelectorAll(`.court-card[data-court="${court.id}"], .tv-card[data-court="${court.id}"]`)
-          .forEach(c => c.classList.remove('goal-fx'));
-      }, GOAL_FX_MS + 50);
+      triggerScoreFx('F:' + court.id, side, futsalFxSel(court.id));
       playGoalAlarm();
       try { if (navigator.vibrate) navigator.vibrate([220, 90, 220, 90, 420]); } catch (err) { /* abaikan */ }
     }
@@ -13446,6 +13549,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       celebrateGoal(court, Object.assign({}, e, { matchId: e.matchId || 'UJI' }), 1,
         { s1: (fxNum(e.skorP1) || 0) + 1, s2: fxNum(e.skorP2) || 0 });
     }
+    // Uji kelipan mata Badminton (Konsol: testPointFx('1', 2))
+    function testPointFx(gel = '1', side = 1) { triggerScoreFx('B:' + gel, side, bmFxSel(gel)); }
     // Uji tamat perlawanan (Konsol: testEndFx('A'))
     function testEndFx(courtId = 'A') {
       const court = getCourt(courtId) || state.courts[0];
@@ -17616,7 +17721,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         act = `<button type="button" class="btn btn-primary btn-sm" onclick="bmAdminBuka('${dashEsc(m.id)}')">${lbl}</button>`;
       }
       return `
-        <article class="court-card bm-court status-${c.st}" data-bm-court="${dashEsc(c.gel)}">
+        <article class="court-card bm-court status-${c.st}${scoreFxOn('B:' + c.gel) ? ' goal-fx' : ''}" data-bm-court="${dashEsc(c.gel)}">
           <div class="court-head">
             <div class="court-name">
               <div class="court-letter">${dashEsc(c.gel)}</div>
@@ -17639,7 +17744,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="team-code">${m ? dashEsc(m.sing1 || m.kod1 || '-') : '-'}</div>
               <div class="team-name">${m ? bmTeamLine(m, '1') : '—'}</div>
             </div>
-            <div class="score-box" aria-label="Skor"><span>${s1}</span><span class="sep">:</span><span>${s2}</span></div>
+            <div class="score-box" aria-label="Skor"><span${scoreHitCls('B:' + c.gel, 1)}>${s1}</span><span class="sep">:</span><span${scoreHitCls('B:' + c.gel, 2)}>${s2}</span></div>
             <div class="team-side right">
               <div class="team-code">${m ? dashEsc(m.sing2 || m.kod2 || '-') : '-'}</div>
               <div class="team-name">${m ? bmTeamLine(m, '2') : '—'}</div>
@@ -17659,6 +17764,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const grid = document.getElementById('bmCourtsGrid');
       if (!grid) return;
       const rows = bmCourtRows(model);
+      try { detectBmPoints(rows); } catch (e) { console.error('[detectBmPoints]', e); }   // v1.26.0
       // Jalur status ringkas
       const strip = document.getElementById('bmLiveStrip');
       if (strip) {
@@ -18255,5 +18361,52 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     })();
   </script>
 
+
+  <!-- v1.27.0: telefon -> sorok bahagian atas bila skrol ke bawah, tab aktif sentiasa kelihatan -->
+  <script>
+    (function () {
+      'use strict';
+      const mq = window.matchMedia('(max-width: 640px)');
+      let lastY = window.scrollY, ticking = false;
+      function header() { return document.querySelector('.app-header'); }
+      function collapseAmount() {
+        const h = header(), nav = document.getElementById('tabNav');
+        if (!h || !nav) return 0;
+        return Math.max(0, Math.round(nav.getBoundingClientRect().top - h.getBoundingClientRect().top));
+      }
+      function onScroll() {
+        ticking = false;
+        const h = header(); if (!h) return;
+        if (!mq.matches) { h.classList.remove('hdr-collapsed'); lastY = window.scrollY; return; }
+        const y = window.scrollY, dy = y - lastY;
+        if (y < 80) h.classList.remove('hdr-collapsed');
+        else if (dy > 6) { h.style.setProperty('--hdr-collapse', collapseAmount() + 'px'); h.classList.add('hdr-collapsed'); }
+        else if (dy < -6) h.classList.remove('hdr-collapsed');
+        if (Math.abs(dy) > 6) lastY = y;
+      }
+      window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+      function showActiveTab() {
+        const nav = document.getElementById('tabNav');
+        const btn = nav && nav.querySelector('.tab-btn.active');
+        if (!btn || !mq.matches) return;
+        const left = btn.offsetLeft - (nav.clientWidth - btn.offsetWidth) / 2;
+        nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+      }
+      document.addEventListener('click', e => {
+        if (e.target.closest && e.target.closest('.tab-btn, #sportSwitch button')) setTimeout(showActiveTab, 80);
+      });
+      window.addEventListener('hashchange', () => setTimeout(showActiveTab, 120));
+      window.addEventListener('load', () => setTimeout(showActiveTab, 600));
+      document.addEventListener('DOMContentLoaded', () => setTimeout(showActiveTab, 900));
+      // Tab dibuka melalui kod (cth. pautan dashboard) -> tatal baris tab ke tab aktif
+      window.addEventListener('load', () => {
+        const orig = window.openTab;
+        if (typeof orig !== 'function' || orig._mobWrap) return;
+        const wrapped = function () { const r = orig.apply(this, arguments); setTimeout(showActiveTab, 80); return r; };
+        wrapped._mobWrap = true;
+        window.openTab = wrapped;
+      });
+    })();
+  </script>
 </body>
 </html>
