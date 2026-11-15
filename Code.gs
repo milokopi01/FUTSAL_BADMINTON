@@ -179,7 +179,7 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.19.0';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
+const API_VERSI = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
 // const API_VERSI_LAMA = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
 // const API_VERSI_LAMA = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
 // const API_VERSI_170 = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
@@ -555,11 +555,10 @@ function doPost(e) {
       return output_(handleUrusetia_(action, body));
     }
     if (action === 'simpanskorsukan') {
-      // v1.19.0: Sub Admin boleh Sahkan / Tolak keputusan (bukan skor sementara)
-      const kep = String((body.skor || {}).keputusan || '').toUpperCase();
-      const subSah = !isMasterAdmin_(body) && (kep === 'DISAHKAN' || kep === 'DITOLAK') ? sesiSubAdmin_(body.tokenUrusetia) : null;
+      // v1.19.1: Sub Admin boleh Mula Perlawanan, Simpan Skor Sementara, Sahkan & Tolak keputusan
+      const subSah = !isMasterAdmin_(body) ? sesiSubAdmin_(body.tokenUrusetia) : null;
       if (!isMasterAdmin_(body) && !(subSah && subSah.ok)) {
-        return output_({ ok: false, kod: subSah ? subSah.kod : 'BUKAN_ADMIN', error: subSah ? subSah.error : 'Hanya Master Admin boleh menyimpan skor.' });
+        return output_({ ok: false, kod: subSah ? subSah.kod : 'BUKAN_ADMIN', error: subSah ? subSah.error : 'Hanya Master Admin atau Sub Admin boleh menyimpan skor.' });
       }
       return output_(simpanSkorSukan_(body, sukan, subSah && subSah.ok ? 'Sub Admin: ' + subSah.u.nama : 'Master Admin'));
     }

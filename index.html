@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwUoCPLaukrXP7knUlWPzJU0DHJNelKo_Zi24Xs56dRuomEuqgsQQwIT2OuTvB0ZWut1Q/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -18380,7 +18380,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     /* v1.23.1: SKOR BADMINTON OLEH MASTER ADMIN (dari kad Simulasi Gelanggang)
        Guna tindakan sedia ada 'simpanSkorSukan' (Code.gs) -> kunci Master Admin diperlukan.
        SEMENTARA = perlawanan dipaparkan LIVE; DISAHKAN = keputusan akhir terus disahkan. */
-    function bmAdminBoleh() { try { return typeof canManageSystem === 'function' && canManageSystem(); } catch (e) { return false; } }
+    function bmAdminBoleh() { try { return typeof canApprove === 'function' && canApprove(); } catch (e) { return false; } }
     const bmAdm = { id: null, asal: null, busy: false };
     async function bmAdminBaca(id) {
       const data = await dashFetch('read&sukan=BADMINTON');
@@ -18396,7 +18396,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       document.querySelectorAll('#bmAdminModal input, #bmAdminModal button:not(.modal-close)').forEach(el => { el.disabled = on; });
     }
     async function bmAdminBuka(id) {
-      if (!bmAdminBoleh()) { showToast('Hanya Master Admin atau pengadil Badminton boleh mengisi keputusan Badminton.', 'error'); return; }
+      if (!bmAdminBoleh()) { showToast('Hanya Master Admin atau Sub Admin boleh menguruskan perlawanan Badminton.', 'error'); return; }
       if (!getGasUrl()) { showToast('URL Google Apps Script belum ditetapkan.', 'error'); return; }
       bmAdm.id = id; bmAdm.asal = null;
       document.getElementById('bmAdminTitle').textContent = `🏸 ${id}`;
@@ -18432,14 +18432,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
     async function bmAdminHantar(keputusan) {
       if (bmAdm.busy || !bmAdm.asal) return;
-      if (!bmAdminBoleh()) { bmAdminMsg('Hanya Master Admin dibenarkan.', 'error'); return; }
+      if (!bmAdminBoleh()) { bmAdminMsg('Hanya Master Admin atau Sub Admin dibenarkan.', 'error'); return; }
       const m = bmAdm.asal;
       const v = { skorP1: document.getElementById('bmAdminS1').value, skorP2: document.getElementById('bmAdminS2').value, keputusan };
       try {
         if (keputusan === 'DISAHKAN' && !await uiConfirm(`Tamatkan & SAHKAN keputusan ${m.id}?\n\n${m.namaP1} ${v.skorP1} - ${v.skorP2} ${m.namaP2}\n\nKeputusan akan terus dikira dalam carta kumpulan.`)) return;
-        const adminKey = await ensureAdminKey();
-        if (!adminKey) return;
-        const payload = binaPayloadSkor('BADMINTON', m, v, adminKey);
+        const kunci = await kunciPengesahan();
+        if (!kunci) return;
+        const payload = pakaiKunciPengesahan(binaPayloadSkor('BADMINTON', m, v, kunci.adminKey || 'SUB_ADMIN'), kunci);
         bmAdminSibuk(true); bmAdminMsg('Menyimpan ke Google Sheets…', '');
         const res = await callGas(payload);
         if (!res || !res.ok) throw new Error((res && res.error) || 'Simpanan skor gagal.');
