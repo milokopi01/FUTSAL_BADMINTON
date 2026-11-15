@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1288,6 +1288,59 @@ body[data-sukan="SEMUA"] .not-semua { display:none !important; }
 .all-sec-head.all-bm-h { border-color:var(--bm-line); background:linear-gradient(135deg, rgba(192,132,252,.16), rgba(244,114,182,.06)); }
 .all-sec-head.all-bm-h .all-sec-ic { background:linear-gradient(135deg, var(--bm), var(--bm-2)); }
 #allBmWrap { margin:22px 0 20px; }
+/* v1.23.0: mod SEMUA -> Futsal (2 lajur, kiri) + Badminton (3 lajur, kanan) sebelah-menyebelah, macam paparan projektor */
+body[data-sukan="SEMUA"] #tab-live .all-split { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:22px; align-items:start; margin-bottom:22px; }
+body[data-sukan="SEMUA"] #tab-live .all-split #allBmWrap { margin:0; }
+body[data-sukan="SEMUA"] #tab-live .all-split .all-sec-head { background:none; border:0; border-bottom:2px solid rgba(46,230,166,.45); border-radius:0; padding:4px 2px 8px; margin:0 0 14px; font-size:1.2rem; }
+body[data-sukan="SEMUA"] #tab-live .all-split .all-sec-head.all-bm-h { border-bottom-color:var(--bm-line); }
+body[data-sukan="SEMUA"] #tab-live .all-split .all-sec-head .all-sec-ic { display:none; }
+body[data-sukan="SEMUA"] #tab-live .all-split .all-fs > span:not(.all-sec-ic) { color:var(--brand); }
+body[data-sukan="SEMUA"] #tab-live .all-split .all-bm-h > span:not(.all-sec-ic) { color:var(--bm); }
+body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
+@media (min-width:861px) { body[data-sukan="SEMUA"] #tab-live #courtsGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:1101px) {
+  body[data-sukan="SEMUA"] #tab-live .all-split .court-head h3 { font-size:1.02rem; }
+  body[data-sukan="SEMUA"] #tab-live .all-split .team-side .team-name { font-size:.86rem; overflow-wrap:normal; word-break:normal; hyphens:auto; }
+  body[data-sukan="SEMUA"] #tab-live .all-split .score-box { font-size:2rem; }
+}
+@media (min-width:1101px) { body[data-sukan="SEMUA"] #tab-live #allBmGrid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:1100px) { body[data-sukan="SEMUA"] #tab-live .all-split { grid-template-columns:minmax(0,1fr); } }
+/* v1.23.0: Giliran Perlawanan Seterusnya (mod SEMUA) */
+.all-queue { padding:18px 20px 20px; margin:0 0 20px; }
+.aq-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.aq-head h3 { font:800 1.25rem/1.2 var(--font-display); }
+.aq-head p { font-size:.85rem; color:var(--text-1); margin-top:3px; }
+.aq-split { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:22px; align-items:start; }
+.aq-sec-h { display:flex; align-items:baseline; gap:8px; font:800 1rem/1.2 var(--font-display); padding-bottom:6px; margin-bottom:10px; border-bottom:2px solid rgba(46,230,166,.45); color:var(--brand); }
+.aq-sec-h small { font:600 .78rem var(--font-body, inherit); color:var(--text-2); }
+.aq-bm .aq-sec-h { color:var(--bm); border-color:var(--bm-line); }
+.aq-grid { display:grid; grid-template-columns:repeat(var(--aq-cols,2),minmax(0,1fr)); gap:12px; align-items:start; }
+.aq-card { border:1px solid rgba(46,230,166,.28); border-radius:12px; background:rgba(255,255,255,.03); overflow:hidden; min-width:0; }
+.aq-bm .aq-card { border-color:var(--bm-line); }
+.aq-top { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--glass-border); }
+.aq-letter { flex:0 0 30px; height:30px; display:grid; place-items:center; border-radius:8px; font:800 1rem var(--font-display); color:var(--brand); border:1px solid rgba(46,230,166,.45); background:rgba(46,230,166,.10); }
+.aq-bm .aq-letter { color:var(--bm); border-color:var(--bm-line); background:var(--bm-soft); }
+.aq-top strong { display:block; font:800 .92rem/1.2 var(--font-display); }
+.aq-top small { display:block; font-size:.68rem; color:var(--text-2); margin-top:2px; }
+.aq-next { padding:10px 12px; background:rgba(255,210,122,.08); border-left:3px solid var(--tv-queue); }
+.aq-lbl { display:flex; align-items:center; gap:6px; font-size:.66rem; font-weight:800; letter-spacing:.04em; color:var(--tv-queue); margin-bottom:6px; }
+.aq-lbl::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+.aq-id { font:600 .68rem var(--font-mono, monospace); color:var(--text-2); margin-bottom:3px; }
+.aq-teams { font-weight:800; font-size:.86rem; line-height:1.35; overflow-wrap:anywhere; }
+.aq-teams .aq-vs { color:var(--text-2); font:600 .66rem var(--font-mono, monospace); margin:0 4px; }
+.aq-teams .tbd, .aq-tbd { color:var(--text-2); font-weight:600; font-style:italic; }
+.aq-later { list-style:none; margin:0; padding:6px 12px 10px; display:grid; gap:6px; }
+.aq-later li { display:grid; grid-template-columns:18px minmax(0,1fr); gap:6px; padding-top:6px; border-top:1px solid var(--glass-border); font-size:.76rem; color:var(--text-1); }
+.aq-later li b { font:700 .72rem var(--font-mono, monospace); color:var(--text-2); }
+.aq-later .aq-teams { font-size:.76rem; font-weight:700; }
+.aq-none { padding:10px 12px; font-size:.78rem; color:var(--text-2); }
+@media (max-width:1100px) { .aq-split { grid-template-columns:minmax(0,1fr); } .aq-bm .aq-grid { --aq-cols:2 !important; } }
+@media (max-width:600px) { .aq-grid { grid-template-columns:minmax(0,1fr) !important; } }
+#projection #tvAllQueue { display:none; }
+#projection.pm-SEMUA #tvAllQueue { display:block; }
+#projection .all-queue { margin:0; padding:14px 16px; }
+#projection .aq-head p { display:none; }
+#projection .aq-later li:nth-child(n+2) { display:none; }
   </style>
   <style>
     /* ===== v1.9 SAMBUTAN GOL & SEPAK MULA ===== */
@@ -1680,6 +1733,7 @@ body[data-sukan="SEMUA"] .not-semua { display:none !important; }
           <div class="proj-courts" id="tvBmGrid"></div>
         </section>
       </div>
+      <div id="tvAllQueue" class="card glass all-queue"></div>
       <div id="tvStandbySlot"></div>
       <footer class="tv-foot"><span><i class="tv-dot tv-dot-now"></i> Semasa di gelanggang &nbsp; · &nbsp; <i class="tv-dot tv-dot-next"></i> Seterusnya: sila bersedia</span><span id="tvUpdated">Menunggu data langsung</span></footer>
     </div>
@@ -1877,14 +1931,20 @@ body[data-sukan="SEMUA"] .not-semua { display:none !important; }
 
         <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })"><span class="not-semua">▣ Paparan Projektor (Skrin Penuh)</span><span class="only-semua-in">▣ Paparan Projektor · Semua Gelanggang (Futsal + Badminton)</span></button>
         <!-- v1.20.0: mod SEMUA -> semua gelanggang Futsal & Badminton dalam satu halaman -->
-        <div class="all-sec-head all-fs only-semua-flex"><span class="all-sec-ic">⚽</span><span>Futsal</span><small>Gelanggang A – D</small></div>
-        <div class="courts-grid" id="courtsGrid">
-          <!-- Kad gelanggang A, B, C, D dijana oleh JavaScript (renderCourts) -->
+        <div class="all-split" id="allSplit">
+          <div class="all-fs-col">
+            <div class="all-sec-head all-fs only-semua-flex"><span class="all-sec-ic">⚽</span><span>⚽ Futsal</span><small>Gelanggang A – D</small></div>
+            <div class="courts-grid" id="courtsGrid">
+              <!-- Kad gelanggang A, B, C, D dijana oleh JavaScript (renderCourts) -->
+            </div>
+          </div>
+          <div class="all-bm only-semua" id="allBmWrap">
+            <div class="all-sec-head all-bm-h"><span class="all-sec-ic">🏸</span><span>🏸 Badminton</span><small>Gelanggang 1 – 6</small></div>
+            <div class="courts-grid bm-courts" id="allBmGrid"></div>
+          </div>
         </div>
-        <div class="all-bm only-semua" id="allBmWrap">
-          <div class="all-sec-head all-bm-h"><span class="all-sec-ic">🏸</span><span>Badminton</span><small>Gelanggang 1 – 6</small><button type="button" class="btn btn-sm" style="margin-left:auto;" onclick="openTab('tab-bm-live')">Giliran Badminton ›</button></div>
-          <div class="courts-grid bm-courts" id="allBmGrid"></div>
-        </div>
+        <!-- v1.23.0: Giliran Perlawanan Seterusnya (mod SEMUA) -->
+        <div class="card glass all-queue only-semua" id="allQueue" aria-live="polite"></div>
 
         <!-- MAKLUMAN STANDBY (Fasa 7): untuk pengurus pasukan -->
         <div id="standbyHome" hidden></div>
@@ -13018,6 +13078,51 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return `<div class="sb-match-id">${escapeHtml(m.id)}</div>${ready ? `<span class="sb-team-name">${escapeHtml(m.namaP1)}</span><span class="sb-versus">LAWAN</span><span class="sb-team-name">${escapeHtml(m.namaP2)}</span>` : '<span class="sb-empty">Pasukan belum ditentukan</span>'}`;
     }
 
+    /* v1.23.0: GILIRAN PERLAWANAN SETERUSNYA (mod SEMUA)
+       Futsal (kiri, 2 lajur) + Badminton (kanan, 3 lajur), sejajar dengan kad gelanggang di atas.
+       Dipaparkan di tab Simulasi Gelanggang Live dan paparan projektor. */
+    function renderAllQueue() {
+      const targets = [document.getElementById('allQueue'), document.getElementById('tvAllQueue')].filter(Boolean);
+      if (!targets.length) return;
+      let semua = false;
+      try { semua = typeof dash !== 'undefined' && dash && dash.sukan === 'SEMUA'; } catch (e) { semua = false; }
+      if (!semua) { targets.forEach(el => { if (el._html !== '') { el.innerHTML = ''; el._html = ''; } }); return; }
+      const NLATER = 2;
+      // Futsal
+      const filter = (state.ui && state.ui.kategori) || 'SEMUA';
+      const fsCourts = state.courts.filter(c => courtAccepts(c, filter));
+      const fsLine = m => isMatchReady(m)
+        ? `<div class="aq-teams">${escapeHtml(m.namaP1)}<span class="aq-vs">LWN</span>${escapeHtml(m.namaP2)}</div>`
+        : '<div class="aq-teams aq-tbd">Pasukan belum ditentukan</div>';
+      const fsCards = fsCourts.map(c => {
+        const q = (courtDisplay(c).queue || []);
+        const nx = q[0] || null, later = q.slice(1, 1 + NLATER), id = escapeHtml(c.id);
+        return `<article class="aq-card"><div class="aq-top"><span class="aq-letter">${id}</span><div><strong>Gelanggang ${id}</strong><small>${escapeHtml(c.kategoriNama || c.kategori || '')}</small></div></div>
+          ${nx ? `<div class="aq-next"><div class="aq-lbl">SETERUSNYA · SILA BERSEDIA</div><div class="aq-id">${escapeHtml(nx.id)}</div>${fsLine(nx)}</div>` : '<div class="aq-none">Tiada perlawanan seterusnya</div>'}
+          ${later.length ? `<ol class="aq-later">${later.map((m, i) => `<li><b>${i + 2}</b><div><div class="aq-id">${escapeHtml(m.id)}</div>${fsLine(m)}</div></li>`).join('')}</ol>` : ''}
+        </article>`;
+      }).join('') || '<div class="aq-none">Tiada gelanggang futsal untuk kategori ini.</div>';
+      // Badminton
+      const bmRows = Array.isArray(window._bmAllRows) ? window._bmAllRows : [];
+      const bmName = (m, sd) => m['tbd' + sd] ? `<span class="tbd">${dashEsc(m['nama' + sd])}</span>` : dashEsc(m['nama' + sd]);
+      const bmLine = m => `<div class="aq-teams">${bmName(m, '1')}<span class="aq-vs">LWN</span>${bmName(m, '2')}</div>`;
+      const bmId = m => `${m.ov ? dashEsc(m.ov) + ' · ' : ''}${dashEsc(m.id)}`;
+      const bmCards = bmRows.map(r => {
+        const nx = r.queue[0] || null, later = r.queue.slice(1, 1 + NLATER), g = dashEsc(r.gel);
+        return `<article class="aq-card"><div class="aq-top"><span class="aq-letter">${g}</span><div><strong>Gelanggang ${g}</strong><small>${dashEsc(r.kat || '')}</small></div></div>
+          ${nx ? `<div class="aq-next"><div class="aq-lbl">SETERUSNYA · SILA BERSEDIA</div><div class="aq-id">${bmId(nx)}</div>${bmLine(nx)}</div>` : '<div class="aq-none">Tiada perlawanan seterusnya</div>'}
+          ${later.length ? `<ol class="aq-later">${later.map((m, i) => `<li><b>${i + 2}</b><div><div class="aq-id">${bmId(m)}</div>${bmLine(m)}</div></li>`).join('')}</ol>` : ''}
+        </article>`;
+      }).join('') || '<div class="aq-none">Menunggu data badminton…</div>';
+      const html = `<div class="aq-head"><div><h3>⏭ Giliran Perlawanan Seterusnya</h3><p>Pasukan seterusnya sila bersedia di tepi gelanggang yang ditetapkan.</p></div></div>
+        <div class="aq-split">
+          <section class="aq-sec aq-fs"><h4 class="aq-sec-h">⚽ Futsal <small>${fsCourts.length} gelanggang</small></h4><div class="aq-grid" style="--aq-cols:2">${fsCards}</div></section>
+          <section class="aq-sec aq-bm"><h4 class="aq-sec-h">🏸 Badminton <small>${bmRows.length} gelanggang</small></h4><div class="aq-grid" style="--aq-cols:3">${bmCards}</div></section>
+        </div>`;
+      targets.forEach(el => { if (el._html !== html) { el.innerHTML = html; el._html = html; } });
+      try { if (typeof projectionOn === 'function' && projectionOn()) scheduleProjFit(); } catch (e) { /* abaikan */ }
+    }
+
     function renderStandby() {
       const grid = document.getElementById('sbGrid');
       const resEl = document.getElementById('sbResult');
@@ -13086,6 +13191,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             </details>` : '<div class="sb-stage sb-empty">Tiada giliran tambahan</div>'}
           </article>`;
       }).join('') || '<div class="sb-empty">Tiada gelanggang untuk kategori ini.</div>';
+      try { renderAllQueue(); } catch (e) { console.error('[renderAllQueue]', e); }
 
       // Keputusan carian pasukan
       if (!team) { resEl.innerHTML = ''; return; }
@@ -16207,6 +16313,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       selarasAdminSukan(k);
       renderDashboard();
       renderBadmintonViews();
+      try { renderAllQueue(); } catch (e) { /* abaikan */ }
       if (!opts.silent) dashRefresh(true);
     }
 
@@ -16987,6 +17094,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const want = dash.sukan === 'SEMUA' ? cardsHtml : '';
         if (allGrid._html !== want) { allGrid.innerHTML = want; allGrid._html = want; }
       }
+      window._bmAllRows = rows;   // v1.23.0: untuk Giliran Perlawanan Seterusnya (mod SEMUA)
+      try { renderAllQueue(); } catch (e) { console.error('[renderAllQueue]', e); }
       try { if (typeof projectionOn === 'function' && projectionOn()) renderProjection(); } catch (e) { /* abaikan */ }
 
       // Papan giliran pasukan
