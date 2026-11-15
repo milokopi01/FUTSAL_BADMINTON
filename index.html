@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxVLwi8ZEiyS9vTIsJ1A0cJ7-vfA8fp4SW4--tbLvm5qpJ4DvwhNYvK1f-QyKLhCPJpeg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1956,6 +1956,78 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       padding-top: 3px !important;
       font-size: 0.7rem !important;
     }
+
+    /* ===== v1.25.0: SKRIN PENUH ISI PENUH (TIADA RUANG KOSONG) & GELANGGANG LEBIH JELAS ===== */
+    .live-stage-wrap { transition: none !important; }
+    #tab-live #liveStageWrap.af-fill {
+      display: flex !important; flex-direction: column !important;
+      overflow: hidden !important; box-sizing: border-box;
+    }
+    #tab-live #liveStageWrap.af-fill > .all-split {
+      flex: 1 1 0 !important; min-height: 0 !important; margin-bottom: 8px !important;
+    }
+    #tab-live #liveStageWrap.af-fill > .all-queue { flex: 0 0 auto !important; margin-bottom: 0 !important; }
+    #tab-live #liveStageWrap.af-fill .all-split > .all-fs-col,
+    #tab-live #liveStageWrap.af-fill .all-split > #allBmWrap {
+      display: flex !important; flex-direction: column !important; min-height: 0 !important; min-width: 0 !important;
+    }
+    #tab-live #liveStageWrap.af-fill .all-split .all-sec-head { flex: 0 0 auto !important; margin-bottom: 8px !important; }
+    /* Setiap baris kad sama tinggi -> kiri & kanan simetri */
+    #tab-live #liveStageWrap.af-fill #courtsGrid,
+    #tab-live #liveStageWrap.af-fill #allBmGrid {
+      flex: 1 1 0 !important; min-height: 0 !important;
+      grid-auto-rows: auto !important; grid-template-rows: none !important;
+      align-content: stretch !important; align-items: stretch !important;
+    }
+    #tab-live #liveStageWrap.af-fill .court-card {
+      display: flex !important; flex-direction: column !important;
+      height: auto !important; min-height: 0 !important; align-self: stretch !important; justify-content: flex-start !important;
+    }
+    #tab-live #liveStageWrap.af-fill .court-card > * { flex-shrink: 0; }
+    /* Gelanggang (padang) membesar mengisi ruang lebihan */
+    body.autofit-active #tab-live #liveStageWrap .court-card > .pitch {
+      height: 52px !important; margin: 6px 10px !important; border-radius: 10px !important;
+    }
+    #tab-live #liveStageWrap.af-fill .court-card > .pitch {
+      flex: 1 1 auto !important; height: auto !important; min-height: 52px !important;
+    }
+    body.autofit-active #tab-live #liveStageWrap .scoreboard .score-box { font-size: clamp(1.75rem, 3.4vh, 2.8rem) !important; }
+    body.autofit-active #tab-live #liveStageWrap .scoreboard .team-name { font-size: clamp(.8rem, 1.45vh, 1.02rem) !important; }
+    body.autofit-active #tab-live #liveStageWrap .pitch-overlay {
+      font-size: clamp(.7rem, 1.25vh, .95rem) !important; letter-spacing: .12em !important; padding: 0 8px; text-align: center; line-height: 1.25;
+      background: rgba(5,10,20,.42) !important; text-shadow: 0 2px 8px rgba(0,0,0,.6);
+    }
+    /* Giliran seterusnya: kad sebaris sama tinggi */
+    #tab-live #liveStageWrap.af-fill .aq-grid { align-items: stretch !important; }
+    #tab-live #liveStageWrap.af-fill .aq-card { height: auto !important; }
+
+    /* Garisan padang futsal lebih jelas & berskala ikut saiz kad */
+    #tab-live .pitch:not(.bm-pitch) {
+      background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 9%, transparent 9% 18%),
+        radial-gradient(ellipse at center, #14573c 0%, #0f4630 60%, #0b3424 100%) !important;
+      border: 2px solid rgba(255,255,255,.55) !important;
+      box-shadow: inset 0 0 0 4px rgba(0,0,0,.12), inset 0 0 30px rgba(0,0,0,.35);
+    }
+    #tab-live .pitch:not(.bm-pitch)::before { width: 2px; transform: translateX(-50%); background: rgba(255,255,255,.6) !important; }
+    #tab-live .pitch:not(.bm-pitch)::after {
+      width: auto !important; height: 48% !important; aspect-ratio: 1 / 1;
+      border: 2px solid rgba(255,255,255,.6) !important;
+    }
+    #tab-live .pitch:not(.bm-pitch) .goal-l, #tab-live .pitch:not(.bm-pitch) .goal-r {
+      width: 9% !important; height: 58% !important; min-width: 18px;
+      border: 2px solid rgba(255,255,255,.6) !important;
+    }
+    #tab-live .pitch:not(.bm-pitch) .ball { width: clamp(12px, 18%, 22px); height: auto; aspect-ratio: 1 / 1; }
+    /* Garisan gelanggang badminton lebih jelas */
+    #tab-live .pitch.bm-pitch {
+      background: linear-gradient(135deg, #1b4d80, #123a60) !important;
+      border: 2px solid rgba(255,255,255,.7) !important;
+      box-shadow: inset 0 0 30px rgba(0,0,0,.3);
+    }
+    #tab-live .pitch.bm-pitch::after { border-top-color: rgba(255,255,255,.55) !important; border-bottom-color: rgba(255,255,255,.55) !important; }
+    #tab-live .bm-pitch .bm-ln { background: rgba(255,255,255,.55) !important; }
+    #tab-live .bm-pitch .shuttle { font-size: clamp(1.1rem, 2.6vh, 1.9rem) !important; }
   </style>
 
 </head>
@@ -18036,10 +18108,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return window.innerWidth >= 960;
       }
 
-      function updateAutoFitUI() {
+      function updateAutoFitUI(liveActive) {
         const btn = document.getElementById('btnLiveAutoFit');
         const statusVal = document.getElementById('afStatusVal');
-        const active = autoFitActive && isDesktopFitView();
+        const active = autoFitActive && isDesktopFitView() && (liveActive !== false);
         if (btn) btn.classList.toggle('active', active);
         if (statusVal) {
           statusVal.textContent = active ? 'AKTIF (Tiada Scroll)' : 'BIASA (Boleh Scroll)';
@@ -18049,53 +18121,77 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         document.body.classList.toggle('autofit-active', active);
       }
 
-      function fitLiveStage() {
-        updateAutoFitUI();
-        const stage = document.getElementById('liveStageWrap');
-        if (!stage) return;
-
-        const active = autoFitActive && isDesktopFitView();
+      function isLiveTabActive() {
         const liveTab = document.getElementById('tab-live');
-        const isLiveActive = liveTab && (liveTab.classList.contains('active') ||
+        return !!(liveTab && (liveTab.classList.contains('active') ||
           location.hash === '#tab-live' ||
-          (!location.hash && document.querySelector('.tab-btn[data-tab="tab-live"]')?.classList.contains('active')));
+          (!location.hash && document.querySelector('.tab-btn[data-tab="tab-live"]')?.classList.contains('active'))));
+      }
 
-        if (!active || !isLiveActive) {
-          stage.style.transform = '';
-          stage.style.transformOrigin = '';
-          stage.style.marginBottom = '';
-          stage.style.width = '';
-          const scaleInfo = document.getElementById('afScaleInfo');
+      function resetStage(stage) {
+        stage.classList.remove('af-fill');
+        stage.style.transform = '';
+        stage.style.transformOrigin = '';
+        stage.style.marginBottom = '';
+        stage.style.width = '';
+        stage.style.height = '';
+      }
+
+      // v1.25.0: Isi penuh skrin (tiada ruang kosong). Jika kandungan terlalu tinggi,
+      // kecilkan secara berkadar tetapi kekal penuh lebar skrin.
+      function fitLiveStage() {
+        const stage = document.getElementById('liveStageWrap');
+        const active = autoFitActive && isDesktopFitView() && isLiveTabActive();
+        updateAutoFitUI(active);
+        if (!stage) return;
+        const scaleInfo = document.getElementById('afScaleInfo');
+
+        resetStage(stage);
+        if (!active) {
           if (scaleInfo) scaleInfo.textContent = 'Skala: 100%';
           return;
         }
 
-        // Ukur ketinggian tetingkap & kandungan
-        stage.style.transform = 'none';
-        stage.style.width = '100%';
-        stage.style.marginBottom = '0px';
-
         const vh = window.innerHeight;
-        const rect = stage.getBoundingClientRect();
-        const topOffset = Math.max(0, rect.top);
-        const availableH = vh - topOffset - 12;
-        const naturalH = stage.scrollHeight || 1;
+        const topOffset = Math.max(0, stage.getBoundingClientRect().top);
+        const availableH = Math.floor(vh - topOffset - 10);
+        if (availableH <= 120) return;
 
-        if (availableH <= 0 || naturalH <= 0) return;
-
-        let scale = Math.min(1.0, availableH / naturalH);
-        if (scale < 0.50) scale = 0.50; // elak terlalu kecil pada skrin resolusi rendah
-
-        stage.style.transformOrigin = 'top center';
-        stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
-
-        const marginComp = Math.round((scale - 1) * naturalH);
-        stage.style.marginBottom = marginComp + 'px';
-
-        const scaleInfo = document.getElementById('afScaleInfo');
-        if (scaleInfo) {
-          scaleInfo.textContent = 'Skala: ' + Math.round(scale * 100) + '%';
+        // Langkah 1: ukur ketinggian asal. Jika muat, regangkan kad hingga ke bawah skrin
+        // (baris kad sama tinggi kiri & kanan -> simetri, tiada ruang kosong).
+        const naturalH0 = stage.scrollHeight || 1;
+        if (naturalH0 <= availableH) {
+          stage.classList.add('af-fill');
+          stage.style.height = availableH + 'px';
+          if (scaleInfo) scaleInfo.textContent = 'Skala: 100% · Isi Penuh';
+          return;
         }
+
+        // Langkah 2: kandungan melebihi skrin -> skala kecil, lebar dipadankan semula
+        stage.classList.remove('af-fill');
+        stage.style.height = '';
+        let scale = 1;
+        for (let i = 0; i < 5; i++) {
+          stage.style.width = (100 / scale) + '%';
+          const naturalH = stage.scrollHeight || 1;
+          const next = Math.max(0.5, Math.min(1, availableH / naturalH));
+          if (Math.abs(next - scale) < 0.004) { scale = Math.min(scale, next); break; }
+          scale = next;
+        }
+        stage.style.width = (100 / scale) + '%';
+        if ((stage.scrollHeight || 1) * scale > availableH) {
+          scale = Math.max(0.5, availableH / (stage.scrollHeight || 1));
+        }
+        // Dengan lebar baharu, isi semula ketinggian supaya bawah skrin rata
+        const fillH = Math.floor(availableH / scale);
+        if ((stage.scrollHeight || 1) <= fillH) {
+          stage.classList.add('af-fill');
+          stage.style.height = fillH + 'px';
+        }
+        stage.style.transformOrigin = 'top left';
+        stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        stage.style.marginBottom = Math.round(availableH - stage.offsetHeight) + 'px';
+        if (scaleInfo) scaleInfo.textContent = 'Skala: ' + Math.round(scale * 100) + '%';
       }
 
       window.fitLiveStage = fitLiveStage;
