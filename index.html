@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxVLwi8ZEiyS9vTIsJ1A0cJ7-vfA8fp4SW4--tbLvm5qpJ4DvwhNYvK1f-QyKLhCPJpeg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2117,6 +2117,79 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       /* --- Butang & pop-up mudah ditekan --- */
       .modal { width: calc(100vw - 20px) !important; max-height: calc(100dvh - 24px); overflow-y: auto; }
       input, select, textarea { font-size: 16px !important; } /* elak zum automatik iPhone */
+    }
+  </style>
+
+  <!-- v1.27.1: PEMBETULAN PAPARAN KOMPUTER (mod Futsal) & TELEFON (Giliran Perlawanan Seterusnya) -->
+  <style id="layout-fix-v1271">
+    /* 1) Bahagian Badminton hanya dipaparkan dalam mod SEMUA.
+          (Peraturan Isi Penuh v1.25.0 sebelum ini memaksa ia muncul dalam mod Futsal.) */
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap .all-split > #allBmWrap,
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap > .all-queue { display: none !important; }
+
+    /* 2) Mod Futsal sahaja + Auto-Fit: kad gelanggang tidak lagi runtuh menjadi garisan nipis.
+          Asas flex 'auto' (bukan 0) supaya ketinggian kad dikira betul, kemudian diregang isi skrin. */
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap.af-fill > .all-split {
+      display: flex !important; flex-direction: column !important;
+      flex: 1 0 auto !important; min-height: auto !important; margin-bottom: 12px !important;
+    }
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap.af-fill .all-split > .all-fs-col {
+      display: flex !important; flex-direction: column !important; flex: 1 0 auto !important; min-height: auto !important;
+    }
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap.af-fill #courtsGrid {
+      flex: 1 0 auto !important; min-height: auto !important;
+    }
+    body:not([data-sukan="SEMUA"]) #tab-live #liveStageWrap.af-fill > .standby-board { flex: 0 0 auto !important; margin-bottom: 0 !important; }
+
+    /* 2b) Auto-Fit pada skrin kecil: benarkan skrol jika kandungan tidak muat walaupun dikecilkan */
+    html.autofit-active.autofit-scroll, body.autofit-active.autofit-scroll {
+      overflow: auto !important; overflow-x: hidden !important; height: auto !important; max-height: none !important;
+    }
+
+    /* 2c) Paparan Projektor: teks "SEDIA · MENUNGGU SERVIS MULA" kekal dalam gelanggang badminton */
+    #projection .pitch-overlay { text-align: center; padding: 0 8px; line-height: 1.2; }
+    #projection .bm-pitch .pitch-overlay { font-size: .74rem !important; letter-spacing: .05em !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 2d) Dashboard Utama (telefon): butang Jadual / Berlangsung / Keputusan tidak terkeluar dari kad */
+    @media (max-width: 760px) {
+      .seg.seg-view { display: flex; flex-wrap: wrap; }
+      .seg.seg-view button { flex: 1 1 auto; white-space: nowrap; }
+    }
+
+    /* 3) Giliran Perlawanan Seterusnya: nama tidak dipecah huruf demi huruf */
+    .aq-teams { overflow-wrap: break-word !important; word-break: normal !important; }
+    .aq-top > div { min-width: 0; }
+
+    /* 4) Tablet: Futsal & Badminton atas-bawah, 2 lajur setiap satu */
+    @media (max-width: 959px) {
+      body[data-sukan="SEMUA"] #tab-live .aq-split {
+        grid-template-columns: minmax(0, 1fr) !important; gap: 18px !important; align-items: start !important;
+      }
+      body[data-sukan="SEMUA"] #tab-live .aq-fs .aq-grid,
+      body[data-sukan="SEMUA"] #tab-live .aq-bm .aq-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important;
+      }
+      body[data-sukan="SEMUA"] #tab-live .aq-card { height: auto !important; justify-content: flex-start !important; }
+    }
+
+    /* 5) Telefon: satu kad selebar skrin, teks jelas & mudah dibaca */
+    @media (max-width: 560px) {
+      body[data-sukan="SEMUA"] #tab-live .aq-fs .aq-grid,
+      body[data-sukan="SEMUA"] #tab-live .aq-bm .aq-grid { grid-template-columns: minmax(0, 1fr) !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-head h3 { font-size: 1.08rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-head p { font-size: .8rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-sec-h { font-size: 1.02rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-top { padding: 10px 12px !important; gap: 10px !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-letter { flex: 0 0 30px !important; height: 30px !important; font-size: .95rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-top strong { font-size: .92rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-top small { font-size: .7rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-next { padding: 10px 12px !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-lbl { font-size: .66rem !important; margin-bottom: 4px !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-id { font-size: .7rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-teams { font-size: .88rem !important; line-height: 1.35 !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-later { padding: 6px 12px 10px !important; gap: 6px !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-later li { padding-top: 6px !important; font-size: .78rem !important; }
+      body[data-sukan="SEMUA"] #tab-live .aq-later .aq-teams { font-size: .8rem !important; }
     }
   </style>
 </head>
@@ -18210,6 +18283,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       let autoFitActive = localStorage.getItem('karnival_autofit_live') !== 'off';
       let autoFitTimer = null;
 
+      const MIN_SCALE = 0.62; // v1.27.1: di bawah ini teks terlalu kecil untuk dibaca
       function isDesktopFitView() {
         return window.innerWidth >= 960;
       }
@@ -18234,7 +18308,13 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           (!location.hash && document.querySelector('.tab-btn[data-tab="tab-live"]')?.classList.contains('active'))));
       }
 
+      function setAutoFitScroll(on) {
+        document.documentElement.classList.toggle('autofit-scroll', !!on);
+        document.body.classList.toggle('autofit-scroll', !!on);
+      }
+
       function resetStage(stage) {
+        setAutoFitScroll(false);
         stage.classList.remove('af-fill');
         stage.style.transform = '';
         stage.style.transformOrigin = '';
@@ -18269,6 +18349,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (naturalH0 <= availableH) {
           stage.classList.add('af-fill');
           stage.style.height = availableH + 'px';
+          // v1.27.1: jika Isi Penuh menyebabkan kandungan terpotong, kembali ke susun atur biasa
+          if (stage.scrollHeight > stage.clientHeight + 2) { stage.classList.remove('af-fill'); stage.style.height = ''; }
           if (scaleInfo) scaleInfo.textContent = 'Skala: 100% · Isi Penuh';
           return;
         }
@@ -18280,24 +18362,30 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         for (let i = 0; i < 5; i++) {
           stage.style.width = (100 / scale) + '%';
           const naturalH = stage.scrollHeight || 1;
-          const next = Math.max(0.5, Math.min(1, availableH / naturalH));
+          const next = Math.max(MIN_SCALE, Math.min(1, availableH / naturalH));
           if (Math.abs(next - scale) < 0.004) { scale = Math.min(scale, next); break; }
           scale = next;
         }
         stage.style.width = (100 / scale) + '%';
         if ((stage.scrollHeight || 1) * scale > availableH) {
-          scale = Math.max(0.5, availableH / (stage.scrollHeight || 1));
+          scale = Math.max(MIN_SCALE, availableH / (stage.scrollHeight || 1));
         }
         // Dengan lebar baharu, isi semula ketinggian supaya bawah skrin rata
         const fillH = Math.floor(availableH / scale);
         if ((stage.scrollHeight || 1) <= fillH) {
           stage.classList.add('af-fill');
           stage.style.height = fillH + 'px';
+          // v1.27.1: elak kad gelanggang terpotong selepas Isi Penuh
+          if (stage.scrollHeight > stage.clientHeight + 2) { stage.classList.remove('af-fill'); stage.style.height = ''; }
         }
         stage.style.transformOrigin = 'top left';
         stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
-        stage.style.marginBottom = Math.round(availableH - stage.offsetHeight) + 'px';
-        if (scaleInfo) scaleInfo.textContent = 'Skala: ' + Math.round(scale * 100) + '%';
+        // v1.27.1: skrin kecil (cth. laptop 1366x768) -> jangan potong kandungan; benarkan skrol
+        const scaledH = (stage.scrollHeight || 1) * scale;
+        const clipped = scaledH > availableH + 2;
+        setAutoFitScroll(clipped);
+        stage.style.marginBottom = Math.round((clipped ? scaledH : availableH) - stage.offsetHeight) + 'px';
+        if (scaleInfo) scaleInfo.textContent = 'Skala: ' + Math.round(scale * 100) + '%' + (clipped ? ' · Skrol' : '');
       }
 
       window.fitLiveStage = fitLiveStage;
