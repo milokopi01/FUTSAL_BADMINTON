@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1171,6 +1171,11 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .rm-note.danger { border-color: rgba(244,63,94,.5); background: rgba(244,63,94,.10); color: #fecdd3; }
     .rm-note.ok { border-color: rgba(46,230,166,.45); background: rgba(46,230,166,.08); }
     .rm-foot { font-size: .74rem; color: var(--text-2); text-align: center; line-height: 1.45; }
+    /* v1.20.0: pilihan gelanggang (pengadil Badminton) */
+    .rm-chips { display: flex; gap: 6px; overflow-x: auto; padding: 5px; border-radius: 14px; background: rgba(0,0,0,.28); border: 1px solid var(--glass-border); scrollbar-width: none; }
+    .rm-chips::-webkit-scrollbar { display: none; }
+    .rm-chips button { font: inherit; cursor: pointer; flex: none; min-height: 42px; padding: 0 14px; border-radius: 10px; border: 0; font-weight: 800; font-size: .84rem; color: var(--text-1); background: transparent; }
+    .rm-chips button[aria-pressed="true"] { color: #04130d; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
 
     /* Semak & sahkan keputusan */
     .rm-final { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 18px 14px; border-radius: 18px; background: rgba(0,0,0,.32); border: 1px solid var(--glass-border-strong); text-align: center; }
@@ -10256,7 +10261,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
        - Skor dihantar dengan token sesi; Code.gs menolak pengadil Futsal.
        - Keputusan "Tamat & Hantar" menunggu pengesahan Master Admin (panel skor).
        ========================================================= */
-    const bmRef = { owner: null, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false };
+    const bmRef = { owner: null, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0 };
     const BMREF_VERSI = '1.18.0';
 
     function bukaMejaBadminton() {
@@ -10304,7 +10309,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       el.classList.remove('hidden');
       const owner = s.userId + '|' + (s.token || '');
       if (bmRef.owner !== owner) {
-        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false });
+        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0 });
       }
       // Dibina sekali sahaja -> input skor tidak hilang bila paparan lain dikemas kini
       if (el.dataset.owner === owner) return;
@@ -10323,7 +10328,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <h3>🏸 Meja Pengadil Badminton · ${escapeHtml(s.nama)}</h3>
             <p>Anda pengadil Badminton: hanya perlawanan Badminton dipaparkan. Perlawanan Futsal dikendalikan oleh pengadil Futsal sahaja.</p>
           </div>
-          <button type="button" class="btn btn-sm" onclick="bmRefLoad()" ${bmRef.loading || bmRef.busy ? 'disabled' : ''}>🔄 Muat Semula</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="refSetMode('telefon')" title="Paparan ringkas seperti Futsal">📱 Paparan Ringkas</button>
+            <button type="button" class="btn btn-sm" onclick="bmRefLoad()" ${bmRef.loading || bmRef.busy ? 'disabled' : ''}>🔄 Muat Semula</button>
+          </div>
         </div>`;
       let body = '';
       if (!getGasUrl()) {
@@ -10403,22 +10411,23 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     async function bmRefLoad() {
       if (bmRef.loading || bmRef.busy) return;
-      bmRef.loading = true; bmRefSetMsg('Membaca jadual Badminton…'); bmRefPaint();
+      bmRef.loading = true; bmRef.lastTry = Date.now(); bmRefSetMsg('Membaca jadual Badminton…'); bmRefPaint(); bmMobileRender();
       try {
         bmRef.list = await bmRefRead();
         bmRef.loaded = true;
+        bmRef.loadedAt = Date.now();
         bmRefSetMsg('');
         const s = getSession();
         // Pulihkan perlawanan yang sedang diadili oleh pengadil ini (cth. selepas muat semula)
         if (!bmRef.sel && s) {
           const mine = bmRef.list.find(m => bmRefMine(m, s) && bmRefStatus(m) === 'LIVE');
-          if (mine) bmRef.sel = { id: mine.id, s1: mine.skorP1 ?? 0, s2: mine.skorP2 ?? 0 };
+          if (mine && !bmRef.resit) bmRef.sel = { id: mine.id, s1: mine.skorP1 ?? 0, s2: mine.skorP2 ?? 0, started: true };
         }
-        if (bmRef.sel && !bmRef.list.some(m => m.id === bmRef.sel.id && bmRefStatus(m) !== 'DISAHKAN')) bmRef.sel = null;
+        if (bmRef.sel && !bmRef.list.some(m => m.id === bmRef.sel.id && bmRefStatus(m) !== 'DISAHKAN')) { bmRef.sel = null; bmRef.fin = null; }
       } catch (e) {
         bmRefSetMsg(e.message || 'Jadual Badminton tidak dapat dibaca.', true);
       } finally {
-        bmRef.loading = false; bmRefPaint();
+        bmRef.loading = false; bmRefPaint(); bmMobileRender();
       }
     }
 
@@ -10427,14 +10436,18 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!s || refSukanOf(s) !== 'BADMINTON') { showToast('Hanya pengadil Badminton boleh mengadili perlawanan Badminton.', 'error'); return; }
       const m = bmRef.list.find(x => x.id === id);
       if (!m || bmRef.busy) return;
-      bmRef.sel = { id: m.id, s1: m.skorP1 ?? 0, s2: m.skorP2 ?? 0 };
+      const st = bmRefStatus(m);
+      if (m.pengadil && !bmRefMine(m, s) && st === 'TUNGGU') { showToast(`Keputusan ${m.id} telah dihantar oleh ${m.pengadil}.`, 'warn'); return; }
+      bmRef.sel = { id: m.id, s1: m.skorP1 ?? 0, s2: m.skorP2 ?? 0, started: (st === 'LIVE' && bmRefMine(m, s)) || st === 'TUNGGU' || st === 'DITOLAK' };
+      bmRef.fin = null; bmRef.resit = null;
       bmRefSetMsg('');
       bmRefPaint();
+      if (document.body.classList.contains('ref-mode')) { bmMobileRender(); return; }
       const f = document.getElementById('bmRefForm');
       if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    function bmRefClose() { if (bmRef.busy) return; bmRef.sel = null; bmRefSetMsg(''); bmRefPaint(); }
-    function bmRefCourt(v) { bmRef.gel = v || 'SEMUA'; bmRefPaint(); }
+    function bmRefClose() { if (bmRef.busy) return; bmRef.sel = null; bmRef.fin = null; bmRefSetMsg(''); bmRefPaint(); bmMobileRender(); }
+    function bmRefCourt(v) { bmRef.gel = v || 'SEMUA'; bmRefPaint(); bmMobileRender(); }
     function bmRefInput(i, v) { if (bmRef.sel) bmRef.sel['s' + i] = v; }
     function bmRefAdj(i, d) {
       if (!bmRef.sel || bmRef.busy) return;
@@ -10484,9 +10497,375 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       } catch (e) {
         bmRefSetMsg(e.message || 'Skor gagal dihantar; skor anda dikekalkan.', true);
       } finally {
-        bmRef.busy = false; bmRefPaint();
+        bmRef.busy = false; bmRefPaint(); bmMobileRender();
       }
     }
+
+    /* =========================================================
+       v1.20.0: MOD PENGADIL BADMINTON (PAPARAN RINGKAS, SEPERTI FUTSAL)
+       - Skrin penuh: Pilih perlawanan -> Mula -> ＋ MATA -> Tamat -> Sahkan & Hantar.
+       - Skor semasa disimpan automatik ke Google Sheets (skorPengadilBadminton, SEMASA).
+       - Keputusan akhir (TAMAT) menunggu pengesahan Master Admin.
+       ========================================================= */
+    const BM_AUTOSAVE_MS = 1200;
+    const BM_POLL_MS = 20000;
+    const bmSave = { timer: null, busy: false, pending: false, state: '', err: '', lastAt: 0 };
+    let bmPollHandle = null;
+
+    function bmMobileOwner(s) { return s.userId + '|' + (s.token || ''); }
+
+    function bmMobileEnsure(s) {
+      const owner = bmMobileOwner(s);
+      if (bmRef.owner !== owner) {
+        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0 });
+        Object.assign(bmSave, { timer: null, busy: false, pending: false, state: '', err: '', lastAt: 0 });
+      }
+      if (!bmRef.loaded && !bmRef.loading && s.token && getGasUrl() && (!bmRef.lastTry || Date.now() - bmRef.lastTry > 15000)) setTimeout(() => bmRefLoad(), 0);
+      if (!bmPollHandle) {
+        bmPollHandle = setInterval(() => {
+          try {
+            const s2 = getSession();
+            if (!s2 || s2.peranan !== 'PENGADIL' || refSukanOf(s2) !== 'BADMINTON' || !isRefMode()) return;
+            if (document.hidden || bmRef.busy || bmRef.loading || bmSave.busy) return;
+            if (bmRef.sel && bmRef.sel.started) return;   // jangan ganggu semasa mengadili
+            bmRefLoad();
+          } catch (e) { /* abaikan */ }
+        }, BM_POLL_MS);
+      }
+    }
+
+    function bmMobileSyncText(s) {
+      if (!getGasUrl()) return '📴 Google Sheets belum disambung. Skor Badminton perlu dihantar ke Google Sheets.';
+      if (!s.token) return '⚠ Log masuk luar talian. Log keluar & masuk semula dengan internet.';
+      if (bmRef.loading) return '🔄 Membaca jadual Badminton...';
+      if (bmRef.err && bmRef.msg) return '⚠ ' + bmRef.msg;
+      if (bmRef.loadedAt) return '🟢 Disambung ke Google Sheets · ' + formatTime(new Date(bmRef.loadedAt).toISOString());
+      return '🔄 Menyemak jadual Badminton...';
+    }
+
+    function bmMobileSaveText() {
+      if (bmSave.busy || bmSave.timer) return '<span class="rm-send wait">⏳ Menyimpan skor...</span>';
+      if (bmSave.state === 'gagal') return `<span class="rm-send fail">⚠ Skor belum disimpan${bmSave.err ? ' · ' + escapeHtml(bmSave.err) : ''}</span>`;
+      if (bmSave.state === 'ok') return `<span class="rm-send ok">☁ Skor disimpan · ${escapeHtml(formatTime(new Date(bmSave.lastAt).toISOString()))}</span>`;
+      return '';
+    }
+
+    function bmMobilePickView(s) {
+      const semua = bmRef.list.filter(m => bmRefStatus(m) !== 'DISAHKAN' && bmRefNamaSah(m.namaP1) && bmRefNamaSah(m.namaP2));
+      const gels = Array.from(new Set(semua.map(m => String(m.gelanggang || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ms', { numeric: true }));
+      if (bmRef.gel !== 'SEMUA' && !gels.includes(bmRef.gel)) bmRef.gel = 'SEMUA';
+      const ikutGel = semua.filter(m => bmRef.gel === 'SEMUA' || String(m.gelanggang || '').trim() === bmRef.gel);
+      const dikunci = m => {
+        const st = bmRefStatus(m);
+        return !!m.pengadil && !bmRefMine(m, s) && (st === 'LIVE' || st === 'TUNGGU');
+      };
+      const rank = m => { const st = bmRefStatus(m); return bmRefMine(m, s) && st === 'LIVE' ? 0 : st === 'DITOLAK' ? 1 : bmRefMine(m, s) && st === 'TUNGGU' ? 2 : st === 'LIVE' ? 3 : 4; };
+      const sorter = (a, b) => rank(a) - rank(b) || String(a.masaJadual || '').localeCompare(String(b.masaJadual || '')) || (Number(a.no) || 0) - (Number(b.no) || 0) || String(a.id).localeCompare(String(b.id));
+      const avail = ikutGel.filter(m => !dikunci(m)).sort(sorter);
+      const others = ikutGel.filter(dikunci).sort(sorter);
+      const cards = avail.map(m => {
+        const st = bmRefStatus(m);
+        const mine = bmRefMine(m, s);
+        const cls = st === 'DITOLAK' ? 'urgent' : st === 'LIVE' ? 'live' : '';
+        const tag = st === 'DITOLAK' ? '⚠ Ditolak · hantar semula' : st === 'TUNGGU' ? '⏳ Tunggu sah' : st === 'LIVE' ? (mine ? '🔴 LIVE · anda' : '🔴 LIVE') : '🟢 Sedia';
+        const cta = st === 'DITOLAK' ? '✎ Betulkan &amp; Hantar Semula' : st === 'TUNGGU' ? '✎ Ubah Keputusan' : st === 'LIVE' ? (mine ? '▶ Sambung Mengadili' : '🤝 Ambil Alih Perlawanan') : '🏸 Adili Perlawanan Ini';
+        const sk = st !== 'BELUM' ? ` · Skor ${m.skorP1 ?? 0} - ${m.skorP2 ?? 0}` : '';
+        return `
+          <button type="button" class="rm-pick ${cls}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy ? 'disabled' : ''}>
+            <span class="rm-pick-top">
+              <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
+              <span class="rm-pick-court">${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) : 'Badminton'}<small>${escapeHtml(m.kategori || '')}${m.masaJadual ? ' · ' + escapeHtml(m.masaJadual) : ''}</small></span>
+              <span class="lock-chip ${st === 'DITOLAK' ? 'stale' : 'free'}">${escapeHtml(tag)}</span>
+            </span>
+            <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
+            <span class="rm-pick-meta">${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
+            <span class="rm-pick-cta">${cta}</span>
+          </button>`;
+      }).join('');
+      const otherRows = others.map(m => `
+          <div class="rm-other-row">
+            <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
+            <div><strong>${escapeHtml(m.id)} · ${escapeHtml(m.namaP1)} lwn ${escapeHtml(m.namaP2)}</strong>
+              <small>🔒 Diadili ${escapeHtml(m.pengadil)} · ${bmRefStatus(m) === 'TUNGGU' ? 'Tunggu pengesahan' : 'Sedang berlangsung'} · Skor ${m.skorP1 ?? 0} - ${m.skorP2 ?? 0}</small></div>
+          </div>`).join('');
+      const chips = gels.length > 1 ? `
+          <div class="rm-chips" role="group" aria-label="Pilih gelanggang">
+            ${['SEMUA'].concat(gels).map(g => `<button type="button" aria-pressed="${bmRef.gel === g ? 'true' : 'false'}" onclick="bmRefCourt('${escapeHtml(g)}')">${g === 'SEMUA' ? 'Semua' : 'Gel. ' + escapeHtml(g)}</button>`).join('')}
+          </div>` : '';
+      let empty;
+      if (!getGasUrl()) empty = 'Google Sheets belum disambung.<br>Minta Master Admin tetapkan URL Google Apps Script.';
+      else if (!s.token) empty = 'Log masuk luar talian.<br>Log keluar dan log masuk semula dengan internet.';
+      else if (bmRef.loading && !bmRef.loaded) empty = 'Membaca jadual Badminton...';
+      else if (bmRef.err && !bmRef.loaded) empty = escapeHtml(bmRef.msg || 'Jadual Badminton tidak dapat dibaca.') + '<br>Tekan 🔄 untuk cuba lagi.';
+      else empty = 'Tiada perlawanan Badminton sedia untuk diadili sekarang.<br>Tekan 🔄 untuk semak semula.';
+      const desktopExit = !isPhoneDevice()
+        ? `<button type="button" class="rm-btn rm-btn-ghost" onclick="refSetMode('penuh')">🖥 Kembali ke Paparan Penuh</button>` : '';
+      return {
+        key: 'bm-pick',
+        html: `
+          <div class="rm-top">
+            <div><small>🏸 Pengadil Badminton</small><strong>${escapeHtml(s.nama)}</strong></div>
+            <div class="rm-top-actions">
+              <button type="button" class="rm-icon-btn" onclick="bmRefLoad()" aria-label="Semak jadual Badminton" ${getGasUrl() && s.token && !bmRef.loading ? '' : 'disabled'}>🔄</button>
+              <button type="button" class="rm-icon-btn danger" onclick="logout()">Log Keluar</button>
+            </div>
+          </div>
+          <p class="rm-sync">${escapeHtml(bmMobileSyncText(s))}</p>
+          <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
+          <p class="rm-sub">Ketik satu perlawanan Badminton. Paparan akan fokus pada perlawanan itu sahaja.</p>
+          ${chips}
+          <div class="rm-list">${cards || `<div class="rm-empty"><div class="icon">🏸</div>${empty}</div>`}</div>
+          ${others.length ? `<details class="rm-others"><summary>Diadili pengadil lain (${others.length})</summary>${otherRows}</details>` : ''}
+          ${desktopExit}`
+      };
+    }
+
+    function bmMobileFocusView(s, m) {
+      const sel = bmRef.sel;
+      const st = bmRefStatus(m);
+      const started = !!sel.started;
+      const s1 = parseInt(sel.s1, 10) || 0, s2 = parseInt(sel.s2, 10) || 0;
+      const status = started
+        ? `<span class="live">🔴 LIVE · Sedang berlangsung</span>`
+        : `<span class="ready">${st === 'LIVE' ? '🤝 Sedia diambil alih' : '🟢 Sedia · menunggu servis mula'}</span>`;
+      const team = side => {
+        const nama = side === 1 ? m.namaP1 : m.namaP2;
+        const kod = side === 1 ? (m.singP1 || m.kodP1 || '') : (m.singP2 || m.kodP2 || '');
+        return `
+          <div class="rm-team">
+            <div class="rm-team-code">${escapeHtml(kod)}</div>
+            <div class="rm-team-name">${escapeHtml(nama)}</div>
+            <div class="rm-num" aria-label="Skor ${escapeHtml(nama)}">${side === 1 ? s1 : s2}</div>
+            ${started ? `
+              <button type="button" class="rm-goal" onclick="bmRefPoint(${side}, 1)" ${bmRef.busy ? 'disabled' : ''} aria-label="Tambah mata ${escapeHtml(nama)}">＋ MATA</button>
+              <button type="button" class="rm-undo" onclick="bmRefPoint(${side}, -1)" ${bmRef.busy ? 'disabled' : ''} aria-label="Batal mata ${escapeHtml(nama)}">− Batal 1 mata</button>` : ''}
+          </div>`;
+      };
+      const rejected = st === 'DITOLAK'
+        ? `<div class="rm-note danger">⚠ <strong>Ditolak Master Admin:</strong> ${escapeHtml(m.catatan || 'Sila semak semula skor dan hantar semula.')}</div>` : '';
+      const msg = bmRef.msg && bmRef.err ? `<div class="rm-note danger">${escapeHtml(bmRef.msg)}</div>` : '';
+      let actions;
+      if (!started) {
+        actions = `
+          <button type="button" class="rm-btn rm-btn-primary" onclick="bmRefStart()" ${bmRef.busy ? 'disabled' : ''}>${bmRef.busy ? '⏳ Memulakan...' : st === 'LIVE' ? '🤝 Ambil Alih &amp; Teruskan' : '🏸 Servis Mula'}</button>
+          <button type="button" class="rm-btn rm-btn-ghost" onclick="bmRefClose()" ${bmRef.busy ? 'disabled' : ''}>↩ Salah pilih? Kembali ke senarai</button>`;
+      } else {
+        actions = `
+          <p class="rm-foot" style="margin-top:-4px;">${bmMobileSaveText() || '&nbsp;'}</p>
+          <button type="button" class="rm-btn rm-btn-finish" onclick="bmRefStartFinish()" ${bmRef.busy ? 'disabled' : ''}>🏁 Tamat Perlawanan</button>
+          <details class="rm-more">
+            <summary>⋯ Tindakan lain</summary>
+            <div class="rm-more-body">
+              <button type="button" class="rm-btn" onclick="bmRefSaveNow()" ${bmRef.busy || bmSave.busy ? 'disabled' : ''}>💾 Simpan Skor Sekarang</button>
+              <button type="button" class="rm-btn rm-btn-ghost" onclick="bmRefLeave()" ${bmRef.busy ? 'disabled' : ''}>↩ Kembali ke senarai (perlawanan kekal di bawah anda)</button>
+            </div>
+          </details>`;
+      }
+      return {
+        key: `bm-focus-${m.id}`,
+        html: `
+          <div class="rm-lockbar">${started ? '🔒 Paparan dikunci' : '🏸 Perlawanan dipilih'} · ${escapeHtml(s.nama)}</div>
+          <div class="rm-head">
+            <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
+            <div class="rm-head-info">
+              <strong>${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.id)}</strong>
+              <small>${escapeHtml(m.peringkat || '')}${m.kategori ? ' · ' + escapeHtml(m.kategori) : ''}</small>
+            </div>
+          </div>
+          <div class="rm-status">${status}</div>
+          ${rejected}${msg}
+          <div class="rm-score">${team(1)}<div class="rm-vs">:</div>${team(2)}</div>
+          ${actions}
+          <p class="rm-foot">${started ? 'Skor disimpan automatik ke Google Sheets setiap kali anda menekan butang.' : 'Tekan Servis Mula apabila perlawanan bermula. Perlawanan akan direkod di bawah nama anda.'}<br><span class="rm-sync">${escapeHtml(bmMobileSyncText(s))}</span></p>`
+      };
+    }
+
+    function bmMobileFinishView(s, m) {
+      const s1 = parseInt(bmRef.sel.s1, 10) || 0, s2 = parseInt(bmRef.sel.s2, 10) || 0;
+      const seri = s1 === s2;
+      const f = bmRef.fin;
+      const menang = s1 > s2 ? m.namaP1 : m.namaP2;
+      const ready = f.setuju && !seri && !bmRef.busy;
+      return {
+        key: `bm-finish-${m.id}`,
+        html: `
+          <div class="rm-lockbar">🔒 ${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.id)}</div>
+          <h2 class="rm-title">Semak &amp; sahkan keputusan</h2>
+          <p class="rm-sub">Pastikan skor betul. Nama anda direkod sebagai pengadil yang mengesahkan keputusan ini.</p>
+          <div class="rm-final">
+            <div class="t">${escapeHtml(m.namaP1)}</div>
+            <div class="n">${s1} - ${s2}</div>
+            <div class="t">${escapeHtml(m.namaP2)}</div>
+          </div>
+          ${seri
+            ? '<div class="rm-note danger">Keputusan Badminton tidak boleh seri. Kembali dan betulkan skor.</div>'
+            : `<div class="rm-note ok">🏆 Pemenang: <strong>${escapeHtml(menang)}</strong></div>`}
+          ${bmRef.msg && bmRef.err ? `<div class="rm-note danger">${escapeHtml(bmRef.msg)}</div>` : ''}
+          <label class="rm-check">
+            <input type="checkbox" ${f.setuju ? 'checked' : ''} onchange="bmRefToggleSetuju(this.checked)" ${bmRef.busy ? 'disabled' : ''} />
+            <span>Saya, <strong>${escapeHtml(s.nama)}</strong>, mengesahkan keputusan perlawanan ini adalah betul.</span>
+          </label>
+          <button type="button" class="rm-btn rm-btn-primary" onclick="bmRefConfirmSubmit()" ${ready ? '' : 'disabled'}>${bmRef.busy ? '⏳ Menghantar...' : '✅ Sahkan &amp; Hantar Keputusan'}</button>
+          <button type="button" class="rm-btn rm-btn-ghost" onclick="bmRefCancelFinish()" ${bmRef.busy ? 'disabled' : ''}>← Kembali ke perlawanan</button>
+          <p class="rm-foot">Keputusan akan menunggu pengesahan Master Admin sebelum dikira dalam carta.</p>`
+      };
+    }
+
+    function bmMobileReceiptView(s, r) {
+      return {
+        key: `bm-resit-${r.id}`,
+        html: `
+          <div class="rm-receipt">
+            <div class="big">✅</div>
+            <h2>Keputusan disahkan &amp; dihantar</h2>
+            <p><strong>${escapeHtml(r.id)}</strong>${r.gelanggang ? ' · Gelanggang ' + escapeHtml(r.gelanggang) : ''}</p>
+            <div class="rm-final" style="margin:8px 0;">
+              <div class="t">${escapeHtml(r.namaP1)}</div><div class="n">${r.s1} - ${r.s2}</div><div class="t">${escapeHtml(r.namaP2)}</div>
+            </div>
+            <p>🏆 Pemenang: <strong>${escapeHtml(r.menang)}</strong></p>
+            <p>Disahkan oleh <strong>${escapeHtml(r.nama)}</strong> · ${escapeHtml(formatTime(r.pada))}</p>
+            <p class="rm-send ok">☁ Diterima oleh Google Sheets</p>
+            <p class="rm-foot">Keputusan kini menunggu pengesahan Master Admin.</p>
+          </div>
+          <button type="button" class="rm-btn rm-btn-primary" onclick="bmRefCloseReceipt()">➡ Pilih Perlawanan Seterusnya</button>`
+      };
+    }
+
+    function bmMobileView(s) {
+      bmMobileEnsure(s);
+      if (bmRef.resit) return bmMobileReceiptView(s, bmRef.resit);
+      const m = bmRef.sel && bmRef.list.find(x => x.id === bmRef.sel.id);
+      if (m && bmRef.fin) return bmMobileFinishView(s, m);
+      if (m) return bmMobileFocusView(s, m);
+      return bmMobilePickView(s);
+    }
+
+    function bmMobileRender() {
+      try { if (document.body.classList.contains('ref-mode')) renderRefMobile(); } catch (e) { console.error('[bmMobileRender]', e); }
+    }
+
+    // Hantar skor ke Google Sheets (SEMASA) tanpa membaca semula jadual
+    async function bmRefPush(jenis) {
+      const s = getSession();
+      const m = bmRef.sel && bmRef.list.find(x => x.id === bmRef.sel.id);
+      if (!s || !s.token || !m) throw new Error('Sesi atau perlawanan tidak sah.');
+      const s1 = parseInt(bmRef.sel.s1, 10) || 0, s2 = parseInt(bmRef.sel.s2, 10) || 0;
+      const res = await callGas({ action: 'skorPengadilBadminton', sukan: 'BADMINTON', token: s.token, id: m.id, skorP1: s1, skorP2: s2, jenis });
+      if (!res || !res.ok) {
+        const e = String((res && res.error) || '');
+        if (res && res.kod === 'SESI_TAMAT') throw new Error('Sesi pengadil tamat. Sila log keluar dan log masuk semula.');
+        if (/khusus untuk FUTSAL|memerlukan kunci Master Admin|Tindakan tidak dikenali/i.test(e) || (res && res.kod === 'SKRIP_LAMA'))
+          throw new Error(`Google Sheets masih Code.gs versi lama. Master Admin perlu Deploy Code.gs v${BMREF_VERSI} atau lebih baharu.`);
+        throw new Error(e || (res && res.networkError ? 'Tiada sambungan internet.' : 'Skor gagal dihantar.'));
+      }
+      if (res.sukan !== 'BADMINTON') throw new Error('Respons Google Sheets tidak sepadan. Pastikan Code.gs terkini telah di-deploy.');
+      Object.assign(m, { skorP1: s1, skorP2: s2, pengadil: res.pengadil || s.nama, status: jenis === 'TAMAT' ? 'TAMAT' : 'SEDANG BERLANGSUNG', pengesahan: 'MENUNGGU' });
+      return { s1, s2 };
+    }
+
+    function bmRefScheduleSave() {
+      clearTimeout(bmSave.timer);
+      bmSave.timer = setTimeout(() => { bmSave.timer = null; bmRefAutoSave(); }, BM_AUTOSAVE_MS);
+    }
+
+    async function bmRefAutoSave() {
+      if (!bmRef.sel || !bmRef.sel.started) return;
+      if (bmSave.busy) { bmSave.pending = true; return; }
+      bmSave.busy = true; bmSave.pending = false; bmMobileRender();
+      try {
+        await bmRefPush('SEMASA');
+        bmSave.state = 'ok'; bmSave.err = ''; bmSave.lastAt = Date.now();
+      } catch (e) {
+        bmSave.state = 'gagal'; bmSave.err = e.message || '';
+      } finally {
+        bmSave.busy = false;
+        if (bmSave.pending) bmRefScheduleSave();
+        bmMobileRender();
+      }
+    }
+
+    async function bmRefFlushSave() {
+      clearTimeout(bmSave.timer); bmSave.timer = null;
+      for (let i = 0; i < 40 && bmSave.busy; i++) await new Promise(r => setTimeout(r, 250));
+    }
+
+    function bmRefPoint(side, d) {
+      if (!bmRef.sel || !bmRef.sel.started || bmRef.busy) return;
+      const k = 's' + side;
+      const n = Math.max(0, Math.min(99, (parseInt(bmRef.sel[k], 10) || 0) + d));
+      if (n === (parseInt(bmRef.sel[k], 10) || 0)) return;
+      bmRef.sel[k] = n;
+      refBuzz(d > 0 ? 25 : 12);
+      bmRefScheduleSave();
+      bmMobileRender();
+    }
+
+    async function bmRefStart() {
+      if (!bmRef.sel || bmRef.busy) return;
+      const s = getSession();
+      if (!s || !s.token) { bmRefSetMsg('Log masuk semula dengan internet untuk mula mengadili.', true); bmMobileRender(); return; }
+      bmRef.busy = true; bmRefSetMsg(''); bmMobileRender();
+      try {
+        await bmRefPush('SEMASA');
+        bmRef.sel.started = true;
+        bmSave.state = 'ok'; bmSave.err = ''; bmSave.lastAt = Date.now();
+        showToast('🏸 Perlawanan bermula. Tekan ＋ MATA untuk setiap mata.', 'success');
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+      } catch (e) {
+        bmRefSetMsg(e.message || 'Perlawanan tidak dapat dimulakan.', true);
+      } finally {
+        bmRef.busy = false; bmRefPaint(); bmMobileRender();
+      }
+    }
+
+    async function bmRefSaveNow() { await bmRefFlushSave(); await bmRefAutoSave(); }
+
+    async function bmRefLeave() {
+      await bmRefFlushSave();
+      if (bmSave.state !== 'gagal') { await bmRefAutoSave(); }
+      bmRef.sel = null; bmRef.fin = null; bmRefSetMsg('');
+      bmRefPaint(); bmMobileRender();
+    }
+
+    function bmRefStartFinish() {
+      if (!bmRef.sel || !bmRef.sel.started || bmRef.busy) return;
+      bmRef.fin = { setuju: false }; bmRefSetMsg('');
+      bmMobileRender();
+    }
+    function bmRefCancelFinish() { if (bmRef.busy) return; bmRef.fin = null; bmRefSetMsg(''); bmMobileRender(); }
+    function bmRefToggleSetuju(v) { if (bmRef.fin) bmRef.fin.setuju = !!v; bmMobileRender(); }
+
+    async function bmRefConfirmSubmit() {
+      const s = getSession();
+      if (!s || !bmRef.sel || !bmRef.fin || !bmRef.fin.setuju || bmRef.busy) return;
+      const m = bmRef.list.find(x => x.id === bmRef.sel.id);
+      if (!m) return;
+      const s1 = parseInt(bmRef.sel.s1, 10) || 0, s2 = parseInt(bmRef.sel.s2, 10) || 0;
+      if (s1 === s2) { bmRefSetMsg('Keputusan Badminton tidak boleh seri.', true); bmMobileRender(); return; }
+      bmRef.busy = true; bmRefSetMsg(''); bmMobileRender();
+      try {
+        await bmRefFlushSave();
+        await bmRefPush('TAMAT');
+        // Pastikan Google Sheets benar-benar menyimpan keputusan
+        try {
+          bmRef.list = await bmRefRead();
+          bmRef.loadedAt = Date.now();
+          const saved = bmRef.list.find(x => x.id === m.id);
+          if (saved && (Number(saved.skorP1) !== s1 || Number(saved.skorP2) !== s2)) throw new Error('Skor dalam Google Sheets tidak sepadan. Cuba hantar semula.');
+        } catch (e) { if (/tidak sepadan/.test(e.message || '')) throw e; }
+        bmRef.resit = { id: m.id, gelanggang: m.gelanggang || '', namaP1: m.namaP1, namaP2: m.namaP2, s1, s2, menang: s1 > s2 ? m.namaP1 : m.namaP2, nama: s.nama, pada: nowIso() };
+        bmRef.sel = null; bmRef.fin = null;
+        Object.assign(bmSave, { state: '', err: '', pending: false });
+        refBuzz(60);
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+      } catch (e) {
+        bmRefSetMsg(e.message || 'Keputusan gagal dihantar. Skor anda dikekalkan, cuba lagi.', true);
+      } finally {
+        bmRef.busy = false; bmRefPaint(); bmMobileRender();
+      }
+    }
+
+    function bmRefCloseReceipt() { bmRef.resit = null; bmRefSetMsg(''); bmMobileRender(); bmRefLoad(); }
 
     // Paparan Meja Pengadil (atas kad gelanggang)
     function renderRefDesk() {
@@ -10658,7 +11037,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function isRefMode() {
       const s = getSession();
       if (!s || s.peranan !== 'PENGADIL') return false;
-      if (refSukanOf(s) === 'BADMINTON') return false;   // v1.17.0: paparan telefon pengadil = Futsal sahaja
+      // v1.20.0: pengadil Badminton juga guna paparan ringkas (telefon: sentiasa; komputer: kecuali pilih Paparan Penuh)
+      if (refSukanOf(s) === 'BADMINTON') return isPhoneDevice() || !(state.ui && state.ui.refMode === 'penuh');
       if (isPhoneDevice()) return true;
       return !!(state.ui && state.ui.refMode === 'telefon');
     }
@@ -10668,14 +11048,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         showToast('Paparan dikunci pada perlawanan anda. Tamatkan perlawanan dahulu.', 'warn');
         return;
       }
-      state.ui.refMode = mode === 'telefon' ? 'telefon' : null;
+      state.ui.refMode = mode === 'telefon' ? 'telefon' : (mode === 'penuh' ? 'penuh' : null);
       saveState();
       updateAuthUI();
       refreshAllViews();
     }
 
     async function updateWakeLock() {
-      const want = isRefMode() && !!refHeldCourt() && !document.hidden;
+      const want = isRefMode() && (!!refHeldCourt() || !!(bmRef.sel && bmRef.sel.started)) && !document.hidden;
       try {
         if (want && !refWakeLock && navigator.wakeLock && navigator.wakeLock.request) {
           const w = await navigator.wakeLock.request('screen');
@@ -11072,13 +11452,19 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return;
       }
       const s = getSession();
-      const held = refHeldCourt();
-      if (refFinish && (!held || held.id !== refFinish.courtId || held.status !== COURT_STATUS.LIVE || isCourtPaused(held))) refFinish = null;
       let view;
-      if (held && refFinish) view = refFinishView(s, held);
-      else if (held) view = refFocusView(s, held);
-      else if (state.ui && state.ui.refResit) view = refReceiptView(s, state.ui.refResit);
-      else view = refPickView(s);
+      if (refSukanOf(s) === 'BADMINTON') {
+        // v1.20.0: paparan ringkas pengadil Badminton
+        refFinish = null;
+        view = bmMobileView(s);
+      } else {
+        const held = refHeldCourt();
+        if (refFinish && (!held || held.id !== refFinish.courtId || held.status !== COURT_STATUS.LIVE || isCourtPaused(held))) refFinish = null;
+        if (held && refFinish) view = refFinishView(s, held);
+        else if (held) view = refFocusView(s, held);
+        else if (state.ui && state.ui.refResit) view = refReceiptView(s, state.ui.refResit);
+        else view = refPickView(s);
+      }
       // Kekalkan keadaan "Tindakan lain" (terbuka/tertutup) selepas paparan dijana semula
       const moreOpen = !!el.querySelector('details.rm-more[open]');
       const othersOpen = !!el.querySelector('details.rm-others[open]');
