@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbz6vx4pduMSfwj1hIrIxZokNHEUUwSeOdTPuD0PYMDlKoqfP8txmUZanh8e8nsobmEuPw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2192,6 +2192,79 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       body[data-sukan="SEMUA"] #tab-live .aq-later .aq-teams { font-size: .8rem !important; }
     }
   </style>
+  <!-- v1.28.0: BADMINTON ISI PENUH SKRIN (sama seperti Futsal): gelanggang besar, giliran seterusnya kelihatan -->
+  <style id="bm-autofit-v1280">
+    body.autofit-active #tab-bm-live .panel-head { margin-bottom: 4px !important; padding-bottom: 2px !important; }
+    body.autofit-active #tab-bm-live .panel-head h2 { font-size: 1.1rem !important; }
+    body.autofit-active #tab-bm-live .panel-head p { display: none !important; }
+    body.autofit-active #tab-bm-live .legend { font-size: .72rem !important; gap: 8px !important; }
+    body.autofit-active #tab-bm-live .bm-live-strip { padding: 6px 14px !important; margin-bottom: 8px !important; }
+    body.autofit-active #tab-bm-live .bm-live-strip h3 { font-size: .9rem !important; }
+    body.autofit-active #tab-bm-live .bm-live-strip p { display: none !important; }
+
+    /* Kad gelanggang badminton: regang isi skrin, gelanggang (padang) membesar */
+    #tab-bm-live #bmStageWrap.af-fill { display: flex !important; flex-direction: column !important; overflow: hidden !important; box-sizing: border-box; }
+    #tab-bm-live #bmStageWrap.af-fill > #bmCourtsGrid {
+      flex: 1 0 auto !important; min-height: auto !important; margin-bottom: 10px !important;
+      grid-auto-rows: auto !important; grid-template-rows: none !important;
+      align-content: stretch !important; align-items: stretch !important;
+    }
+    #tab-bm-live #bmStageWrap.af-fill .court-card {
+      display: flex !important; flex-direction: column !important;
+      height: auto !important; min-height: 0 !important; align-self: stretch !important; justify-content: flex-start !important;
+    }
+    #tab-bm-live #bmStageWrap.af-fill .court-card > * { flex-shrink: 0; }
+    body.autofit-active #tab-bm-live #bmStageWrap .court-card > .pitch { height: 52px !important; margin: 6px 10px !important; border-radius: 10px !important; }
+    #tab-bm-live #bmStageWrap.af-fill .court-card > .pitch { flex: 1 1 auto !important; height: auto !important; min-height: 52px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .scoreboard .score-box { font-size: clamp(1.75rem, 3.4vh, 2.8rem) !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .scoreboard .team-name { font-size: clamp(.8rem, 1.45vh, 1.02rem) !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .pitch-overlay {
+      font-size: clamp(.7rem, 1.25vh, .95rem) !important; letter-spacing: .12em !important; padding: 0 8px; text-align: center; line-height: 1.25;
+      background: rgba(5,10,20,.42) !important; text-shadow: 0 2px 8px rgba(0,0,0,.6);
+    }
+    body.autofit-active #tab-bm-live #bmStageWrap .court-done-note { margin: 0 12px 6px !important; padding: 5px 8px !important; font-size: .72rem !important; }
+    /* Baris "Standby" dalam kad disorok: giliran seterusnya dipaparkan penuh di bawah -> ruang untuk gelanggang */
+    body.autofit-active #tab-bm-live #bmStageWrap .court-card > .court-next { display: none !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .bm-court-act { padding: 0 12px 10px !important; }
+
+    /* Garisan gelanggang badminton lebih jelas */
+    #tab-bm-live .pitch.bm-pitch {
+      background: linear-gradient(135deg, #1b4d80, #123a60) !important;
+      border: 2px solid rgba(255,255,255,.7) !important;
+      box-shadow: inset 0 0 30px rgba(0,0,0,.3);
+    }
+    #tab-bm-live .pitch.bm-pitch::after { border-top-color: rgba(255,255,255,.55) !important; border-bottom-color: rgba(255,255,255,.55) !important; }
+    #tab-bm-live .bm-pitch .bm-ln { background: rgba(255,255,255,.55) !important; }
+    #tab-bm-live .bm-pitch .shuttle { font-size: clamp(1.1rem, 2.6vh, 1.9rem) !important; }
+
+    /* Giliran seterusnya (Badminton): padat, 6 gelanggang dalam satu baris supaya muat skrin */
+    body.autofit-active #tab-bm-live #bmStageWrap > .standby-board { flex: 0 0 auto !important; margin: 0 !important; padding: 10px 0 0 !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-head { gap: 12px !important; margin-bottom: 10px !important; align-items: flex-end !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-head h3 { font-size: 1.05rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-head p { margin-top: 2px !important; font-size: .76rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-eyebrow { margin-bottom: 2px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-find { flex-direction: row !important; align-items: center !important; width: auto !important; gap: 8px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-find > span { white-space: nowrap; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-find input, body.autofit-active #tab-bm-live #bmStageWrap .sb-find select { width: 200px !important; padding: 6px 10px !important; font-size: .78rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-result { margin-bottom: 10px !important; padding: 8px 12px !important; font-size: .85rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-card-top { padding: 8px 10px !important; gap: 8px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-court-letter { flex: 0 0 30px !important; height: 30px !important; font-size: 1rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-card-top strong { font-size: .88rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-stage { padding: 8px 10px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-label { margin-bottom: 4px !important; font-size: .64rem !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-match { font-size: .8rem !important; line-height: 1.3 !important; overflow-wrap: break-word !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-match-id { margin-bottom: 3px !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-versus { margin: 1px 0 !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-tag, body.autofit-active #tab-bm-live #bmStageWrap .sb-hint { margin-top: 4px !important; font-size: .66rem !important; }
+    /* Perlawanan semasa sudah dipaparkan dalam kad gelanggang di atas -> kad giliran tunjuk SETERUSNYA sahaja */
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-stage-current,
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-hint,
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-category { display: none !important; }
+    body.autofit-active #tab-bm-live #bmStageWrap .sb-later-toggle { padding: 6px 10px !important; font-size: .68rem !important; }
+    @media (min-width: 1280px) {
+      body.autofit-active #tab-bm-live #bmStageWrap .sb-grid.bm-sb-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 10px !important; align-items: stretch !important; }
+    }
+  </style>
 </head>
 <body data-category="SEMUA">
 
@@ -2392,7 +2465,23 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
         </div>
         <div data-bm-notice></div>
         <div class="card glass live-board compact bm-live-strip" id="bmLiveStrip" aria-live="polite"></div>
-        <button type="button" class="btn btn-primary tv-launch" onclick="setProjection(true, { fullscreen: true })"><span class="not-semua">▣ Paparan Projektor Badminton (Skrin Penuh)</span><span class="only-semua-in">▣ Paparan Projektor · Semua Gelanggang (Futsal + Badminton)</span></button>
+        <!-- v1.28.0: BAR AUTO-FIT SKRIN (BADMINTON) - sama seperti paparan Futsal -->
+        <div class="live-autofit-bar" id="bmAutoFitBar">
+          <div class="af-pill-group">
+            <button type="button" class="af-toggle-btn active" onclick="toggleAutoFitLive()" title="Padankan paparan ke saiz skrin komputer tanpa perlu skrol">
+              <span class="af-indicator-dot"></span>
+              <span class="af-title">Auto-Fit Skrin Komputer:</span>
+              <strong class="af-status-val">AKTIF (Tiada Scroll)</strong>
+            </button>
+            <span class="af-scale-info">Skala: 100%</span>
+          </div>
+          <div class="af-actions">
+            <button type="button" class="btn btn-sm btn-af-fs" onclick="toggleLiveFullscreen()" title="Skrin Penuh (F11)">⛶ Skrin Penuh</button>
+            <button type="button" class="btn btn-sm tv-launch" onclick="setProjection(true, { fullscreen: true })" title="Mod projektor dewan skrin gelap"><span class="not-semua">▣ Projektor Badminton</span><span class="only-semua-in">▣ Projektor Dewan</span></button>
+          </div>
+        </div>
+
+        <div class="live-stage-wrap" id="bmStageWrap">
         <div class="courts-grid bm-courts" id="bmCourtsGrid"></div>
 
         <div class="card glass standby-board" id="bmStandbyBoard" aria-live="polite">
@@ -2413,6 +2502,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <div id="bmSbResult"></div>
           <div class="sb-grid bm-sb-grid" id="bmSbGrid"></div>
         </div>
+        </div><!-- /bmStageWrap -->
       </section>
 
       <!-- =========================================================
@@ -18493,23 +18583,26 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
 
       function updateAutoFitUI(liveActive) {
-        const btn = document.getElementById('btnLiveAutoFit');
-        const statusVal = document.getElementById('afStatusVal');
         const active = autoFitActive && isDesktopFitView() && (liveActive !== false);
-        if (btn) btn.classList.toggle('active', active);
-        if (statusVal) {
+        // v1.28.0: kemas kini bar Futsal & Badminton serentak
+        document.querySelectorAll('.live-autofit-bar .af-toggle-btn').forEach(btn => btn.classList.toggle('active', active));
+        document.querySelectorAll('.live-autofit-bar .af-status-val').forEach(statusVal => {
           statusVal.textContent = active ? 'AKTIF (Tiada Scroll)' : 'BIASA (Boleh Scroll)';
           statusVal.style.color = active ? 'var(--court-ready, #22c55e)' : 'var(--text-2)';
-        }
+        });
         document.documentElement.classList.toggle('autofit-active', active);
         document.body.classList.toggle('autofit-active', active);
       }
 
-      function isLiveTabActive() {
-        const liveTab = document.getElementById('tab-live');
-        return !!(liveTab && (liveTab.classList.contains('active') ||
-          location.hash === '#tab-live' ||
-          (!location.hash && document.querySelector('.tab-btn[data-tab="tab-live"]')?.classList.contains('active'))));
+      // v1.28.0: pentas auto-fit untuk tab yang sedang dibuka (Futsal: liveStageWrap, Badminton: bmStageWrap)
+      const STAGES = { 'tab-live': 'liveStageWrap', 'tab-bm-live': 'bmStageWrap' };
+      function activeLiveTabId() {
+        const panel = document.querySelector('.tab-panel.active');
+        if (panel) return STAGES[panel.id] ? panel.id : null;
+        const h = (location.hash || '').slice(1);
+        if (STAGES[h]) return h;
+        const btn = document.querySelector('.tab-btn.active[data-tab]');
+        return btn && STAGES[btn.dataset.tab] ? btn.dataset.tab : null;
       }
 
       function setAutoFitScroll(on) {
@@ -18530,15 +18623,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       // v1.25.0: Isi penuh skrin (tiada ruang kosong). Jika kandungan terlalu tinggi,
       // kecilkan secara berkadar tetapi kekal penuh lebar skrin.
       function fitLiveStage() {
-        const stage = document.getElementById('liveStageWrap');
-        const active = autoFitActive && isDesktopFitView() && isLiveTabActive();
+        const tabId = activeLiveTabId();
+        const stage = tabId ? document.getElementById(STAGES[tabId]) : null;
+        const active = autoFitActive && isDesktopFitView() && !!stage;
         updateAutoFitUI(active);
-        if (!stage) return;
-        const scaleInfo = document.getElementById('afScaleInfo');
-
-        resetStage(stage);
+        Object.values(STAGES).forEach(id => { const el = document.getElementById(id); if (el) resetStage(el); });
+        const infos = document.querySelectorAll('.live-autofit-bar .af-scale-info');
+        const scaleInfo = { set textContent(t) { infos.forEach(el => { el.textContent = t; }); } };
         if (!active) {
-          if (scaleInfo) scaleInfo.textContent = 'Skala: 100%';
+          scaleInfo.textContent = 'Skala: 100%';
           return;
         }
 
@@ -18635,7 +18728,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const targetNodes = [
           document.getElementById('courtsGrid'),
           document.getElementById('allBmGrid'),
-          document.getElementById('allQueue')
+          document.getElementById('allQueue'),
+          document.getElementById('bmCourtsGrid'),
+          document.getElementById('bmSbGrid'),
+          document.getElementById('bmSbResult'),
+          document.getElementById('bmLiveStrip')
         ].filter(Boolean);
 
         if (window.MutationObserver && targetNodes.length > 0) {
