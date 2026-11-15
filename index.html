@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbz6vx4pduMSfwj1hIrIxZokNHEUUwSeOdTPuD0PYMDlKoqfP8txmUZanh8e8nsobmEuPw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2296,8 +2296,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <button type="button" class="btn" id="btnShareLive" title="Salin pautan live untuk dikongsi">
             <span aria-hidden="true">🔗</span><span class="btn-text">Kongsi Link Live</span>
           </button>
-          <button type="button" class="btn hidden" id="btnOpenRegister" title="Daftar Sub-Admin (Urusetia)">
-            <span aria-hidden="true">👥</span><span class="btn-text">Daftar Sub-Admin</span>
+          <button type="button" class="btn hidden" id="btnOpenRegister" title="Daftar Urusetia / Sub Admin">
+            <span aria-hidden="true">👥</span><span class="btn-text">Daftar Urusetia</span>
           </button>
           <button type="button" class="btn btn-primary" id="btnLogin">
             <span aria-hidden="true">🔐</span><span class="btn-text">Log Masuk</span>
@@ -2776,7 +2776,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
         <div class="card glass lock-screen hidden" id="approvalLocked">
           <div class="icon">🔒</div>
           <h3>Akses Terhad</h3>
-          <p>Hanya Urusetia dan Master Admin boleh mengesahkan keputusan perlawanan.</p>
+          <p>Hanya Master Admin dan Urusetia yang dilantik <strong>⭐ Sub Admin</strong> boleh mengesahkan keputusan perlawanan.</p>
           <button type="button" class="btn btn-primary" data-open-login>Log Masuk</button>
         </div>
 
@@ -2968,6 +2968,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--glass-border);">
                 <h3 class="card-title" style="margin:0;">👥 Admin &amp; Urusetia</h3>
                 <button type="button" class="btn btn-sm" id="btnAdminAddUser">＋ Tambah Urusetia</button>
+                <button type="button" class="btn btn-sm" id="btnAdminPullUsers" title="Muat senarai urusetia daripada tab Senarai_Urusetia">☁ Muat dari Sheets</button>
               </div>
               <div class="table-wrap">
                 <table class="data-table" id="usersTable">
@@ -2976,7 +2977,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                       <th>ID</th>
                       <th>Nama</th>
                       <th>Peranan</th>
-                      <th>PIN</th>
+                      <th>PIN / Kata Laluan</th>
+                      <th>Sub Admin</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -3113,7 +3115,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       <div class="modal-head">
         <div>
           <h3 id="loginTitle">🔐 Log Masuk Akses</h3>
-          <p>Admin &amp; Urusetia guna PIN. Pengadil guna nama ringkas &amp; kata laluan daripada Master Admin, kemudian pilih gelanggang di Meja Pengadil.</p>
+          <p>Master Admin guna PIN. Urusetia &amp; Pengadil guna nama &amp; kata laluan yang didaftarkan oleh Master Admin.</p>
         </div>
         <button type="button" class="modal-close" data-close-modal="loginModal" aria-label="Tutup">×</button>
       </div>
@@ -3121,9 +3123,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
         <div class="field">
           <label for="loginRole">Peranan</label>
           <select class="select" id="loginRole">
-            <option value="AUTO">Kesan automatik melalui PIN</option>
             <option value="MASTER_ADMIN">Master Admin</option>
-            <option value="URUSETIA">Urusetia</option>
+            <option value="URUSETIA">Urusetia / Sub Admin</option>
             <option value="PENGADIL">Pengadil</option>
           </select>
         </div>
@@ -3132,6 +3133,17 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
             <label for="loginPin">PIN</label>
             <input type="password" inputmode="numeric" maxlength="8" class="input input-pin" id="loginPin" placeholder="••••••" />
           </div>
+        </div>
+        <div id="loginUsFields" class="hidden">
+          <div class="field">
+            <label for="loginUsName">Nama Urusetia</label>
+            <input type="text" class="input" id="loginUsName" maxlength="60" autocomplete="username" placeholder="cth: Cikgu Aminah" />
+          </div>
+          <div class="field">
+            <label for="loginUsPassword">Kata Laluan</label>
+            <input type="password" class="input" id="loginUsPassword" maxlength="20" autocomplete="current-password" placeholder="••••••" />
+          </div>
+          <span class="field-hint">Nama &amp; kata laluan WAJIB diisi. Urusetia yang dilantik <strong>⭐ Sub Admin</strong> boleh mengesahkan markah perlawanan.</span>
         </div>
         <div id="loginRefFields" class="hidden">
           <div class="field">
@@ -3169,19 +3181,27 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     <div class="modal modal-wide">
       <div class="modal-head">
         <div>
-          <h3 id="registerTitle">👥 Daftar Sub-Admin (Urusetia)</h3>
-          <p>Hanya Master Admin boleh mendaftar akaun Urusetia. Akaun pengadil diurus dalam Pangkalan Data Pengadil.</p>
+          <h3 id="registerTitle">👥 Daftar Urusetia / Sub Admin</h3>
+          <p>Hanya Master Admin boleh mendaftar akaun Urusetia. Urusetia log masuk dengan nama &amp; kata laluan. Lantik sebagai Sub Admin untuk membenarkan pengesahan markah.</p>
         </div>
         <button type="button" class="modal-close" data-close-modal="registerModal" aria-label="Tutup">×</button>
       </div>
       <form id="registerForm" autocomplete="off">
         <div class="field">
-          <label for="regName">Nama Paparan</label>
-          <input type="text" class="input" id="regName" placeholder="cth: Cikgu Aminah (Urusetia)" required />
+          <label for="regName">Nama Urusetia (untuk log masuk)</label>
+          <input type="text" class="input" id="regName" maxlength="60" placeholder="cth: Cikgu Aminah" required />
+          <span class="field-hint">3–60 aksara. Tidak sensitif huruf besar/kecil semasa log masuk.</span>
         </div>
         <div class="field">
-          <label for="regPin">PIN (4-8 digit)</label>
-          <input type="text" inputmode="numeric" maxlength="8" class="input input-pin" id="regPin" placeholder="••••" required />
+          <label for="regPassword">Kata Laluan</label>
+          <input type="text" class="input mono" id="regPassword" maxlength="20" autocomplete="new-password" spellcheck="false" placeholder="cth: aminah2026" required />
+          <span class="field-hint">4–20 aksara tanpa ruang.</span>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="regSubAdmin" />
+            <span>⭐ Lantik sebagai <strong>Sub Admin</strong> (boleh mengesahkan / menolak markah perlawanan)</span>
+          </label>
         </div>
         <div class="form-msg" id="registerMsg"></div>
         <div class="modal-foot">
@@ -7647,7 +7667,8 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
-    const GAS_MIN_VERSI = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja
+    const GAS_MIN_VERSI = '1.19.0';  // v1.19.0: akaun Urusetia (nama + kata laluan) & lantikan Sub Admin
+    // const GAS_MIN_VERSI_180 = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja
     // const GAS_MIN_VERSI_170 = '1.17.0';  // v1.17.0: pengadil ikut sukan (Futsal / Badminton)
     // const GAS_MIN_VERSI_LAMA = '1.16.0';  // Bahagian 6: keluaran akhir (Bahagian 5: isyarat perubahan masa nyata)
     const ADMIN_KEY_STORAGE = 'FUTSAL_PK_KBB_ADMIN_KEY';
@@ -7889,7 +7910,8 @@ void main() {
        ========================================================= */
     const INITIAL_USERS = [
       { id: 'ADMIN-01', nama: 'Master Admin', peranan: 'MASTER_ADMIN', pin: '101010', aksesEvent: 'SEMUA', aksesGelanggang: 'SEMUA', kebenaran: 'Akses penuh: urus kejohanan, pasukan, jadual, undian X/Y, pengguna dan tetapan sistem', status: 'AKTIF' },
-      { id: 'URUSETIA-01', nama: 'Urusetia Kejohanan', peranan: 'URUSETIA', pin: '202020', aksesEvent: 'SEMUA', aksesGelanggang: 'SEMUA', kebenaran: 'Sahkan/tolak keputusan pengadil, kemas kini jadual & undian', status: 'AKTIF' }
+      // v1.19.0: akaun Urusetia lalai (PIN 202020) DIBUANG. Master Admin mendaftar urusetia (nama + kata laluan)
+      // dan melantik Sub Admin di panel Master Admin.
     ];
     // Akaun pengadil TIDAK lagi terikat pada gelanggang (sistem PIN setiap gelanggang dibuang).
     // Dicipta oleh Master Admin: { id: 'REF-001', nama, password, status, dicipta, dikemaskini, loginTerakhir }
@@ -7992,6 +8014,7 @@ void main() {
       PUBLIC: 'Penonton Awam (View-Only)',
       MASTER_ADMIN: 'Master Admin',
       URUSETIA: 'Urusetia',
+      SUB_ADMIN: 'Sub Admin',
       PENGADIL: 'Pengadil'
     };
 
@@ -8705,6 +8728,19 @@ void main() {
       const legacyRef = v => typeof v === 'string' && /^PENGADIL-[A-D](-\d+)?$/.test(v);
       if (!Array.isArray(state.users)) state.users = deepClone(INITIAL_USERS);
       state.users = state.users.filter(u => u && u.peranan !== 'PENGADIL');
+      // v1.19.0: akaun Urusetia kini log masuk dengan NAMA + KATA LALUAN; Sub Admin dilantik oleh Master Admin
+      // Buang akaun urusetia lalai lama (URUSETIA-01 / PIN 202020) yang tidak pernah diubah
+      state.users = state.users.filter(u => !(u.peranan === 'URUSETIA' && u.id === 'URUSETIA-01' &&
+        u.nama === 'Urusetia Kejohanan' && !u.didaftarPada && !u.diSheets && String(u.pin || u.password || '') === '202020'));
+      state.users.forEach(u => {
+        if (u.peranan !== 'URUSETIA') return;
+        if (!u.password) u.password = String(u.pin || '');
+        delete u.pin;
+        if (!('subAdmin' in u)) u.subAdmin = false;
+      });
+      if (state.session && state.session.peranan === 'URUSETIA' && !state.session.loginNama) {
+        state.session = null;   // sesi PIN urusetia versi lama -> log masuk semula dengan nama & kata laluan
+      }
       if (!Array.isArray(state.referees)) state.referees = [];
       state.referees = state.referees.filter(r => r && r.id && r.nama);
       state.courts.forEach(c => {
@@ -8981,9 +9017,23 @@ void main() {
       return s.peranan === 'PENGADIL' && (court.pengadilId === s.userId || s.aksesGelanggang === courtId || !court.pengadilId);
     }
 
+    // v1.19.0: Sahkan / Tolak keputusan -> Master Admin ATAU urusetia yang dilantik Sub Admin
+    function isSubAdmin() {
+      const s = getSession();
+      if (!s || s.peranan !== 'URUSETIA') return false;
+      const u = getUserById(s.userId);
+      return !!(u && u.subAdmin);
+    }
+
     function canApprove() {
       const role = currentRole();
-      return role === 'MASTER_ADMIN' || role === 'URUSETIA';
+      return role === 'MASTER_ADMIN' || (role === 'URUSETIA' && isSubAdmin());
+    }
+
+    function roleLabelOf(session) {
+      if (!session) return ROLE_LABELS.PUBLIC;
+      if (session.peranan === 'URUSETIA' && isSubAdmin()) return `${ROLE_LABELS.URUSETIA} · ⭐ ${ROLE_LABELS.SUB_ADMIN}`;
+      return ROLE_LABELS[session.peranan] || session.peranan;
     }
 
     function canManageSystem() {
@@ -9038,10 +9088,13 @@ void main() {
     function toggleLoginFields() {
       const role = (document.getElementById('loginRole') || {}).value;
       const isRef = role === 'PENGADIL';
+      const isUs = role === 'URUSETIA';
       const pinBox = document.getElementById('loginPinFields');
       const refBox = document.getElementById('loginRefFields');
-      if (pinBox) pinBox.classList.toggle('hidden', isRef);
+      const usBox = document.getElementById('loginUsFields');
+      if (pinBox) pinBox.classList.toggle('hidden', isRef || isUs);
       if (refBox) refBox.classList.toggle('hidden', !isRef);
+      if (usBox) usBox.classList.toggle('hidden', !isUs);
       setFormMsg(document.getElementById('loginMsg'), '', '');
     }
 
@@ -9178,6 +9231,177 @@ void main() {
       return true;
     }
 
+    /* ---------------------------------------------------------
+       v1.19.0: LOG MASUK URUSETIA / SUB ADMIN (NAMA + KATA LALUAN)
+       - Nama & kata laluan WAJIB diisi sebelum log masuk.
+       - Dengan URL Google Apps Script: disemak dengan tab Senarai_Urusetia (sumber sah)
+         dan pelayan memulangkan token sesi + status Sub Admin.
+       - Tanpa internet / URL: disemak dengan salinan akaun dalam peranti ini.
+       --------------------------------------------------------- */
+    function urusetiaNameKey(nama) {
+      return String(nama || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    // Simpan / kemas kini salinan akaun urusetia dalam peranti (daripada Google Sheets)
+    function cacheUrusetia(data, password) {
+      if (!data || !data.id) return null;
+      const id = String(data.id).toUpperCase();
+      // Nama urusetia adalah unik -> padankan nama dahulu, kemudian ID
+      let u = state.users.find(x => x.peranan === 'URUSETIA' && urusetiaNameKey(x.nama) === urusetiaNameKey(data.nama)) ||
+        state.users.find(x => x.peranan === 'URUSETIA' && x.id === id);
+      // ID yang sama dipegang akaun peranti lain (nama berbeza) -> beri ID tempatan baharu
+      state.users.forEach(x => {
+        if (x !== u && x.peranan === 'URUSETIA' && x.id === id) x.id = generateUserId() + '-P';
+      });
+      if (!u) {
+        u = { id, peranan: 'URUSETIA', aksesEvent: 'SEMUA', aksesGelanggang: 'SEMUA', kebenaran: 'Mulakan perlawanan & kemas kini jadual' };
+        state.users.push(u);
+      }
+      u.id = id;
+      u.peranan = 'URUSETIA';
+      u.nama = String(data.nama || u.nama || id);
+      u.subAdmin = !!data.subAdmin;
+      u.status = data.status === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF';
+      if (password !== undefined && password !== null && password !== '') u.password = String(password);
+      else if (data.password) u.password = String(data.password);
+      u.diSheets = true;
+      if (data.loginTerakhir) u.loginTerakhir = data.loginTerakhir;
+      return u;
+    }
+
+    async function handleUrusetiaLogin(msgEl) {
+      const nameEl = document.getElementById('loginUsName');
+      const pwEl = document.getElementById('loginUsPassword');
+      const submitBtn = document.getElementById('btnLoginSubmit');
+      const nama = String(nameEl ? nameEl.value : '').replace(/\s+/g, ' ').trim();
+      const password = pwEl ? pwEl.value : '';
+
+      if (!nama && !password) {
+        setFormMsg(msgEl, 'Sila masukkan NAMA dan KATA LALUAN urusetia sebelum log masuk.', 'error');
+        if (nameEl) nameEl.focus();
+        return false;
+      }
+      if (nama.length < 3) {
+        setFormMsg(msgEl, 'Sila masukkan nama urusetia (sekurang-kurangnya 3 aksara).', 'error');
+        if (nameEl) nameEl.focus();
+        return false;
+      }
+      if (!password) {
+        setFormMsg(msgEl, 'Sila masukkan kata laluan urusetia.', 'error');
+        if (pwEl) pwEl.focus();
+        return false;
+      }
+
+      let user = null;
+      let token = null;
+      const url = getGasUrl();
+      if (url && navigator.onLine) {
+        setFormMsg(msgEl, 'Menyemak akaun urusetia di Google Sheets...', '');
+        if (submitBtn) submitBtn.disabled = true;
+        const res = await callGas({ action: 'loginUrusetia', nama, password });
+        if (submitBtn) submitBtn.disabled = false;
+        if (res && res.ok && res.urusetia) {
+          user = cacheUrusetia(res.urusetia, password);
+          token = res.tokenUrusetia || null;
+        } else if (res && (res.kod === 'SKRIP_LAMA' || res.kod === 'TINDAKAN_TIDAK_DIKENALI' || res.kod === 'RALAT_SKRIP')) {
+          // Code.gs lama belum mengenali akaun urusetia -> semak salinan dalam peranti ini
+          console.warn('[loginUrusetia] Code.gs lama:', res.error);
+        } else if (res && res.kod === 'DIGANTUNG') {
+          setFormMsg(msgEl, res.error, 'error');
+          return false;
+        } else if (res && !res.networkError) {
+          // Google Sheets (tab Senarai_Urusetia) ialah sumber sah
+          return loginFailed(msgEl, (res.error || 'Nama atau kata laluan urusetia tidak sah.') +
+            ' (Disemak dengan Google Sheets. Pastikan akaun bertanda ☁ Sheets di panel Master Admin.)', pwEl);
+        }
+      }
+      if (!user) {
+        user = state.users.find(u => u.peranan === 'URUSETIA' &&
+          urusetiaNameKey(u.nama) === urusetiaNameKey(nama) && String(u.password || '') === password) || null;
+        if (!user) return loginFailed(msgEl, navigator.onLine || !url
+          ? 'Nama atau kata laluan urusetia tidak sah.'
+          : 'Tiada internet: akaun urusetia tidak dapat disemak dengan Google Sheets.', pwEl);
+      }
+      if (user.status !== 'AKTIF') {
+        return loginFailed(msgEl, 'Akaun urusetia ini telah digantung. Hubungi Master Admin.', pwEl);
+      }
+
+      loginGuard.attempts = 0;
+      loginGuard.lockedUntil = 0;
+      state.session = {
+        userId: user.id,
+        nama: user.nama,
+        peranan: 'URUSETIA',
+        aksesEvent: user.aksesEvent || 'SEMUA',
+        aksesGelanggang: user.aksesGelanggang || 'SEMUA',
+        tokenUrusetia: token,
+        loginNama: true,
+        masaLogMasuk: nowIso()
+      };
+      saveState();
+
+      if (pwEl) pwEl.value = '';
+      if (nameEl) nameEl.value = '';
+      setFormMsg(msgEl, '', '');
+      closeModal('loginModal');
+      updateAuthUI();
+      refreshAllViews();
+      startLockSync();
+      showToast(user.subAdmin
+        ? `Selamat datang, ${user.nama} (⭐ Sub Admin). Anda boleh mengesahkan markah di Peti Kelulusan.`
+        : `Selamat datang, ${user.nama} (Urusetia).`, 'success', 5000);
+      return true;
+    }
+
+    // Semak status akaun urusetia (lantikan Sub Admin / digantung) dengan Google Sheets
+    let semakUrusetiaBusy = false;
+    async function semakStatusUrusetia() {
+      const s = getSession();
+      if (!s || s.peranan !== 'URUSETIA' || !s.tokenUrusetia || !getGasUrl() || !navigator.onLine || semakUrusetiaBusy) return;
+      semakUrusetiaBusy = true;
+      try {
+        const res = await callGas({ action: 'semakUrusetia', tokenUrusetia: s.tokenUrusetia });
+        if (res && res.ok && res.urusetia) {
+          const u = getUserById(s.userId);
+          const sebelum = !!(u && u.subAdmin);
+          cacheUrusetia(res.urusetia);
+          saveState();
+          if (sebelum !== !!res.urusetia.subAdmin) {
+            showToast(res.urusetia.subAdmin
+              ? '⭐ Anda telah dilantik sebagai Sub Admin. Peti Kelulusan kini dibuka.'
+              : 'Lantikan Sub Admin anda telah ditarik balik oleh Master Admin.', res.urusetia.subAdmin ? 'success' : 'warn', 6000);
+            updateAuthUI();
+            refreshAllViews();
+          }
+        } else if (res && (res.kod === 'SESI_TAMAT' || res.kod === 'DIGANTUNG')) {
+          state.session = null;
+          saveState();
+          updateAuthUI();
+          refreshAllViews();
+          showToast(res.error || 'Sesi urusetia tamat. Sila log masuk semula.', 'warn', 6500);
+        }
+      } finally {
+        semakUrusetiaBusy = false;
+      }
+    }
+
+    // Kunci pengesahan untuk Google Sheets: Master Admin (adminKey) atau Sub Admin (tokenUrusetia)
+    async function kunciPengesahan() {
+      if (canManageSystem()) {
+        const adminKey = await ensureAdminKey();
+        return adminKey ? { adminKey } : null;
+      }
+      const s = getSession();
+      if (s && s.peranan === 'URUSETIA' && isSubAdmin()) {
+        if (!s.tokenUrusetia && getGasUrl()) {
+          showToast('Sesi Sub Admin belum disahkan oleh Google Sheets. Log keluar & log masuk semula dengan internet.', 'error', 6500);
+          return null;
+        }
+        return { tokenUrusetia: s.tokenUrusetia };
+      }
+      return null;
+    }
+
     async function handleLogin(event) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
 
@@ -9200,6 +9424,7 @@ void main() {
       }
 
       if (role === 'PENGADIL') return handleRefereeLogin(msgEl);
+      if (role === 'URUSETIA') return handleUrusetiaLogin(msgEl);
 
       if (!/^\d{4,8}$/.test(pin)) {
         setFormMsg(msgEl, 'PIN mesti 4 hingga 8 digit nombor.', 'error');
@@ -9207,15 +9432,15 @@ void main() {
         return false;
       }
 
+      // v1.19.0: PIN untuk Master Admin sahaja. Urusetia guna nama + kata laluan.
       const user = state.users.find(u =>
         u.pin === pin &&
         u.status === 'AKTIF' &&
-        u.peranan !== 'PENGADIL' &&
-        (role === 'AUTO' || u.peranan === role)
+        u.peranan === 'MASTER_ADMIN'
       );
 
       if (!user) {
-        return loginFailed(msgEl, 'PIN tidak sah atau tidak sepadan dengan peranan dipilih.', pinInput);
+        return loginFailed(msgEl, 'PIN Master Admin tidak sah. Urusetia: pilih "Urusetia / Sub Admin" dan log masuk dengan nama & kata laluan.', pinInput);
       }
       // Kunci Master Admin (sesi pelayar sahaja) untuk mengurus pangkalan data pengadil di Google Sheets
       if (user.peranan === 'MASTER_ADMIN') setAdminKey(pin);
@@ -9284,6 +9509,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         refSelectedCourt = null;
       }
       if (s.peranan === 'MASTER_ADMIN') setAdminKey(null);
+      if (s.peranan === 'URUSETIA' && s.tokenUrusetia && getGasUrl()) {
+        callGas({ action: 'logKeluarUrusetia', tokenUrusetia: s.tokenUrusetia }).catch(() => {});
+      }
       state.session = null;
       saveState();
       updateAuthUI();
@@ -9308,61 +9536,84 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return candidate;
     }
 
-    function handleRegister(event) {
+    async function handleRegister(event) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
 
       const msgEl = document.getElementById('registerMsg');
       const nameEl = document.getElementById('regName');
-      const pinEl = document.getElementById('regPin');
+      const pwEl = document.getElementById('regPassword');
+      const subEl = document.getElementById('regSubAdmin');
 
       if (!canManageSystem()) {
-        setFormMsg(msgEl, 'Hanya Master Admin boleh mendaftar Sub-Admin.', 'error');
+        setFormMsg(msgEl, 'Hanya Master Admin boleh mendaftar Urusetia / Sub Admin.', 'error');
         return false;
       }
 
       const nama = (nameEl ? nameEl.value : '').trim().replace(/\s+/g, ' ');
-      const pin = (pinEl ? pinEl.value : '').trim();
+      const password = (pwEl ? pwEl.value : '').trim();
+      const subAdmin = !!(subEl && subEl.checked);
 
       if (nama.length < 3) {
-        setFormMsg(msgEl, 'Nama paparan mesti sekurang-kurangnya 3 aksara.', 'error');
+        setFormMsg(msgEl, 'Nama urusetia mesti sekurang-kurangnya 3 aksara.', 'error');
         if (nameEl) nameEl.focus();
         return false;
       }
       if (nama.length > 60) {
-        setFormMsg(msgEl, 'Nama paparan terlalu panjang (maksimum 60 aksara).', 'error');
+        setFormMsg(msgEl, 'Nama urusetia terlalu panjang (maksimum 60 aksara).', 'error');
         return false;
       }
-      if (!/^\d{4,8}$/.test(pin)) {
-        setFormMsg(msgEl, 'PIN mesti 4 hingga 8 digit nombor.', 'error');
-        if (pinEl) pinEl.focus();
+      if (!/^\S{4,20}$/.test(password)) {
+        setFormMsg(msgEl, 'Kata laluan mesti 4 hingga 20 aksara tanpa ruang.', 'error');
+        if (pwEl) pwEl.focus();
         return false;
       }
-      if (state.users.some(u => u.pin === pin)) {
-        setFormMsg(msgEl, 'PIN ini telah digunakan oleh akaun lain. Sila pilih PIN berbeza.', 'error');
-        if (pinEl) pinEl.focus();
+      if (state.users.some(u => u.peranan === 'URUSETIA' && urusetiaNameKey(u.nama) === urusetiaNameKey(nama))) {
+        setFormMsg(msgEl, `Nama "${nama}" telah digunakan oleh urusetia lain.`, 'error');
+        if (nameEl) nameEl.focus();
         return false;
       }
 
-      const newUser = {
-        id: generateUserId(),
-        nama: nama,
-        peranan: 'URUSETIA',
-        pin: pin,
-        aksesEvent: 'SEMUA',
-        aksesGelanggang: 'SEMUA',
-        kebenaran: 'Sahkan/tolak keputusan pengadil, mulakan perlawanan & kemas kini jadual',
-        status: 'AKTIF',
-        didaftarOleh: getSession().userId,
-        didaftarPada: nowIso()
-      };
-
-      state.users.push(newUser);
+      let newUser = null;
+      if (getGasUrl()) {
+        const adminKey = await ensureAdminKey();
+        if (!adminKey) { setFormMsg(msgEl, 'PIN Master Admin diperlukan untuk menyimpan ke Google Sheets.', 'error'); return false; }
+        setFormMsg(msgEl, 'Menyimpan akaun ke Google Sheets (tab Senarai_Urusetia)...', '');
+        const res = await callGas({ action: 'simpanUrusetia', adminKey, urusetia: { nama, password, subAdmin, status: 'AKTIF' } });
+        if (res && res.ok && res.urusetia) {
+          newUser = cacheUrusetia(res.urusetia, password);
+        } else if (res && !res.networkError && res.kod !== 'SKRIP_LAMA' && res.kod !== 'TINDAKAN_TIDAK_DIKENALI') {
+          setFormMsg(msgEl, `Google Sheets menolak: ${res.error || 'ralat tidak diketahui'}`, 'error');
+          return false;
+        } else {
+          showToast(res && res.kod === 'SKRIP_LAMA'
+            ? 'Code.gs di Google Sheets masih versi lama. Akaun disimpan dalam peranti ini sahaja - Deploy Code.gs 1.19.0 dan tekan "☁ Muat dari Sheets".'
+            : 'Tiada sambungan ke Google Sheets. Akaun disimpan dalam peranti ini sahaja buat sementara.', 'warn', 8000);
+        }
+      }
+      if (!newUser) {
+        newUser = {
+          id: generateUserId(),
+          nama: nama,
+          peranan: 'URUSETIA',
+          password: password,
+          subAdmin: subAdmin,
+          aksesEvent: 'SEMUA',
+          aksesGelanggang: 'SEMUA',
+          kebenaran: 'Mulakan perlawanan & kemas kini jadual',
+          status: 'AKTIF',
+          diSheets: false
+        };
+        state.users.push(newUser);
+      }
+      newUser.didaftarOleh = getSession().userId;
+      newUser.didaftarPada = nowIso();
       saveState();
 
       if (nameEl) nameEl.value = '';
-      if (pinEl) pinEl.value = '';
+      if (pwEl) pwEl.value = '';
+      if (subEl) subEl.checked = false;
       setFormMsg(msgEl, `Akaun ${newUser.id} berjaya didaftarkan.`, 'success');
-      showToast(`${newUser.nama} didaftarkan sebagai ${ROLE_LABELS.URUSETIA}.`, 'success');
+      showToast(`${newUser.nama} didaftarkan sebagai ${newUser.subAdmin ? '⭐ Sub Admin' : ROLE_LABELS.URUSETIA}.`, 'success');
       refreshAllViews();
       setTimeout(() => closeModal('registerModal'), 900);
       return true;
@@ -9386,7 +9637,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             ? `Pengadil Gel. ${session.aksesGelanggang} 🔒 · ${session.nama}`
             : `Pengadil · ${session.nama} · Pilih gelanggang`;
         } else if (session) {
-          badgeText.textContent = `${ROLE_LABELS[role]} · ${session.nama}`;
+          badgeText.textContent = `${roleLabelOf(session)} · ${session.nama}`;
         } else if (share) {
           badgeText.textContent = 'Penonton Awam · Pautan Live';
         } else {
@@ -9623,7 +9874,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     async function approveDashboardMatch(courtId, matchId) {
       if (!canApprove()) {
-        showToast('Hanya Urusetia atau Master Admin boleh mengesahkan keputusan.', 'error');
+        showToast('Hanya Master Admin atau Sub Admin boleh mengesahkan keputusan.', 'error');
         return false;
       }
       if (dashboardApprovalBusy.has(matchId)) return false;
@@ -10140,7 +10391,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     // Urusetia: sahkan keputusan -> SELESAI, carta liga dikemas kini, gelanggang diisi automatik
     function approveMatch(matchId, options = {}) {
       if (!canApprove()) {
-        showToast('Hanya Urusetia atau Master Admin boleh mengesahkan keputusan.', 'error');
+        showToast('Hanya Master Admin atau Sub Admin boleh mengesahkan keputusan.', 'error');
         return false;
       }
       const match = getMatch(matchId);
@@ -10224,7 +10475,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     // Urusetia: sahkan semua keputusan yang menunggu
     async function approveAllPending() {
       if (!canApprove()) {
-        showToast('Hanya Urusetia atau Master Admin boleh mengesahkan keputusan.', 'error');
+        showToast('Hanya Master Admin atau Sub Admin boleh mengesahkan keputusan.', 'error');
         return 0;
       }
       const pending = state.matches.filter(m => m.status === MATCH_STATUS.TUNGGU_SAH);
@@ -10279,7 +10530,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     // Urusetia: tolak keputusan -> kembali LIVE untuk disemak pengadil
     async function rejectMatch(matchId) {
       if (!canApprove()) {
-        showToast('Hanya Urusetia atau Master Admin boleh menolak keputusan.', 'error');
+        showToast('Hanya Master Admin atau Sub Admin boleh menolak keputusan.', 'error');
         return false;
       }
       const match = getMatch(matchId);
@@ -10542,6 +10793,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         action: 'updateMatches',
         sumber: 'PETI-KELULUSAN',
         adminKey: canManageSystem() ? (getAdminKey() || undefined) : undefined,
+        tokenUrusetia: !canManageSystem() ? ((getSession() || {}).tokenUrusetia || undefined) : undefined,   // v1.19.0: Sub Admin
         matches: matches.map(syncMatchRow),
         logBaharu
       });
@@ -14770,7 +15022,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function petiBmKad(m) {
-      const admin = canManageSystem();
+      const admin = canApprove();   // v1.19.0: Master Admin atau Sub Admin
       const busy = !!petiBm.sibuk[m.id];
       const kat = m.kat === 'SR' ? '<span class="badge badge-sr">SR</span>' : '<span class="badge badge-sm">SM</span>';
       const tahap = typeof bmStageText === 'function' ? bmStageText(m) : (m.peringkat || '');
@@ -14783,13 +15035,22 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="ap-meta">Gelanggang ${escapeHtml(m.gel || '-')} · 🧑‍⚖️ Pengadil: ${escapeHtml(m.pengadil || '-')} · ${formatTime(masa)}</div>
               <div class="ap-score">${escapeHtml(m.nama1)} <span style="color:var(--brand);">${Number(m.s1) || 0} - ${Number(m.s2) || 0}</span> ${escapeHtml(m.nama2)}</div>
               ${m.pengadil ? `<div class="ap-meta ap-sah">✅ Dihantar pengadil: <strong>${escapeHtml(m.pengadil)}</strong></div>` : '<div class="ap-meta ap-nosah">⚠ Tiada nama pengadil direkod</div>'}
-              ${admin ? '' : '<div class="ap-meta ap-nosah">🔒 Keputusan Badminton hanya boleh disahkan oleh Master Admin.</div>'}
+              ${admin ? '' : '<div class="ap-meta ap-nosah">🔒 Keputusan Badminton hanya boleh disahkan oleh Master Admin atau Sub Admin.</div>'}
             </div>
             <div class="approval-actions">
               <button type="button" class="btn btn-success btn-sm" onclick="petiBmSahkan('${id}')" ${admin && !busy ? '' : 'disabled'}>${busy ? '⏳ Menyimpan…' : '✔ Sahkan'}</button>
               <button type="button" class="btn btn-sm" onclick="petiBmTolak('${id}')" ${admin && !busy ? '' : 'disabled'}>✖ Tolak</button>
             </div>
           </div>`;
+    }
+
+    // v1.19.0: Sub Admin menghantar token sesi urusetia (bukan PIN Master Admin)
+    function pakaiKunciPengesahan(payload, kunci) {
+      if (kunci && !kunci.adminKey) {
+        delete payload.adminKey;
+        payload.tokenUrusetia = kunci.tokenUrusetia;
+      }
+      return payload;
     }
 
     function petiBmSelepas() {
@@ -14811,12 +15072,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     async function petiBmSahkan(id, opts = {}) {
-      if (!canManageSystem()) { showToast('Keputusan Badminton hanya boleh disahkan oleh Master Admin.', 'error'); return false; }
+      if (!canApprove()) { showToast('Keputusan Badminton hanya boleh disahkan oleh Master Admin atau Sub Admin.', 'error'); return false; }
       if (petiBm.sibuk[id]) return false;
       const local = petiBmPending().find(m => m.id === id);
       if (!opts.silent && local && !await uiConfirm(`Sahkan keputusan Badminton ${id}?\n\n${local.nama1}  ${local.s1 ?? 0} - ${local.s2 ?? 0}  ${local.nama2}\n\nKeputusan akan dikira dalam carta kumpulan.`)) return false;
-      const adminKey = opts.adminKey || await ensureAdminKey();
-      if (!adminKey) return false;
+      const kunci = opts.adminKey ? { adminKey: opts.adminKey } : await kunciPengesahan();
+      if (!kunci) return false;
       petiBm.sibuk[id] = true;
       if (!opts.silent) renderApprovals();
       try {
@@ -14824,7 +15085,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const st = String(m.status || '').toUpperCase(), sah = String(m.pengesahan || '').toUpperCase();
         if (sah === 'DISAHKAN') { if (!opts.silent) showToast(`${id} telah pun disahkan.`, 'info'); return true; }
         if (st.indexOf('TAMAT') < 0) throw new Error(`${id} tidak lagi menunggu pengesahan (status: ${m.status || '-'}).`);
-        const payload = binaPayloadSkor('BADMINTON', m, { skorP1: m.skorP1, skorP2: m.skorP2, keputusan: 'DISAHKAN' }, adminKey);
+        const payload = pakaiKunciPengesahan(binaPayloadSkor('BADMINTON', m, { skorP1: m.skorP1, skorP2: m.skorP2, keputusan: 'DISAHKAN' }, kunci.adminKey || 'SUB_ADMIN'), kunci);
         const res = await callGas(payload);
         if (!res || !res.ok) throw new Error((res && res.error) || 'Google Sheets menolak pengesahan.');
         petiBmLog(m, 'DISAHKAN (BADMINTON)', payload.skor.skorP1, payload.skor.skorP2);
@@ -14845,12 +15106,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     async function petiBmTolak(id) {
-      if (!canManageSystem()) { showToast('Keputusan Badminton hanya boleh ditolak oleh Master Admin.', 'error'); return false; }
+      if (!canApprove()) { showToast('Keputusan Badminton hanya boleh ditolak oleh Master Admin atau Sub Admin.', 'error'); return false; }
       if (petiBm.sibuk[id]) return false;
       const reason = await uiPrompt(`Sebab keputusan Badminton ${id} ditolak (akan dipaparkan kepada pengadil):`, 'Skor perlu disemak semula');
       if (reason === null) return false;
-      const adminKey = await ensureAdminKey();
-      if (!adminKey) return false;
+      const kunci = await kunciPengesahan();
+      if (!kunci) return false;
       petiBm.sibuk[id] = true;
       renderApprovals();
       try {
@@ -14860,7 +15121,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (st.indexOf('TAMAT') < 0) throw new Error(`${id} tidak lagi menunggu pengesahan (status: ${m.status || '-'}).`);
         const payload = binaPayloadSkor('BADMINTON', m, {
           skorP1: m.skorP1 ?? 0, skorP2: m.skorP2 ?? 0, keputusan: 'DITOLAK', catatan: reason.trim() || 'Skor perlu disemak semula'
-        }, adminKey);
+        }, kunci.adminKey || 'SUB_ADMIN');
+        pakaiKunciPengesahan(payload, kunci);
         const res = await callGas(payload);
         if (!res || !res.ok) {
           const err = (res && res.error) || 'Google Sheets menolak permintaan.';
@@ -14962,19 +15224,152 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       body.innerHTML = state.users.filter(u => u.peranan !== 'PENGADIL').map(u => {
         const active = u.status === 'AKTIF';
         const isMe = me && me.userId === u.id;
+        const isUs = u.peranan === 'URUSETIA';
+        const rahsia = isUs ? String(u.password || '') : String(u.pin || '');
+        const cloud = isUs ? (u.diSheets ? ' <small class="muted" title="Disimpan di tab Senarai_Urusetia">☁ Sheets</small>' : ' <small class="muted" title="Belum dihantar ke Google Sheets">📱 Peranti</small>') : '';
+        const sub = isUs
+          ? (u.subAdmin ? '<span class="badge badge-ok">⭐ Sub Admin</span>' : '<span class="badge">Tidak</span>')
+          : '<span class="muted">—</span>';
+        const btnSub = isUs
+          ? `<button type="button" class="btn btn-sm ${u.subAdmin ? '' : 'btn-success'}" onclick="toggleSubAdmin('${u.id}')">${u.subAdmin ? 'Tarik Sub Admin' : '⭐ Lantik Sub Admin'}</button>
+             <button type="button" class="btn btn-sm" onclick="tukarKataLaluanUrusetia('${u.id}')" title="Tukar kata laluan">🔑</button>
+             <button type="button" class="btn btn-sm btn-danger" onclick="padamUrusetia('${u.id}')" title="Padam akaun">🗑</button>`
+          : '';
         return `
           <tr>
             <td class="mono">${escapeHtml(u.id)}</td>
-            <td>${escapeHtml(u.nama)}${isMe ? ' <small class="muted">(anda)</small>' : ''}</td>
+            <td>${escapeHtml(u.nama)}${isMe ? ' <small class="muted">(anda)</small>' : ''}${cloud}</td>
             <td>${escapeHtml(ROLE_LABELS[u.peranan] || u.peranan)}</td>
-            <td class="mono" title="PIN disembunyikan">••${escapeHtml(String(u.pin).slice(-2))}</td>
+            <td class="mono" title="${isUs ? 'Kata laluan' : 'PIN'} disembunyikan">${isUs ? '🔑 ' : ''}••${escapeHtml(rahsia.slice(-2))}</td>
+            <td>${sub}</td>
             <td>${active ? '<span class="badge badge-ok">Aktif</span>' : '<span class="badge badge-reject">Digantung</span>'}</td>
-            <td><button type="button" class="btn btn-sm ${active ? 'btn-danger' : 'btn-success'}" onclick="toggleUser('${u.id}')" ${isMe ? 'disabled title="Tidak boleh menggantung akaun sendiri"' : ''}>${active ? 'Gantung' : 'Aktifkan'}</button></td>
+            <td><div style="display:flex;flex-wrap:wrap;gap:6px;min-width:150px;">${btnSub}
+              <button type="button" class="btn btn-sm ${active ? 'btn-danger' : 'btn-success'}" onclick="toggleUser('${u.id}')" ${isMe ? 'disabled title="Tidak boleh menggantung akaun sendiri"' : ''}>${active ? 'Gantung' : 'Aktifkan'}</button></div></td>
           </tr>`;
       }).join('');
     }
 
-    function toggleUser(userId) {
+    // v1.19.0: simpan perubahan akaun urusetia ke Google Sheets (tab Senarai_Urusetia)
+    async function simpanUrusetiaSheets(user, extra = {}) {
+      if (!getGasUrl()) return { ok: true, lokal: true };
+      const adminKey = await ensureAdminKey();
+      if (!adminKey) return { ok: false, error: 'PIN Master Admin diperlukan.' };
+      const res = await callGas({ action: 'simpanUrusetia', adminKey, urusetia: {
+        id: user.diSheets ? user.id : '', nama: user.nama, password: extra.password || user.password,
+        subAdmin: 'subAdmin' in extra ? extra.subAdmin : !!user.subAdmin,
+        status: extra.status || user.status
+      } });
+      if (res && res.ok && res.urusetia) {
+        cacheUrusetia(res.urusetia, extra.password || user.password);
+        return res;
+      }
+      return res || { ok: false, error: 'Tiada respons.' };
+    }
+
+    async function toggleSubAdmin(userId) {
+      if (!canManageSystem()) { showToast('Hanya Master Admin boleh melantik Sub Admin.', 'error'); return false; }
+      const user = getUserById(userId);
+      if (!user || user.peranan !== 'URUSETIA') return false;
+      const baru = !user.subAdmin;
+      if (!await uiConfirm(baru
+        ? `Lantik ${user.nama} sebagai ⭐ SUB ADMIN?\n\nSub Admin boleh mengesahkan dan menolak markah perlawanan di Peti Kelulusan.`
+        : `Tarik balik lantikan Sub Admin bagi ${user.nama}?\n\n${user.nama} tidak lagi boleh mengesahkan markah perlawanan.`)) return false;
+      const res = await simpanUrusetiaSheets(user, { subAdmin: baru });
+      if (!res.ok) {
+        showToast(`Gagal menyimpan ke Google Sheets: ${res.error || 'ralat'}`, 'error', 6500);
+        if (!res.networkError) return false;
+      }
+      const u = getUserById(userId) || state.users.find(x => x.peranan === 'URUSETIA' && urusetiaNameKey(x.nama) === urusetiaNameKey(user.nama));
+      if (u) u.subAdmin = baru;
+      saveState();
+      refreshAllViews();
+      showToast(baru ? `⭐ ${user.nama} kini Sub Admin (boleh sahkan markah).` : `${user.nama} bukan lagi Sub Admin.`, baru ? 'success' : 'warn');
+      return true;
+    }
+
+    async function tukarKataLaluanUrusetia(userId) {
+      if (!canManageSystem()) { showToast('Hanya Master Admin boleh menukar kata laluan.', 'error'); return false; }
+      const user = getUserById(userId);
+      if (!user || user.peranan !== 'URUSETIA') return false;
+      const pw = await uiPrompt(`Kata laluan baharu untuk ${user.nama} (4-20 aksara tanpa ruang):`, '');
+      if (pw === null) return false;
+      const password = String(pw).trim();
+      if (!/^\S{4,20}$/.test(password)) { showToast('Kata laluan mesti 4 hingga 20 aksara tanpa ruang.', 'error'); return false; }
+      const res = await simpanUrusetiaSheets(user, { password });
+      if (!res.ok && !res.networkError) { showToast(`Gagal menyimpan: ${res.error || 'ralat'}`, 'error', 6500); return false; }
+      const u = getUserById(userId) || user;
+      u.password = password;
+      saveState();
+      refreshAllViews();
+      showToast(`Kata laluan ${user.nama} telah ditukar.`, 'success');
+      return true;
+    }
+
+    async function padamUrusetia(userId) {
+      if (!canManageSystem()) { showToast('Hanya Master Admin boleh memadam akaun.', 'error'); return false; }
+      const user = getUserById(userId);
+      if (!user || user.peranan !== 'URUSETIA') return false;
+      if (!await uiConfirm(`Padam akaun urusetia ${user.nama} (${user.id})?\n\nAkaun ini tidak lagi boleh log masuk.`)) return false;
+      if (getGasUrl() && user.diSheets) {
+        const adminKey = await ensureAdminKey();
+        if (!adminKey) return false;
+        const res = await callGas({ action: 'padamUrusetia', adminKey, id: user.id });
+        if (!res || (!res.ok && !/tidak dijumpai/i.test(String(res.error || '')))) {
+          showToast(`Gagal memadam di Google Sheets: ${(res && res.error) || 'ralat'}`, 'error', 6500);
+          return false;
+        }
+      }
+      state.users = state.users.filter(u => u.id !== userId);
+      saveState();
+      refreshAllViews();
+      showToast(`Akaun ${user.nama} telah dipadam.`, 'warn');
+      return true;
+    }
+
+    // Muat senarai urusetia daripada Google Sheets (sumber sah). Akaun peranti yang belum
+    // wujud di Sheets dihantar sekali (migrasi daripada versi PIN lama).
+    let urusetiaPullAt = 0;
+    async function pullUrusetiaSheets(opts = {}) {
+      if (!canManageSystem() || !getGasUrl() || !navigator.onLine) {
+        if (opts.manual) showToast('Perlu sambungan internet & URL Google Sheets.', 'warn');
+        return false;
+      }
+      if (!opts.manual && Date.now() - urusetiaPullAt < 60000) return false;
+      urusetiaPullAt = Date.now();
+      const adminKey = opts.manual ? await ensureAdminKey() : getAdminKey();
+      if (!adminKey) return false;
+      const res = await callGas({ action: 'senaraiUrusetia', adminKey });
+      if (!res || !res.ok || !Array.isArray(res.urusetia)) {
+        if (opts.manual) showToast(res && res.kod === 'SKRIP_LAMA'
+          ? 'Code.gs di Google Sheets masih versi lama. Deploy Code.gs 1.19.0 (New version) dahulu.'
+          : `Gagal membaca senarai urusetia: ${(res && res.error) || 'ralat'}`, 'error', 7000);
+        return false;
+      }
+      const diSheets = new Set(res.urusetia.map(u => urusetiaNameKey(u.nama)));
+      const belum = state.users.filter(u => u.peranan === 'URUSETIA' && !diSheets.has(urusetiaNameKey(u.nama)) && /^\S{4,20}$/.test(String(u.password || '')));
+      for (const u of belum) {
+        const r = await callGas({ action: 'simpanUrusetia', adminKey, urusetia: { nama: u.nama, password: u.password, subAdmin: !!u.subAdmin, status: u.status } });
+        if (r && r.ok && r.urusetia) res.urusetia.push(r.urusetia);
+      }
+      // Gantikan salinan peranti dengan senarai Google Sheets
+      const lain = state.users.filter(u => u.peranan !== 'URUSETIA');
+      const lamaMap = new Map(state.users.filter(u => u.peranan === 'URUSETIA').map(u => [urusetiaNameKey(u.nama), u]));
+      state.users = lain.concat(res.urusetia.map(x => {
+        const lama = lamaMap.get(urusetiaNameKey(x.nama)) || {};
+        return Object.assign({}, lama, {
+          id: String(x.id).toUpperCase(), nama: x.nama, peranan: 'URUSETIA', password: String(x.password || lama.password || ''),
+          subAdmin: !!x.subAdmin, status: x.status === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF',
+          aksesEvent: lama.aksesEvent || 'SEMUA', aksesGelanggang: lama.aksesGelanggang || 'SEMUA', diSheets: true,
+          loginTerakhir: x.loginTerakhir || lama.loginTerakhir || null
+        });
+      }));
+      saveState();
+      renderUsers();
+      if (opts.manual) showToast(`${res.urusetia.length} akaun urusetia dimuat daripada Google Sheets${belum.length ? ` (${belum.length} akaun peranti dihantar)` : ''}.`, 'success');
+      return true;
+    }
+
+    async function toggleUser(userId) {
       if (!canManageSystem()) {
         showToast('Hanya Master Admin boleh mengurus pengguna.', 'error');
         return false;
@@ -14993,10 +15388,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           return false;
         }
       }
-      user.status = user.status === 'AKTIF' ? 'DIGANTUNG' : 'AKTIF';
+      const statusBaru = user.status === 'AKTIF' ? 'DIGANTUNG' : 'AKTIF';
+      if (user.peranan === 'URUSETIA') {
+        const res = await simpanUrusetiaSheets(user, { status: statusBaru });
+        if (!res.ok && !res.networkError) { showToast(`Gagal menyimpan: ${res.error || 'ralat'}`, 'error', 6500); return false; }
+      }
+      const u = getUserById(userId) || user;
+      u.status = statusBaru;
       saveState();
       refreshAllViews();
-      showToast(`${user.nama} kini ${user.status === 'AKTIF' ? 'AKTIF' : 'DIGANTUNG'}.`, user.status === 'AKTIF' ? 'success' : 'warn');
+      showToast(`${u.nama} kini ${u.status === 'AKTIF' ? 'AKTIF' : 'DIGANTUNG'}.`, u.status === 'AKTIF' ? 'success' : 'warn');
       return true;
     }
 
@@ -15163,6 +15564,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function renderAdmin() {
+      try { if (canManageSystem() && getAdminKey()) pullUrusetiaSheets().catch(() => {}); } catch (e) { /* abaikan */ }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
       set('statTotalMatches', state.matches.length);
       set('statLive', state.matches.filter(m => m.status === MATCH_STATUS.LIVE).length);
@@ -16861,6 +17263,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       on('btnLogout', 'click', logout);
       on('btnOpenRegister', 'click', () => openModal('registerModal'));
       on('btnAdminAddUser', 'click', () => openModal('registerModal'));
+      on('btnAdminPullUsers', 'click', () => pullUrusetiaSheets({ manual: true }));
+      // v1.19.0: semak lantikan Sub Admin / status akaun urusetia setiap 60 saat
+      setInterval(() => { if (!document.hidden) semakStatusUrusetia(); }, 60000);
+      setTimeout(semakStatusUrusetia, 3000);
       on('loginForm', 'submit', handleLogin);
       on('loginRole', 'change', toggleLoginFields);
       on('registerForm', 'submit', handleRegister);

@@ -150,6 +150,18 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                - Disimpan dalam CacheService selama 20 saat (jimat kuota).
  *                - Fungsi futsal, pengadil, kunci gelanggang & Master Admin TIDAK berubah.
  *
+ *              + v1.19.0 - AKAUN URUSETIA & SUB ADMIN (tab Senarai_Urusetia):
+ *                { action: 'loginUrusetia', nama, password }          -> semua (token sesi urusetia)
+ *                { action: 'semakUrusetia', tokenUrusetia }          -> status & lantikan terkini
+ *                { action: 'logKeluarUrusetia', tokenUrusetia }
+ *                { action: 'senaraiUrusetia', adminKey }             -> Master Admin
+ *                { action: 'simpanUrusetia', adminKey, urusetia:{id,nama,password,subAdmin,status} }
+ *                { action: 'padamUrusetia', adminKey, id }           -> Master Admin
+ *                - Urusetia log masuk dengan NAMA + KATA LALUAN (wajib kedua-duanya).
+ *                - Master Admin boleh MELANTIK urusetia sebagai SUB ADMIN. Hanya Master Admin
+ *                  dan Sub Admin boleh Sahkan / Tolak keputusan (Peti Kelulusan). Permintaan
+ *                  sumber 'PETI-KELULUSAN' tanpa kunci Master Admin / token Sub Admin DITOLAK.
+ *
  *  Lajur dikesan melalui NAMA TAJUK (baris 1), jadi susunan lajur Bahagian 1
  *  boleh dikekalkan. Lajur yang tiada akan ditambah automatik di hujung.
  * =========================================================
@@ -167,7 +179,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
+const API_VERSI = '1.19.0';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
+// const API_VERSI_LAMA = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
 // const API_VERSI_LAMA = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
 // const API_VERSI_170 = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
 // const API_VERSI_161 = '1.16.1';  // v1.16.1: fungsi Sukan.gs digabung ke Code.gs
@@ -176,7 +189,7 @@ const API_VERSI = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badm
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -188,7 +201,8 @@ const UPSERT_TULIS_BARIS_MAX = 6;          // v1.9.3: <= 6 baris berubah -> tuli
 const LIVE_TERBIAR_MINIT = 40;             // v1.9.2: baris LIVE tanpa kunci & tanpa kemas kini -> diabaikan di papan
 const TANGGUH_PAPAN_MINIT = 20;            // v1.9.2: perlawanan ditangguh dipaparkan sebagai 'semasa' selama ini
 // v1.9.2: tindakan yang tidak mengubah papan live -> cache tidak dibuang
-const ACTIONS_TANPA_UBAH_PAPAN = ['ping', 'loginpengadil', 'statusgelanggang', 'senaraipengadil', 'logpembetulan',
+const ACTIONS_TANPA_UBAH_PAPAN = ['ping', 'loginpengadil', 'loginurusetia', 'semakurusetia', 'logkeluarurusetia',
+  'senaraiurusetia', 'simpanurusetia', 'padamurusetia', 'statusgelanggang', 'senaraipengadil', 'logpembetulan',
   'simpansandaran', 'senaraisandaran', 'ambilsandaran', 'padamsandaran', 'senaraigelanggang'];
 // Bahagian 5: isyarat perubahan masa nyata. Setiap penulisan yang mengubah data awam
 // menyimpan cap masa baharu per sukan. Dashboard membaca cap masa ini (sangat ringan,
@@ -535,9 +549,19 @@ function doPost(e) {
     semakSukanRekod_(body.teams || body.pasukan, sukan);
     semakSukanRekod_([body.match || body], sukan);
     if (sukan === 'BADMINTON') ubahPapan = false;
+    // v1.19.0: akaun Urusetia & Sub Admin
+    if (URUSETIA_ACTIONS.indexOf(action) >= 0) {
+      ubahPapan = false;
+      return output_(handleUrusetia_(action, body));
+    }
     if (action === 'simpanskorsukan') {
-      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan skor.' });
-      return output_(simpanSkorSukan_(body, sukan));
+      // v1.19.0: Sub Admin boleh Sahkan / Tolak keputusan (bukan skor sementara)
+      const kep = String((body.skor || {}).keputusan || '').toUpperCase();
+      const subSah = !isMasterAdmin_(body) && (kep === 'DISAHKAN' || kep === 'DITOLAK') ? sesiSubAdmin_(body.tokenUrusetia) : null;
+      if (!isMasterAdmin_(body) && !(subSah && subSah.ok)) {
+        return output_({ ok: false, kod: subSah ? subSah.kod : 'BUKAN_ADMIN', error: subSah ? subSah.error : 'Hanya Master Admin boleh menyimpan skor.' });
+      }
+      return output_(simpanSkorSukan_(body, sukan, subSah && subSah.ok ? 'Sub Admin: ' + subSah.u.nama : 'Master Admin'));
     }
     if (action === 'simpanjadual') {
       if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh mengubah jadual.' });
@@ -559,6 +583,11 @@ function doPost(e) {
     }
     if (sukan === 'BADMINTON' && !isMasterAdmin_(body) && action !== 'ping') {
       return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Tulisan Badminton memerlukan kunci Master Admin.' });
+    }
+    // v1.19.0: Sahkan / Tolak daripada Peti Kelulusan -> Master Admin ATAU Sub Admin sahaja
+    if (String(body.sumber || '').toUpperCase() === 'PETI-KELULUSAN' && MATCH_ACTIONS.indexOf(action) >= 0 && !isMasterAdmin_(body)) {
+      const sub = sesiSubAdmin_(body.tokenUrusetia);
+      if (!sub.ok) return output_({ ok: false, kod: sub.kod, versi: API_VERSI, error: sub.error });
     }
     if (ACTIONS_TANPA_UBAH_PAPAN.indexOf(action) >= 0 ||
         (action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
@@ -1286,6 +1315,235 @@ function sahkanSesi_(token) {
   if (!ref) return sesiTamat_('Akaun pengadil ini tidak lagi wujud. Hubungi Master Admin.');
   if (ref.status !== 'AKTIF') return { ok: false, kod: 'DIGANTUNG', error: 'Akaun pengadil ini telah digantung. Hubungi Master Admin.' };
   return { ok: true, ref: ref, token: t };
+}
+
+/* =========================================================
+   v1.19.0: AKAUN URUSETIA & SUB ADMIN (tab Senarai_Urusetia)
+   - Master Admin mendaftar urusetia (NAMA + KATA LALUAN) dan boleh MELANTIK
+     urusetia sebagai SUB ADMIN (lajur "Sub Admin" = YA).
+   - Urusetia log masuk dengan nama + kata laluan -> token sesi (SESIU_<token>).
+   - Sub Admin boleh Sahkan / Tolak keputusan perlawanan (Peti Kelulusan).
+   - Kata laluan TIDAK dipulangkan kepada peranti urusetia.
+   ========================================================= */
+const SHEET_URUSETIA = 'Senarai_Urusetia';
+const URUSETIA_HEADER = ['ID Urusetia', 'Nama', 'Kata Laluan', 'Sub Admin', 'Status', 'Dicipta Pada', 'Dikemaskini Pada', 'Log Masuk Terakhir'];
+const URUSETIA_ACTIONS = ['loginurusetia', 'semakurusetia', 'logkeluarurusetia', 'senaraiurusetia', 'simpanurusetia', 'padamurusetia'];
+const SESIU_PREFIX = 'SESIU_';
+
+function handleUrusetia_(action, body) {
+  switch (action) {
+    case 'loginurusetia':     return loginUrusetia_(body);
+    case 'semakurusetia': {
+      const s = sahkanSesiUrusetia_(body.tokenUrusetia);
+      return s.ok ? { ok: true, versi: API_VERSI, urusetia: publicUrusetia_(s.u) } : s;
+    }
+    case 'logkeluarurusetia': {
+      const t = String(body.tokenUrusetia || '').toLowerCase().replace(/[^a-f0-9]/g, '');
+      if (t) PropertiesService.getScriptProperties().deleteProperty(SESIU_PREFIX + t);
+      return { ok: true };
+    }
+  }
+  const cache = CacheService.getScriptCache();
+  const gagalAdmin = Number(cache.get('admingagal') || 0);
+  if (gagalAdmin >= ADMIN_MAX_GAGAL) {
+    return { ok: false, kod: 'DISEKAT', error: 'Terlalu banyak cubaan kunci Master Admin yang salah. Cuba lagi selepas 10 minit.' };
+  }
+  if (!isMasterAdmin_(body)) {
+    if (body && body.adminKey) cache.put('admingagal', String(gagalAdmin + 1), ADMIN_KUNCI_SAAT);
+    return { ok: false, kod: 'BUKAN_ADMIN', error: 'Akses ditolak: hanya Master Admin boleh mengurus akaun Urusetia / Sub Admin.' };
+  }
+  switch (action) {
+    case 'senaraiurusetia': return { ok: true, versi: API_VERSI, urusetia: readUrusetia_().list.map(adminUrusetia_) };
+    case 'simpanurusetia':  return simpanUrusetia_(body.urusetia || {});
+    case 'padamurusetia':   return padamUrusetia_(body.id || (body.urusetia && body.urusetia.id));
+  }
+  return { ok: false, kod: 'TINDAKAN_TIDAK_DIKENALI', versi: API_VERSI, error: 'Tindakan tidak dikenali: ' + action };
+}
+
+function getUrusetiaSheet_() {
+  const sheet = getOrCreateSheet_(SHEET_URUSETIA);
+  const first = sheet.getRange(1, 1, 1, URUSETIA_HEADER.length).getValues()[0];
+  if (first.join('') === '') {
+    sheet.getRange(1, 1, 1, URUSETIA_HEADER.length).setValues([URUSETIA_HEADER]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  sheet.getRange(1, 3, sheet.getMaxRows(), 1).setNumberFormat('@');
+  return sheet;
+}
+
+function yaTidak_(v) {
+  const t = String(v === undefined || v === null ? '' : v).trim().toUpperCase();
+  return v === true || t === 'YA' || t === 'TRUE' || t === 'Y' || t === '1' || t === 'SUB ADMIN';
+}
+
+function readUrusetia_() {
+  const sheet = getUrusetiaSheet_();
+  const last = sheet.getLastRow();
+  const list = [];
+  if (last >= 2) {
+    sheet.getRange(2, 1, last - 1, URUSETIA_HEADER.length).getValues().forEach(function (r, i) {
+      if (!r[0] && !r[1]) return;
+      list.push({
+        row: i + 2,
+        id: String(r[0]).trim().toUpperCase(),
+        nama: String(r[1]).replace(/\s+/g, ' ').trim(),
+        password: String(r[2]),
+        subAdmin: yaTidak_(r[3]),
+        status: String(r[4] || 'AKTIF').toUpperCase() === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF',
+        dicipta: toIso_(r[5]),
+        dikemaskini: toIso_(r[6]),
+        loginTerakhir: toIso_(r[7])
+      });
+    });
+  }
+  return { sheet: sheet, list: list };
+}
+
+function writeUrusetia_(sheet, list) {
+  const last = sheet.getLastRow();
+  if (last >= 2) sheet.getRange(2, 1, last - 1, URUSETIA_HEADER.length).clearContent();
+  if (!list.length) return;
+  const rows = list.map(function (u) {
+    return [u.id, u.nama, String(u.password), u.subAdmin ? 'YA' : 'TIDAK', u.status,
+      toDate_(u.dicipta), toDate_(u.dikemaskini), toDate_(u.loginTerakhir)];
+  });
+  sheet.getRange(2, 3, rows.length, 1).setNumberFormat('@');
+  sheet.getRange(2, 1, rows.length, URUSETIA_HEADER.length).setValues(rows);
+  sheet.getRange(2, 6, rows.length, 3).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+}
+
+// Maklumat untuk peranti urusetia (tanpa kata laluan)
+function publicUrusetia_(u) {
+  return { id: u.id, nama: u.nama, subAdmin: !!u.subAdmin, status: u.status, loginTerakhir: u.loginTerakhir || null };
+}
+
+// Maklumat untuk Master Admin (dengan kata laluan, untuk paparan / salinan peranti)
+function adminUrusetia_(u) {
+  const p = publicUrusetia_(u);
+  p.password = String(u.password);
+  p.dicipta = u.dicipta || null;
+  p.dikemaskini = u.dikemaskini || null;
+  return p;
+}
+
+function nextUrusetiaId_(list) {
+  let max = 0;
+  list.forEach(function (u) {
+    const m = /^URUSETIA-(\d+)$/.exec(u.id);
+    if (m) max = Math.max(max, Number(m[1]));
+  });
+  return 'URUSETIA-' + String(max + 1).padStart(2, '0');
+}
+
+function simpanUrusetia_(p) {
+  const db = readUrusetia_();
+  const id = String(p.id || '').trim().toUpperCase();
+  const idx = id ? db.list.findIndex(function (e) { return e.id === id; }) : -1;
+  const old = idx >= 0 ? db.list[idx] : null;
+  const nama = String(p.nama === undefined || p.nama === null ? (old ? old.nama : '') : p.nama).replace(/\s+/g, ' ').trim();
+  const password = String(p.password === undefined || p.password === null || p.password === '' ? (old ? old.password : '') : p.password);
+  if (nama.length < 3 || nama.length > 60) return { ok: false, error: 'Nama urusetia mesti 3 hingga 60 aksara.' };
+  if (!/^\S{4,20}$/.test(password)) return { ok: false, error: 'Kata laluan urusetia mesti 4 hingga 20 aksara tanpa ruang.' };
+  if (db.list.some(function (e) { return e.id !== id && refNameKey_(e.nama) === refNameKey_(nama); })) {
+    return { ok: false, error: 'Nama "' + nama + '" telah digunakan oleh urusetia lain.' };
+  }
+  const now = new Date().toISOString();
+  const data = {
+    id: id,
+    nama: nama,
+    password: password,
+    subAdmin: p.subAdmin === undefined ? !!(old && old.subAdmin) : yaTidak_(p.subAdmin),
+    status: String(p.status || (old ? old.status : 'AKTIF')).toUpperCase() === 'DIGANTUNG' ? 'DIGANTUNG' : 'AKTIF',
+    dicipta: old ? (old.dicipta || now) : (p.dicipta || now),
+    dikemaskini: now,
+    loginTerakhir: old ? old.loginTerakhir : null
+  };
+  if (old) db.list[idx] = data;
+  else {
+    if (!/^URUSETIA-\d+$/.test(data.id) || db.list.some(function (e) { return e.id === data.id; })) data.id = nextUrusetiaId_(db.list);
+    db.list.push(data);
+  }
+  writeUrusetia_(db.sheet, db.list);
+  SpreadsheetApp.flush();
+  const semak = readUrusetia_().list.find(function (e) { return e.id === data.id; });
+  if (!semak || semak.password !== data.password || semak.subAdmin !== data.subAdmin) {
+    return { ok: false, kod: 'GAGAL_TULIS', error: 'Akaun ' + data.nama + ' gagal ditulis ke tab ' + SHEET_URUSETIA + '. Cuba lagi.' };
+  }
+  return { ok: true, disahkan: true, versi: API_VERSI, sheet: SHEET_URUSETIA, urusetia: adminUrusetia_(data) };
+}
+
+function padamUrusetia_(id) {
+  const key = String(id || '').trim().toUpperCase();
+  if (!key) return { ok: false, error: 'ID urusetia diperlukan.' };
+  const db = readUrusetia_();
+  const next = db.list.filter(function (e) { return e.id !== key; });
+  if (next.length === db.list.length) return { ok: false, error: 'Urusetia ' + key + ' tidak dijumpai.' };
+  writeUrusetia_(db.sheet, next);
+  SpreadsheetApp.flush();
+  return { ok: true, dipadam: key };
+}
+
+function loginUrusetia_(body) {
+  const nama = String(body.nama || '').replace(/\s+/g, ' ').trim();
+  const password = String(body.password === undefined || body.password === null ? '' : body.password);
+  if (!nama || !password) return { ok: false, kod: 'TIADA_MAKLUMAT', error: 'Sila masukkan nama dan kata laluan urusetia.' };
+  const cache = CacheService.getScriptCache();
+  const lockKey = 'usgagal_' + refNameKey_(nama).replace(/[^a-z0-9]/g, '_').slice(0, 200);
+  const gagal = Number(cache.get(lockKey) || 0);
+  if (gagal >= PENGADIL_LOGIN_MAX_GAGAL) return { ok: false, kod: 'DISEKAT', error: 'Terlalu banyak cubaan gagal. Cuba lagi selepas 5 minit.' };
+  const db = readUrusetia_();
+  const u = db.list.find(function (e) { return refNameKey_(e.nama) === refNameKey_(nama); });
+  if (!u || u.password !== password) {
+    cache.put(lockKey, String(gagal + 1), PENGADIL_LOGIN_KUNCI_SAAT);
+    return { ok: false, kod: 'SALAH', error: 'Nama atau kata laluan urusetia tidak sah.' };
+  }
+  if (u.status !== 'AKTIF') return { ok: false, kod: 'DIGANTUNG', error: 'Akaun urusetia ini telah digantung. Hubungi Master Admin.' };
+  cache.remove(lockKey);
+  db.sheet.getRange(u.row, 8).setValue(new Date()).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+  const props = PropertiesService.getScriptProperties();
+  bersihSesiUrusetia_(props);
+  const token = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').toLowerCase();
+  props.setProperty(SESIU_PREFIX + token, JSON.stringify({ id: u.id, masa: Date.now() }));
+  return { ok: true, versi: API_VERSI, urusetia: publicUrusetia_(u), tokenUrusetia: token };
+}
+
+function bersihSesiUrusetia_(props) {
+  const all = props.getProperties();
+  const had = Date.now() - SESI_TEMPOH_JAM * 3600 * 1000;
+  Object.keys(all).forEach(function (k) {
+    if (k.indexOf(SESIU_PREFIX) !== 0) return;
+    let v = null;
+    try { v = JSON.parse(all[k]); } catch (err) { v = null; }
+    if (!v || !v.masa || v.masa < had) props.deleteProperty(k);
+  });
+}
+
+function sahkanSesiUrusetia_(token) {
+  const t = String(token || '').toLowerCase().replace(/[^a-f0-9]/g, '');
+  const tamat = { ok: false, kod: 'SESI_TAMAT', error: 'Sesi urusetia tidak sah atau telah tamat. Sila log masuk semula dengan nama & kata laluan.' };
+  if (t.length < 32) return tamat;
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty(SESIU_PREFIX + t);
+  if (!raw) return tamat;
+  let v = null;
+  try { v = JSON.parse(raw); } catch (err) { v = null; }
+  if (!v || !v.id || Date.now() - Number(v.masa || 0) > SESI_TEMPOH_JAM * 3600 * 1000) {
+    props.deleteProperty(SESIU_PREFIX + t);
+    return tamat;
+  }
+  const u = readUrusetia_().list.find(function (e) { return e.id === v.id; });
+  if (!u) return { ok: false, kod: 'SESI_TAMAT', error: 'Akaun urusetia ini tidak lagi wujud. Hubungi Master Admin.' };
+  if (u.status !== 'AKTIF') return { ok: false, kod: 'DIGANTUNG', error: 'Akaun urusetia ini telah digantung. Hubungi Master Admin.' };
+  return { ok: true, u: u, token: t };
+}
+
+// Sub Admin yang sah (urusetia AKTIF + dilantik Sub Admin)
+function sesiSubAdmin_(token) {
+  if (!token) return { ok: false, kod: 'BUKAN_SUB_ADMIN', error: 'Hanya Master Admin atau Sub Admin boleh mengesahkan keputusan perlawanan.' };
+  const s = sahkanSesiUrusetia_(token);
+  if (!s.ok) return s;
+  if (!s.u.subAdmin) return { ok: false, kod: 'BUKAN_SUB_ADMIN', error: s.u.nama + ' belum dilantik sebagai Sub Admin. Hanya Master Admin atau Sub Admin boleh mengesahkan keputusan.' };
+  return s;
 }
 
 /* ---------- v1.9.9: SENARAI GELANGGANG DINAMIK ---------- */
@@ -3097,7 +3355,8 @@ function simpanJadualSukan_(body, sukan) {
   return { ok: true, versi: API_VERSI, sukan: sukan, id: id, sheet: sheet.getName() };
 }
 
-function simpanSkorSukan_(body, sukan) {
+function simpanSkorSukan_(body, sukan, oleh) {
+  oleh = oleh || 'Master Admin';
   const id = String(body.id || '').trim().toUpperCase();
   const sheet = getJadualSheet_(sukan);
   const table = readTable_(sheet);
@@ -3137,11 +3396,11 @@ function simpanSkorSukan_(body, sukan) {
   }
   if (final) {
     set('status','SELESAI'); set('pengesahan','DISAHKAN'); set('fasaMasa','Tamat');
-    set('disahkanOleh','Master Admin'); set('disahkanPada',now);
+    set('disahkanOleh',oleh); set('disahkanPada',now);
     if (!d.masaTamat) set('masaTamat',now);
   }
   sheet.getRange(rec.rowIndex+1,1,1,row.length).setValues([row]);
-  tambahApprovalLog_([{masa:now.toISOString(),matchId:id,keputusan:s1+' - '+s2,tindakan:final?'SKOR ADMIN DISAHKAN':'SKOR ADMIN SEMENTARA',oleh:'Master Admin'}],sukan);
+  tambahApprovalLog_([{masa:now.toISOString(),matchId:id,keputusan:s1+' - '+s2,tindakan:final?'SKOR ADMIN DISAHKAN':'SKOR ADMIN SEMENTARA',oleh:oleh}],sukan);
   SpreadsheetApp.flush();
   if (sukan === 'BADMINTON') CacheService.getScriptCache().remove(BM_CACHE_KEY);
   else if (final) {
