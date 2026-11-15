@@ -5,7 +5,7 @@
  *   skor & jadual sentiasa dibaca terus daripada Google Sheets.
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.29.1';  // v1.29.0: log masuk Urusetia (nama + kata laluan) & lantikan Sub Admin
+const VERSI_SW = '1.30.0';  // v1.30.0: Urus Gelanggang Badminton (Master Admin)
 const CACHE = 'karnival-pk-kbb-' + VERSI_SW;
 const SHELL = ['./', './index.html', './admin-pasukan.js', './admin-jadual.js', './admin-skor.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];

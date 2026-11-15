@@ -162,6 +162,20 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  dan Sub Admin boleh Sahkan / Tolak keputusan (Peti Kelulusan). Permintaan
  *                  sumber 'PETI-KELULUSAN' tanpa kunci Master Admin / token Sub Admin DITOLAK.
  *
+ *              + v1.20.0 - URUS GELANGGANG BADMINTON (MASTER ADMIN SAHAJA):
+ *                { action: 'urusGelanggangBadminton', sukan: 'BADMINTON', adminKey, versi,
+ *                  senarai:[{id,nama,kategori,aktif}], susunan:{matchId:urutan},
+ *                  kunciAcara:{matchId:gelanggang}, matches:[{id, gelanggang}] }
+ *                - Sama seperti Urus Gelanggang Futsal: tambah / aktif / tutup gelanggang,
+ *                  kategori SR / SM / SEMUA (terbuka), Jana Susunan & kunci gelanggang
+ *                  Suku Akhir / Separuh Akhir / Tempat 3/4 / Akhir.
+ *                - Senarai disimpan dalam Script Properties (SENARAI_GELANGGANG_BM).
+ *                - Hanya perlawanan Badminton yang BELUM BERMULA dipindahkan (lajur Gelanggang
+ *                  dalam tab Jadual_Badminton). Perlawanan sedang berlangsung / menunggu
+ *                  pengesahan tidak disentuh. Gelanggang yang sedang digunakan tidak boleh ditutup.
+ *                - GET ?action=badminton & ?action=read&sukan=BADMINTON kini membawa
+ *                  'senaraiGelanggang' (senarai, susunan & kunciAcara Badminton).
+ *
  *  Lajur dikesan melalui NAMA TAJUK (baris 1), jadi susunan lajur Bahagian 1
  *  boleh dikekalkan. Lajur yang tiada akan ditambah automatik di hujung.
  * =========================================================
@@ -179,7 +193,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
+const API_VERSI = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tutup / Jana Susunan / kunci Separuh Akhir & Akhir)
+// const API_VERSI_LAMA = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
 // const API_VERSI_LAMA = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
 // const API_VERSI_LAMA = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
 // const API_VERSI_170 = '1.17.0';  // v1.17.0: akaun pengadil ikut sukan (FUTSAL / BADMINTON) + pilihan sukan semasa log masuk
@@ -189,7 +204,7 @@ const API_VERSI = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di 
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -419,7 +434,7 @@ function doGet(e) {
       sukan: sukan,
       count: rows.length,
       dikemaskini: new Date().toISOString(),
-      senaraiGelanggang: sukan === 'FUTSAL' ? bacaGelanggang_() : undefined,
+      senaraiGelanggang: sukan === 'FUTSAL' ? bacaGelanggang_() : bacaGelanggangBm_(),   // v1.20.0
       matches: p.id ? undefined : rows,
       match: p.id ? (rows[0] || null) : undefined
     }, p.callback);
@@ -438,7 +453,7 @@ const SHEET_BM_PASUKAN = 'Pasukan_Badminton';
 const SHEET_BM_PERATURAN = 'Peraturan_Badminton';
 const SHEET_KEJOHANAN = 'Kejohanan';
 const SHEET_GELANGGANG_INFO = 'Gelanggang';
-const BM_CACHE_KEY = 'DATA_BADMINTON_V112';
+const BM_CACHE_KEY = 'DATA_BADMINTON_V120';   // v1.20.0: + senaraiGelanggang
 const BM_CACHE_SAAT = 20;
 
 function bacaObjekSheet_(nama) {
@@ -486,7 +501,8 @@ function dataBadminton_() {
     pasukan: pasukan,
     jadual: jadual,
     peraturan: bacaObjekSheet_(SHEET_BM_PERATURAN) || [],
-    gelanggang: (bacaObjekSheet_(SHEET_GELANGGANG_INFO) || []).filter(sukanIni)
+    gelanggang: (bacaObjekSheet_(SHEET_GELANGGANG_INFO) || []).filter(sukanIni),
+    senaraiGelanggang: bacaGelanggangBm_()   // v1.20.0: Urus Gelanggang Badminton
   };
   try {
     const s = JSON.stringify(data);
@@ -576,6 +592,13 @@ function doPost(e) {
       ubahPapan = false;
       if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Skor pengadil Badminton mesti dihantar untuk sukan BADMINTON sahaja.' });
       return output_(skorPengadilBadminton_(body));
+    }
+    // v1.20.0: Urus Gelanggang Badminton (Master Admin sahaja)
+    if (action === 'urusgelanggangbadminton') {
+      ubahPapan = false;
+      if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Urus Gelanggang Badminton mesti dihantar dengan sukan BADMINTON.' });
+      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', versi: API_VERSI, error: 'Hanya Master Admin boleh mengurus gelanggang Badminton.' });
+      return output_(urusGelanggangBm_(body));
     }
     if (sukan === 'BADMINTON' && MATCH_ACTIONS.indexOf(action) < 0 && action !== 'ping') {
       throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
@@ -1706,6 +1729,174 @@ function urusGelanggang_(body) {
   try { bustPapanCache_(); } catch (err) { console.warn('bustPapanCache_', err); }   // v1.10.0: giliran baharu terus kelihatan
 
   return { ok: true, senaraiGelanggang: simpan, dipindah: kemas.length, ditutup: ditutup, masa: new Date().toISOString() };
+}
+
+/* =========================================================
+   v1.20.0: URUS GELANGGANG BADMINTON (MASTER ADMIN SAHAJA)
+   - Senarai gelanggang Badminton { id, nama, kategori: SR | SM | SEMUA, aktif } disimpan
+     dalam Script Properties (SENARAI_GELANGGANG_BM), berasingan daripada Futsal.
+   - 'susunan'   : { matchId: urutan } hasil Jana Susunan (giliran setiap gelanggang).
+   - 'kunciAcara': { matchId: gelanggang } Suku Akhir / Separuh Akhir / Tempat 3/4 / Akhir.
+   - Pindahan perlawanan dikira oleh aplikasi Master Admin; pelayan hanya menulis
+     perlawanan yang BELUM BERMULA ke gelanggang AKTIF yang menerima kategorinya.
+   ========================================================= */
+const PROP_GELANGGANG_BM = 'SENARAI_GELANGGANG_BM';
+let gelanggangBmCache_ = null;
+
+function normBmMatchId_(id) {
+  const v = String(id || '').trim().toUpperCase();
+  return /^[A-Z0-9][A-Z0-9_-]{0,59}$/.test(v) ? v : '';
+}
+
+function bersihSusunanBm_(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  Object.keys(obj).slice(0, 300).forEach(function (k) {
+    const id = normBmMatchId_(k);
+    const n = Number(obj[k]);
+    if (id && isFinite(n) && n >= 0) out[id] = Math.floor(n);
+  });
+  return out;
+}
+
+function bersihKunciAcaraBm_(obj, senarai) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  const sah = {};
+  (senarai || []).forEach(function (g) { sah[g.id] = true; });
+  Object.keys(obj).slice(0, 100).forEach(function (k) {
+    const id = normBmMatchId_(k);
+    const g = String(obj[k] || '').trim().toUpperCase();
+    if (id && sah[g]) out[id] = g;
+  });
+  return out;
+}
+
+function bacaGelanggangBm_() {
+  if (gelanggangBmCache_) return gelanggangBmCache_;
+  let v = null;
+  try { v = JSON.parse(PropertiesService.getScriptProperties().getProperty(PROP_GELANGGANG_BM) || 'null'); } catch (err) { v = null; }
+  const senarai = v ? bersihSenaraiGelanggang_(v.senarai) : [];
+  // versi 0 + senarai kosong -> aplikasi membina senarai lalai daripada lajur Gelanggang jadual
+  gelanggangBmCache_ = senarai.length
+    ? { versi: Number(v.versi) || 0, senarai: senarai, dikemaskini: v.dikemaskini || null,
+        susunan: bersihSusunanBm_(v.susunan), kunciAcara: bersihKunciAcaraBm_(v.kunciAcara, senarai) }
+    : { versi: 0, senarai: [], dikemaskini: null, susunan: {}, kunciAcara: {} };
+  return gelanggangBmCache_;
+}
+
+// Kategori perlawanan Badminton (SR / SM) daripada lajur Kategori atau ID (cth. BSR-01)
+function katBm_(d) {
+  const k = String((d && d.kategori) || '').trim().toUpperCase();
+  if (k === 'SR' || k === 'SM') return k;
+  if (k.indexOf('RENDAH') >= 0) return 'SR';
+  if (k.indexOf('MENENGAH') >= 0) return 'SM';
+  const m = /S[RM]/.exec(String((d && d.id) || '').toUpperCase());
+  return m ? m[0] : '';
+}
+
+function bmBelumMula_(d) {
+  const st = statusBaris_(d);
+  return (st === 'MENUNGGU GILIRAN' || st === '') && String(d.pengesahan || '').toUpperCase() !== 'DISAHKAN';
+}
+
+function bmSedangGuna_(d) {
+  const st = statusBaris_(d);
+  if (bmBelumMula_(d) || st === 'SELESAI' || st.indexOf('TANGGUH') >= 0) return false;
+  return String(d.pengesahan || '').toUpperCase() !== 'DISAHKAN';
+}
+
+function urusGelanggangBm_(body) {
+  const semasa = bacaGelanggangBm_();
+  const senarai = bersihSenaraiGelanggang_(body.senarai);
+  if (!senarai.length) return { ok: false, versi: API_VERSI, error: 'Senarai gelanggang Badminton kosong / tidak sah.', senaraiGelanggang: semasa };
+  const versi = Number(body.versi) || Date.now();
+  if (semasa.versi && versi < semasa.versi) {
+    return { ok: false, kod: 'LAPUK', versi: API_VERSI, error: 'Senarai gelanggang Badminton telah dikemas kini oleh peranti lain. Senarai terkini dimuatkan.',
+      senaraiGelanggang: semasa };
+  }
+  const katTanpa = ['SR', 'SM'].filter(function (k) {
+    return !senarai.some(function (g) { return g.aktif && gelanggangTerima_(g, k); });
+  });
+  if (katTanpa.length) {
+    return { ok: false, versi: API_VERSI, error: 'Mesti ada sekurang-kurangnya satu gelanggang Badminton AKTIF untuk ' + katTanpa.join(' & ') + '.', senaraiGelanggang: semasa };
+  }
+  const aktifBaru = {};
+  senarai.forEach(function (g) { if (g.aktif) aktifBaru[g.id] = g; });
+
+  const sheet = getJadualSheet_('BADMINTON');
+  const table = readTable_(sheet);
+  const colG = table.colOf.gelanggang;
+  if (colG === undefined) return { ok: false, versi: API_VERSI, error: 'Lajur Gelanggang tiada dalam tab ' + SHEET_BM_JADUAL + '.', senaraiGelanggang: semasa };
+
+  // Gelanggang yang sedang digunakan (perlawanan berlangsung / menunggu pengesahan) tidak boleh ditutup
+  for (let i = 0; i < table.rows.length; i++) {
+    const d = table.rows[i].data;
+    const g = normId_(d.gelanggang);
+    if (g && !aktifBaru[g] && bmSedangGuna_(d)) {
+      return { ok: false, kod: 'SEDANG_DIGUNAKAN', versi: API_VERSI,
+        error: 'Gelanggang Badminton ' + g + ' masih digunakan (' + d.id + ' · ' + (statusBaris_(d) || 'berlangsung') + '). Tamatkan / sahkan perlawanan itu dahulu.',
+        senaraiGelanggang: semasa };
+    }
+  }
+
+  const simpan = { versi: versi, senarai: senarai, dikemaskini: new Date().toISOString(),
+    susunan: bersihSusunanBm_(body.susunan), kunciAcara: bersihKunciAcaraBm_(body.kunciAcara, senarai) };
+  PropertiesService.getScriptProperties().setProperty(PROP_GELANGGANG_BM, JSON.stringify(simpan));
+  gelanggangBmCache_ = simpan;
+
+  // Pindahan baki perlawanan (dikira oleh aplikasi Master Admin) - BELUM BERMULA sahaja
+  const byId = {};
+  table.rows.forEach(function (r) { byId[String(r.data.id).toUpperCase()] = r; });
+  const baru = {};    // rowIndex -> gelanggang baharu
+  const diambil = {};
+  (Array.isArray(body.matches) ? body.matches : []).slice(0, 400).forEach(function (x) {
+    const id = normBmMatchId_(x && x.id);
+    const g = String(x && x.gelanggang || '').trim().toUpperCase();
+    const r = id ? byId[id] : null;
+    if (!r || diambil[id] || !aktifBaru[g]) return;
+    if (!bmBelumMula_(r.data)) return;
+    if (!gelanggangTerima_(aktifBaru[g], katBm_(r.data))) return;
+    diambil[id] = true;
+    if (normId_(r.data.gelanggang) !== g) baru[r.rowIndex] = g;
+  });
+  // Jaring keselamatan: baki perlawanan di gelanggang ditutup / tidak menerima kategorinya -> gelanggang aktif paling ringan
+  const beban = {};
+  table.rows.forEach(function (r) {
+    if (!bmBelumMula_(r.data)) return;
+    const g = baru[r.rowIndex] || normId_(r.data.gelanggang);
+    beban[g] = (beban[g] || 0) + 1;
+  });
+  table.rows.forEach(function (r) {
+    const d = r.data;
+    const id = String(d.id || '').toUpperCase();
+    if (diambil[id] || !bmBelumMula_(d)) return;
+    const g = normId_(d.gelanggang);
+    const kat = katBm_(d);
+    if (aktifBaru[g] && (!kat || gelanggangTerima_(aktifBaru[g], kat))) return;
+    const calon = senarai.filter(function (x) { return x.aktif && (!kat || gelanggangTerima_(x, kat)); });
+    if (!calon.length) return;
+    calon.sort(function (a, b) { return (beban[a.id] || 0) - (beban[b.id] || 0); });
+    baru[r.rowIndex] = calon[0].id;
+    beban[calon[0].id] = (beban[calon[0].id] || 0) + 1;
+    if (g) beban[g] = Math.max(0, (beban[g] || 0) - 1);
+  });
+
+  const idx = Object.keys(baru);
+  if (idx.length) {
+    const n = table.values.length - 1;
+    const lajur = [];
+    for (let r = 1; r <= n; r++) lajur.push([baru[r] !== undefined ? baru[r] : table.values[r][colG]]);
+    sheet.getRange(2, colG + 1, n, 1).setValues(lajur);
+    const colK = table.colOf.kemaskini;
+    if (colK !== undefined) {
+      const now = new Date();
+      idx.forEach(function (r) { sheet.getRange(Number(r) + 1, colK + 1).setValue(now); });
+    }
+  }
+  SpreadsheetApp.flush();
+  try { CacheService.getScriptCache().remove(BM_CACHE_KEY); } catch (err) { /* abaikan */ }
+  return { ok: true, versi: API_VERSI, sukan: 'BADMINTON', senaraiGelanggang: simpan, dipindah: idx.length, masa: new Date().toISOString() };
 }
 
 function normId_(v) {
