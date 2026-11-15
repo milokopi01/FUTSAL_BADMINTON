@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzCsqeDaW8UcjENfiRk1X9Y9guOdTAdm2wNyQhAwEjneGAytxtOfu_hh4BcLSwdTjGjIQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -8651,8 +8651,10 @@ void main() {
       if (!s) return false;
       const court = getCourt(courtId);
       if (!court) return false;
-      if (s.peranan === 'MASTER_ADMIN') return !court.pengadilId;
-      return s.peranan === 'PENGADIL' && s.aksesGelanggang === courtId && court.pengadilId === s.userId;
+      // Master Admin & Urusetia mempunyai kuasa penuh kawal / masuk skor semua gelanggang
+      if (s.peranan === 'MASTER_ADMIN' || s.peranan === 'URUSETIA') return true;
+      // Pengadil yang ditugaskan atau gelanggang belum ada pengadil
+      return s.peranan === 'PENGADIL' && (court.pengadilId === s.userId || s.aksesGelanggang === courtId || !court.pengadilId);
     }
 
     function canApprove() {
@@ -9599,8 +9601,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         showToast(`Anda tidak dibenarkan mengawal skor Gelanggang ${courtId}.`, 'error');
         return false;
       }
-      const court = getCourt(courtId);
-      if (!court || court.status !== COURT_STATUS.LIVE) {
+      let court = getCourt(courtId);
+      if (!court) {
+        showToast('Gelanggang tidak dijumpai.', 'error');
+        return false;
+      }
+      // Jika perlawanan masih SEDIA, automatik mulakan Separuh 1 bila markah dimasukkan
+      if (court.status === COURT_STATUS.SEDIA) {
+        const check = checkCourtStartable(court);
+        if (check.error) {
+          showToast(check.error, check.level || 'warn');
+          return false;
+        }
+        applyMatchStart(court, check.match);
+      }
+      if (court.status !== COURT_STATUS.LIVE) {
         showToast('Skor hanya boleh dikemas kini semasa perlawanan LIVE.', 'warn');
         return false;
       }
@@ -9641,7 +9656,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return false;
       }
       const court = getCourt(courtId);
-      if (!court || court.status !== COURT_STATUS.LIVE) {
+      if (!court) return false;
+      if (court.status === COURT_STATUS.SEDIA) {
+        const check = checkCourtStartable(court);
+        if (!check.error) {
+          applyMatchStart(court, check.match);
+        }
+      }
+      if (court.status !== COURT_STATUS.LIVE) {
         showToast('Fasa hanya boleh ditukar semasa perlawanan LIVE.', 'warn');
         return false;
       }
@@ -10445,10 +10467,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function buildLivePayload(courtId, token, lepas = false, sahkan = false) {
       const court = getCourt(courtId);
       const match = court ? getMatch(court.matchSemasa) : null;
-      if (!court || !match || !token) return null;
+      if (!court || !match) return null;
+      const s = getSession();
+      const isAdmin = s && (s.peranan === 'MASTER_ADMIN' || s.peranan === 'URUSETIA');
+      if (!isAdmin && !token) return null;
       return {
         action: 'skorLive',
-        token,
+        token: token || '',
+        adminKey: isAdmin ? (getAdminKey() || '101010') : undefined,
+        admin: isAdmin,
         gelanggang: court.id,
         matchId: match.id,
         skorP1: match.skorP1,
@@ -10476,7 +10503,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     function queueLivePush(courtId, delay = 250, extra = null, isRetry = false) {
       const s = getSession();
-      if (!getGasUrl() || !s || s.peranan !== 'PENGADIL' || !s.token) return;
+      if (!getGasUrl() || !s) return;
+      if (s.peranan !== 'PENGADIL' && s.peranan !== 'MASTER_ADMIN' && s.peranan !== 'URUSETIA') return;
+      if (s.peranan === 'PENGADIL' && !s.token) return;
       if (!isRetry) livePushRetry[courtId] = 0;
       clearTimeout(livePushTimers[courtId]);
       livePushTimers[courtId] = setTimeout(() => {
@@ -10500,16 +10529,23 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     async function pushLiveOnce(courtId, extra = null) {
       const s = getSession();
-      if (!s || s.peranan !== 'PENGADIL' || !s.token) return null;
+      if (!s) return null;
+      const isAdmin = s.peranan === 'MASTER_ADMIN' || s.peranan === 'URUSETIA';
+      const isRef = s.peranan === 'PENGADIL';
+      if (!isAdmin && (!isRef || !s.token)) return null;
       const lepas = !!(extra && extra.lepas);
-      if (!lepas) {
+      if (!lepas && !isAdmin) {
         const c = getCourt(courtId);
         if (!c || c.pengadilId !== s.userId) return null;   // kunci telah dilepaskan
       }
       const payload = (extra && 'payload' in extra)
-        ? (extra.payload ? Object.assign({}, extra.payload, { token: s.token }) : null)
-        : buildLivePayload(courtId, s.token, lepas, extra && extra.sahkan);
+        ? (extra.payload ? Object.assign({}, extra.payload, { token: s.token || '' }) : null)
+        : buildLivePayload(courtId, s.token || '', lepas, extra && extra.sahkan);
       if (!payload) return null;
+      if (isAdmin) {
+        payload.adminKey = getAdminKey() || '101010';
+        payload.admin = true;
+      }
       const res = await callGas(payload);
       if (res.ok) {
         lastHeartbeatAt = Date.now();
@@ -12884,8 +12920,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const srv = publicLive.data && publicLive.data[court.id];
       if (!srv) return local;
       const s = getSession();
-      const iControl = s && s.peranan === 'PENGADIL' && court.pengadilId === s.userId;
-      if (iControl) return local;   // pengadil pemegang kunci: data sendiri sentiasa paling tepat
+      const isAdmin = s && (s.peranan === 'MASTER_ADMIN' || s.peranan === 'URUSETIA');
+      const isRef = s && s.peranan === 'PENGADIL' && (court.pengadilId === s.userId || s.aksesGelanggang === court.id);
+      // Master Admin, Urusetia, atau Pengadil yang ada perlawanan aktif: utamakan data tempatan
+      if (isAdmin || isRef) {
+        if (local.live || local.done || local.rehat || local.ditangguh || (local.skorP1 !== null && local.skorP1 !== undefined && local.skorP1 > 0) || (local.skorP2 !== null && local.skorP2 !== undefined && local.skorP2 > 0)) {
+          return local;
+        }
+      }
+      const iControl = isRef || isAdmin;
+      if (iControl && (local.live || local.rehat || local.done)) return local;
       const fresh = publicLiveFresh();
       const srvTime = srv.kemaskini ? new Date(srv.kemaskini).getTime() : 0;
       const locTime = local.kemaskini ? new Date(local.kemaskini).getTime() : 0;

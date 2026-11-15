@@ -1756,9 +1756,15 @@ function lepasGelanggang_(body) {
 function skorLive_(body) {
   const g = normGelanggang_(body.gelanggang);
   if (!g) return { ok: false, error: 'Gelanggang tidak sah.' };
-  const sesi = sahkanSesiFutsal_(body.token);
-  if (!sesi.ok) return sesi;
-  const ref = sesi.ref;
+  const admin = isMasterAdmin_(body);
+  let ref = null;
+  if (admin) {
+    ref = { id: 'MASTER_ADMIN', nama: 'Master Admin' };
+  } else {
+    const sesi = sahkanSesiFutsal_(body.token);
+    if (!sesi.ok) return sesi;
+    ref = sesi.ref;
+  }
   const db = readKunci_();
   const k = db.map[g];
   // v1.9.2: KEPUTUSAN LEWAT - keputusan akhir pengadil diterima walaupun kunci gelanggang
@@ -1769,11 +1775,13 @@ function skorLive_(body) {
   if (idAwal && akhir && !(k.pengadilId === ref.id && (!k.matchId || k.matchId === idAwal))) {
     return keputusanLewat_(body, g, idAwal, ref, db);
   }
-  if (!k.pengadilId) {
-    return { ok: false, kod: 'TIADA_KUNCI', error: 'Gelanggang ' + g + ' belum dikunci. Tekan "Sepak Mula" dahulu.', kunci: statusKunci_(db) };
-  }
-  if (k.pengadilId !== ref.id) {
-    return { ok: false, kod: 'HILANG', error: 'Gelanggang ' + g + ' dikunci oleh ' + k.nama + '. Markah anda tidak diterima.', kunci: statusKunci_(db) };
+  if (!admin) {
+    if (!k.pengadilId) {
+      return { ok: false, kod: 'TIADA_KUNCI', error: 'Gelanggang ' + g + ' belum dikunci. Tekan "Sepak Mula" dahulu.', kunci: statusKunci_(db) };
+    }
+    if (k.pengadilId !== ref.id) {
+      return { ok: false, kod: 'HILANG', error: 'Gelanggang ' + g + ' dikunci oleh ' + k.nama + '. Markah anda tidak diterima.', kunci: statusKunci_(db) };
+    }
   }
   const id = normMatchId_(body.matchId);
   if (!id) return { ok: false, error: 'ID perlawanan tidak sah.' };
@@ -3095,10 +3103,11 @@ function simpanSkorSukan_(body, sukan) {
   const rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
   if (!rec) throw new Error('Perlawanan tidak dijumpai untuk ' + sukan + '.');
   const d = rec.data;
-  if (sukan === 'FUTSAL' && lockedMatchIds_()[id]) throw new Error('Skor dikendalikan pengadil. Lepaskan kunci dahulu.');
+  // Master Admin boleh menyimpan markah walaupun ada kunci pengadil
+  // if (sukan === 'FUTSAL' && lockedMatchIds_()[id]) throw new Error('Skor dikendalikan pengadil. Lepaskan kunci dahulu.');
   if (sukan === 'FUTSAL' && isRowFinal_(table.values[rec.rowIndex], table.colOf)) throw new Error('Keputusan Futsal disahkan: gunakan Pembetulan Markah sedia ada.');
   if (String(d.fasaMasa || '').toUpperCase() === 'REHAT KECEMASAN') throw new Error('Skor dibekukan semasa Rehat Kecemasan.');
-  const fields = ['skorP1','skorP2','status','pengesahan','pemenangPenalti','kemaskini','namaP1','namaP2','versiPembetulan'];
+  const fields = ['skorP1','skorP2','status','pengesahan','pemenangPenalti'];
   if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
   const x = body.skor || {};
   const s1 = skorInt_(x.skorP1), s2 = skorInt_(x.skorP2);

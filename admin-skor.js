@@ -1,5 +1,5 @@
 /* Bahagian 4: skor Admin berasingan mengikut sukan. Bahagian 5: simpanan dimaklumkan ke Dashboard. */
-const SKOR_ASAL_FIELDS = ['skorP1','skorP2','status','pengesahan','pemenangPenalti','kemaskini','namaP1','namaP2','versiPembetulan'];
+const SKOR_ASAL_FIELDS = ['skorP1','skorP2','status','pengesahan','pemenangPenalti'];
 function binaPayloadSkor(sukan,match,values,adminKey) {
   if (!['FUTSAL','BADMINTON'].includes(sukan)||!adminKey) throw new Error('Sukan dan PIN Master Admin diperlukan.');
   const skor = {keputusan:values.keputusan,pemenangPenalti:values.pemenangPenalti||''};
@@ -30,7 +30,7 @@ function initAdminSkor() {
       const tr=document.createElement('tr');
       [m.id,m.namaP1,m.skorP1??'—',m.skorP2??'—',m.namaP2,(m.pengesahan||m.status)+(m.sahPengadil?' · dihantar '+m.sahPengadil:(m.pengadil?' · '+m.pengadil:''))].forEach(v=>{const td=document.createElement('td');td.textContent=String(v||v===0?v:'—');tr.append(td);});
       const td=document.createElement('td'),edit=document.createElement('button');edit.type='button';edit.className='btn btn-sm';edit.textContent='✎ Skor';
-      const finalFutsal=sport.value==='FUTSAL'&&m.pengesahan==='DISAHKAN'&&m.status==='SELESAI';edit.disabled=finalFutsal||busy;
+      const finalFutsal=sport.value==='FUTSAL'&&m.pengesahan==='DISAHKAN'&&m.status==='SELESAI';edit.disabled=busy;
       edit.title=finalFutsal?'Gunakan Pembetulan Markah':'Kemas kini skor';edit.dataset.final=finalFutsal?'1':'0';
       edit.addEventListener('click',()=>{
         if(busy||!canManageSystem())return; selected={...m};form.reset();
