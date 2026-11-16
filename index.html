@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzocejM9e8PvR-dON3OEqLAls07kbvmAdSb-NnW9HQ2eXrj3xc822Kd0HmnxQz2lYH3oA/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2265,6 +2265,43 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       body.autofit-active #tab-bm-live #bmStageWrap .sb-grid.bm-sb-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 10px !important; align-items: stretch !important; }
     }
   </style>
+  <style>
+    /* v2.1: TAB DIGABUNGKAN (mod SEMUA) + anak panah tab tersembunyi */
+    body[data-sukan="SEMUA"] #tabNav .tab-group.tg-futsal,
+    body[data-sukan="SEMUA"] #tabNav .tab-group.tg-badminton,
+    body[data-sukan="SEMUA"] #tabNav .tab-btn.tab-bm { display: none !important; }
+    .tab-panel.merge-show { display: block; animation: fade-up var(--t-med) both; }
+    body.merge-view .merge-pane::before {
+      display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 8px 2px;
+      font: 800 1.15rem/1.2 var(--font-display, inherit); letter-spacing: .02em;
+      border-bottom: 2px solid rgba(46,230,166,.45); color: var(--brand, #2ee6a6);
+      content: "⚽ Futsal";
+    }
+    body.merge-view .merge-pane.merge-bm::before { content: "🏸 Badminton"; border-bottom-color: var(--bm-line, rgba(192,132,252,.5)); color: var(--bm, #c084fc); }
+    body.merge-view .merge-pane.merge-bm { margin-top: 30px; }
+    .merge-jump { display: none; }
+    body.merge-view .merge-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .8rem; color: var(--text-2); }
+    .merge-jump button { padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: .78rem; color: var(--text-0); border: 1px solid var(--glass-border-strong); background: var(--glass); cursor: pointer; }
+    .merge-jump button.mj-fs { border-color: rgba(46,230,166,.45); }
+    .merge-jump button.mj-bm { border-color: var(--bm-line, rgba(192,132,252,.5)); }
+    .merge-pane { scroll-margin-top: 180px; }
+    .tab-nav-wrap { position: relative; }
+    .tab-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+      width: 34px; height: 34px; border-radius: 50%; display: none; place-items: center;
+      font-size: 1.5rem; line-height: 1; font-weight: 800; color: #fff; cursor: pointer;
+      background: linear-gradient(135deg, var(--brand, #2ee6a6), var(--brand-2, #38bdf8));
+      border: 1px solid rgba(255,255,255,.35); box-shadow: 0 0 0 6px rgba(7,11,22,.9), 0 4px 16px rgba(0,0,0,.5);
+    }
+    .tab-arrow-l { left: 2px; }
+    .tab-arrow-r { right: 2px; animation: tabArrowNudge 1.6s ease-in-out infinite; }
+    .tab-nav-wrap.can-l .tab-arrow-l, .tab-nav-wrap.can-r .tab-arrow-r { display: grid; }
+    .tab-nav-wrap.can-l .tab-nav { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 52px); mask-image: linear-gradient(90deg, transparent 0, #000 52px); }
+    .tab-nav-wrap.can-r .tab-nav { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 60px), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - 60px), transparent 100%); }
+    .tab-nav-wrap.can-l.can-r .tab-nav { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 60px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 60px), transparent 100%); }
+    @keyframes tabArrowNudge { 0%,100% { transform: translateY(-50%) translateX(0); } 50% { transform: translateY(-50%) translateX(3px); } }
+    @media (max-width: 640px) { .tab-arrow { width: 30px; height: 30px; font-size: 1.3rem; } }
+  </style>
 </head>
 <body data-category="SEMUA">
 
@@ -2319,6 +2356,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       </div>
 
       <!-- NAVIGASI TAB (v2.0: Dashboard Utama + Futsal + Badminton) -->
+      <div class="tab-nav-wrap" id="tabNavWrap">
+      <button type="button" class="tab-arrow tab-arrow-l" id="tabArrowL" aria-label="Tatal tab ke kiri" title="Tab sebelumnya">&#8249;</button>
       <nav class="tab-nav" id="tabNav" role="tablist" aria-label="Navigasi utama">
         <button type="button" class="tab-btn tab-home active" role="tab" data-tab="tab-dashboard" data-sukan="SEMUA" aria-selected="true">
           <span aria-hidden="true">🏠</span> Dashboard Utama
@@ -2328,13 +2367,13 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <span aria-hidden="true">📡</span> Simulasi Gelanggang Live
         </button>
         <button type="button" class="tab-btn" role="tab" data-tab="tab-standings" data-sukan="FUTSAL" aria-selected="false">
-          <span aria-hidden="true">🏆</span> Carta Liga
+          <span aria-hidden="true">🏆</span> <span class="not-semua">Carta Liga</span><span class="only-semua-in">Carta Liga &amp; Kumpulan</span>
         </button>
         <button type="button" class="tab-btn tab-ko" role="tab" data-tab="tab-knockout" data-sukan="FUTSAL" aria-selected="false" id="tabBtnKnockout">
           <span aria-hidden="true">⚔️</span> Kalah Mati
         </button>
         <button type="button" class="tab-btn" role="tab" data-tab="tab-schedule" data-sukan="FUTSAL" aria-selected="false">
-          <span aria-hidden="true">📅</span> Jadual Penuh (65 Match)
+          <span aria-hidden="true">📅</span> <span class="not-semua">Jadual Penuh (65 Match)</span><span class="only-semua-in">Jadual Penuh (99 Match)</span>
         </button>
         <span class="tab-group tg-badminton" data-sukan="BADMINTON" aria-hidden="true">🏸 Badminton</span>
         <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-live" data-sukan="BADMINTON" aria-selected="false">
@@ -2358,6 +2397,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <span aria-hidden="true">⚙️</span> Tetapan Master Admin
         </button>
       </nav>
+      <button type="button" class="tab-arrow tab-arrow-r" id="tabArrowR" aria-label="Lihat tab tersembunyi" title="Lihat tab tersembunyi">&#8250;</button>
+      </div>
     </div>
   </header>
 
@@ -9102,7 +9143,48 @@ void main() {
       return true;
     }
 
+    // v2.1: dalam mod SEMUA, tab Futsal & Badminton yang setara digabungkan dalam satu paparan
+    const MERGE_PAIR = { 'tab-standings': 'tab-bm-standings', 'tab-knockout': 'tab-bm-knockout', 'tab-schedule': 'tab-bm-schedule' };
+    function mergeModeOn() { return document.body && document.body.dataset.sukan === 'SEMUA'; }
+    function applyMergeView(scrollToBm) {
+      document.querySelectorAll('.tab-panel.merge-show').forEach(p => p.classList.remove('merge-show'));
+      document.body.classList.remove('merge-view');
+      if (!mergeModeOn()) return;
+      const act = (state.ui && state.ui.activeTab) || '';
+      let fs = null;
+      Object.keys(MERGE_PAIR).forEach(f => { if (act === f || act === MERGE_PAIR[f]) fs = f; });
+      if (!fs) return;
+      const bm = MERGE_PAIR[fs];
+      const partner = document.getElementById(act === fs ? bm : fs);
+      if (partner) partner.classList.add('merge-show');
+      document.body.classList.add('merge-view');
+      const b = document.querySelector(`#tabNav .tab-btn[data-tab="${fs}"]`);
+      if (b) { b.classList.add('active'); b.setAttribute('aria-selected', 'true'); }
+      if (scrollToBm && act === bm) {
+        setTimeout(() => { const el = document.getElementById(bm); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 450);
+      }
+    }
+    function mergeJump(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      // Susun panel Badminton terus selepas panel Futsal setara + tajuk & butang lompat
+      Object.keys(MERGE_PAIR).forEach(f => {
+        const fp = document.getElementById(f), bp = document.getElementById(MERGE_PAIR[f]);
+        if (!fp || !bp) return;
+        fp.classList.add('merge-pane');
+        bp.classList.add('merge-pane', 'merge-bm');
+        fp.insertAdjacentElement('afterend', bp);
+        const j = document.createElement('div');
+        j.className = 'merge-jump';
+        j.innerHTML = `<span>Lompat ke:</span><button type="button" class="mj-fs" onclick="mergeJump('${f}')">⚽ Futsal</button><button type="button" class="mj-bm" onclick="mergeJump('${MERGE_PAIR[f]}')">🏸 Badminton</button>`;
+        fp.insertBefore(j, fp.firstChild);
+      });
+    });
+
     function setActiveTab(tabId) {
+      if (tabId === 'tab-bm-live' && mergeModeOn()) tabId = 'tab-live';   // v2.1: Gelanggang Live sudah digabung
       const panel = document.getElementById(tabId);
       if (!panel) return;
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
@@ -9113,6 +9195,7 @@ void main() {
       });
       state.ui.activeTab = tabId;
       saveState();
+      try { applyMergeView(true); } catch (e) { /* abaikan */ }
       if (tabId === 'tab-approval' && canApprove()) pullMatchesFromSheet();
     }
 
@@ -17807,6 +17890,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const act = (state.ui && state.ui.activeTab) || '';
       const btn = document.querySelector(`#tabNav .tab-btn[data-tab="${act}"]`);
       if (btn && btn.classList.contains('sport-off')) openTab(TAB_SETARA[act] || 'tab-dashboard');
+      else if (k === 'SEMUA' && act === 'tab-bm-live') openTab('tab-live');
+      try { applyMergeView(false); } catch (e) { /* abaikan */ }
+      try { if (typeof window.tabArrowsUpdate === 'function') setTimeout(window.tabArrowsUpdate, 50); } catch (e) { /* abaikan */ }
       selarasAdminSukan(k);
       renderDashboard();
       renderBadmintonViews();
@@ -17842,7 +17928,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       try {
         const t = (state.ui && state.ui.activeTab) || '';
         if (!sukanVisible('BADMINTON')) return false;
-        return (typeof projectionOn === 'function' && projectionOn()) || (t === 'tab-live' && dash.sukan === 'SEMUA');
+        return (typeof projectionOn === 'function' && projectionOn()) || (t === 'tab-live' && dash.sukan === 'SEMUA')
+          || (dash.sukan === 'SEMUA' && ['tab-standings', 'tab-knockout', 'tab-schedule'].includes(t));   // v2.1: tab digabungkan
       } catch (e) { return false; }
     }
     function dashNeedsData() {
@@ -19813,6 +19900,42 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         wrapped._mobWrap = true;
         window.openTab = wrapped;
       });
+    })();
+  </script>
+  <!-- v2.1: anak panah bila ada tab tersembunyi (terkeluar dari skrin) -->
+  <script>
+    (function () {
+      'use strict';
+      function els() { return { wrap: document.getElementById('tabNavWrap'), nav: document.getElementById('tabNav') }; }
+      function update() {
+        const { wrap, nav } = els();
+        if (!wrap || !nav) return;
+        const max = nav.scrollWidth - nav.clientWidth;
+        wrap.classList.toggle('can-l', max > 2 && nav.scrollLeft > 2);
+        wrap.classList.toggle('can-r', max > 2 && nav.scrollLeft < max - 2);
+      }
+      function go(dir) {
+        const { nav } = els();
+        if (!nav) return;
+        nav.scrollBy({ left: dir * Math.max(160, nav.clientWidth * 0.7), behavior: 'smooth' });
+      }
+      window.tabArrowsUpdate = update;
+      function init() {
+        const { nav } = els();
+        if (!nav) return;
+        nav.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        const l = document.getElementById('tabArrowL'), r = document.getElementById('tabArrowR');
+        if (l) l.addEventListener('click', () => go(-1));
+        if (r) r.addEventListener('click', () => go(1));
+        if (window.ResizeObserver) new ResizeObserver(update).observe(nav);
+        if (window.MutationObserver) new MutationObserver(() => setTimeout(update, 30)).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#sportSwitch button, .tab-btn')) setTimeout(update, 120); });
+        update();
+        setTimeout(update, 600);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+      window.addEventListener('load', update);
     })();
   </script>
 </body>
