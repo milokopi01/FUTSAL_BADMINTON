@@ -176,6 +176,18 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                - GET ?action=badminton & ?action=read&sukan=BADMINTON kini membawa
  *                  'senaraiGelanggang' (senarai, susunan & kunciAcara Badminton).
  *
+ *              + v1.20.1 - RESET EVENT (HARI SEBENAR) UNTUK KEDUA-DUA SUKAN:
+ *                { action: 'resetAcara', adminKey, bmAsal:[{id,gelanggang,peringkat,kodP1,kodP2,namaP1,namaP2}] }
+ *                - FUTSAL   : kosongkan Jadual_Perlawanan, Carta_Liga, log, kunci, tangguh,
+ *                             pembetulan & sah pengadil (aplikasi menghantar semula jadual asal).
+ *                - BADMINTON: semua skor / status / pengadil / pengesahan dalam Jadual_Badminton
+ *                             dikosongkan, gelanggang dikembalikan kepada jadual ASAL, slot kalah
+ *                             mati dikembalikan kepada kod asal, Log_Pengesahan_Badminton dikosongkan.
+ *                - URUS GELANGGANG (kedua-dua sukan): senarai gelanggang kembali kepada lalai,
+ *                  susunan Jana Susunan & kunci Separuh Akhir / Akhir DIPADAM. Versi baharu
+ *                  ditulis supaya SEMUA peranti menerima susunan asal.
+ *                - Pasukan, pengadil, urusetia, peraturan & Sandaran_Data DIKEKALKAN.
+ *
  *  Lajur dikesan melalui NAMA TAJUK (baris 1), jadi susunan lajur Bahagian 1
  *  boleh dikekalkan. Lajur yang tiada akan ditambah automatik di hujung.
  * =========================================================
@@ -193,7 +205,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tutup / Jana Susunan / kunci Separuh Akhir & Akhir)
+const API_VERSI = '1.20.1';  // v1.20.1: Reset Event (Hari Sebenar) kini reset FUTSAL + BADMINTON + Urus Gelanggang & susunan
+// const API_VERSI_LAMA = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tutup / Jana Susunan / kunci Separuh Akhir & Akhir)
 // const API_VERSI_LAMA = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
 // const API_VERSI_LAMA = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
 // const API_VERSI_LAMA = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja (pengadil Futsal = Futsal sahaja)
@@ -204,7 +217,7 @@ const API_VERSI = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tut
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -929,7 +942,7 @@ function handlePengadil_(action, body) {
     case 'padamsandaran':   return padamSandaran_(body.id);
     // v1.9.9: Urus Gelanggang
     case 'urusgelanggang':  return urusGelanggang_(body);
-    case 'resetacara':      return resetAcara_();
+    case 'resetacara':      return resetAcara_(body);
     default:                return { ok: false, error: 'Tindakan pengadil tidak dikenali.' };
   }
 }
@@ -3358,13 +3371,23 @@ function testSenaraiGelanggang() {
 
 
 /* =========================================================
-   RESET EVENT (Master Admin sahaja)
-   Kosongkan semua baris perlawanan, carta & log supaya event bermula bersih.
-   Senarai_Pengadil, Sandaran_Data & senarai gelanggang DIKEKALKAN.
-   Aplikasi akan menghantar semula jadual kosong (syncAll) selepas ini.
+   RESET EVENT - HARI SEBENAR (Master Admin sahaja) - v1.20.1
+   Kembalikan KEDUA-DUA sukan kepada keadaan asal sebelum kejohanan sebenar:
+   - FUTSAL   : kosongkan baris perlawanan, carta & semua log. Aplikasi menghantar
+                semula jadual asal (syncAll) selepas ini.
+   - BADMINTON: kosongkan skor / status / pengadil / pengesahan / masa dalam
+                Jadual_Badminton, kembalikan gelanggang & slot kalah mati kepada
+                jadual ASAL (bmAsal daripada aplikasi), kosongkan log pengesahan.
+   - URUS GELANGGANG: senarai gelanggang Futsal & Badminton kembali kepada lalai,
+                susunan Jana Susunan & kunci acara DIPADAM (versi baharu -> semua peranti).
+   Senarai_Pengadil, Senarai_Urusetia, Pasukan, Peraturan & Sandaran_Data DIKEKALKAN.
    ========================================================= */
-function resetAcara_() {
+function resetAcara_(body) {
+  body = body || {};
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const versiBaru = Date.now();
+
+  // ---------- 1) FUTSAL ----------
   const tab = [SHEET_JADUAL, SHEET_CARTA, SHEET_LOG, SHEET_KUNCI, SHEET_TANGGUH, SHEET_PEMBETULAN, SHEET_SAH_PENGADIL];
   const dikosongkan = [];
   tab.forEach(function (nama) {
@@ -3376,8 +3399,125 @@ function resetAcara_() {
       dikosongkan.push(nama);
     }
   });
-  try { CacheService.getScriptCache().removeAll([PAPAN_CACHE_KEY, PAPAN_CACHE_VER]); } catch (e) {}
-  return { ok: true, dikosongkan: dikosongkan, masa: new Date().toISOString() };
+  // Urus Gelanggang Futsal -> senarai lalai, tiada susunan / kunci acara
+  const gelFutsal = { versi: versiBaru, senarai: JSON.parse(JSON.stringify(GELANGGANG_LALAI)),
+    dikemaskini: new Date().toISOString(), susunan: {}, kunciAcara: {} };
+  PropertiesService.getScriptProperties().setProperty(PROP_GELANGGANG, JSON.stringify(gelFutsal));
+  gelanggangCache_ = gelFutsal;
+
+  // ---------- 2) BADMINTON ----------
+  let bm = { ok: false, error: 'Tab ' + SHEET_BM_JADUAL + ' tidak dijumpai.' };
+  if (ss.getSheetByName(SHEET_BM_JADUAL)) bm = resetBadmintonAcara_(body.bmAsal, versiBaru);
+  const logBm = ss.getSheetByName(tabSukan_('BADMINTON', 'log'));
+  if (logBm && logBm.getLastRow() > 1) {
+    logBm.getRange(2, 1, logBm.getLastRow() - 1, Math.max(logBm.getLastColumn(), 1)).clearContent();
+    dikosongkan.push(logBm.getName());
+  }
+  if (bm.ok && bm.dikosongkan) dikosongkan.push(SHEET_BM_JADUAL);
+
+  SpreadsheetApp.flush();
+  try { CacheService.getScriptCache().removeAll([PAPAN_CACHE_KEY, PAPAN_CACHE_VER, BM_CACHE_KEY]); } catch (e) {}
+  try { bustPapanCache_(); } catch (e) { /* abaikan */ }
+  try { tandaPerubahan_('FUTSAL'); tandaPerubahan_('BADMINTON'); } catch (e) { /* abaikan */ }
+  return { ok: true, versi: API_VERSI, dikosongkan: dikosongkan, senaraiGelanggang: gelFutsal,
+    badminton: bm, masa: new Date().toISOString() };
+}
+
+// Cari lajur tambahan (cth. Singkatan_P1) melalui nama tajuk
+function cariLajur_(header, alias) {
+  const k = alias.map(normalizeKey_);
+  for (let i = 0; i < header.length; i++) { if (k.indexOf(normalizeKey_(header[i])) >= 0) return i; }
+  return -1;
+}
+
+function teksSelamat_(v, max) {
+  const t = String(v === null || v === undefined ? '' : v).trim().slice(0, max || 120);
+  return /^[=+@-]/.test(t) ? '' : t;
+}
+
+function resetBadmintonAcara_(bmAsal, versiBaru) {
+  const sheet = getJadualSheet_('BADMINTON');
+  const table = readTable_(sheet);
+  const n = table.values.length - 1;
+  const header = table.values[0];
+  const c = table.colOf;
+  if (n < 1 || c.id === undefined) return { ok: true, baris: 0, dikosongkan: false, senaraiGelanggang: null };
+
+  // Data asal daripada aplikasi (BM_SEED): gelanggang & slot kalah mati
+  const asal = {};
+  (Array.isArray(bmAsal) ? bmAsal : []).slice(0, 400).forEach(function (x) {
+    const id = normBmMatchId_(x && x.id);
+    if (!id) return;
+    const g = String(x.gelanggang || '').trim().toUpperCase();
+    asal[id] = {
+      gelanggang: /^[A-Z0-9]{1,3}$/.test(g) ? g : '',
+      kalahMati: String(x.peringkat || '').trim().toUpperCase() !== 'PERINGKAT KUMPULAN' && !!String(x.peringkat || '').trim(),
+      kodP1: teksSelamat_(x.kodP1, 40).toUpperCase(), kodP2: teksSelamat_(x.kodP2, 40).toUpperCase(),
+      namaP1: teksSelamat_(x.namaP1), namaP2: teksSelamat_(x.namaP2)
+    };
+  });
+
+  // Medan yang dikosongkan / ditetapkan semula
+  const kosong = ['skorP1', 'skorP2', 'pemenangPenalti', 'fasaMasa', 'fasaMulaPada', 'pengadil', 'sahPengadil',
+    'sahPengadilPada', 'masaMula', 'masaTamat', 'disahkanOleh', 'disahkanPada', 'catatan', 'versiPembetulan', 'kemaskini'];
+  const lajur = {};   // colIndex -> array nilai baharu
+  const ambil = function (col) {
+    if (col === undefined || col < 0) return null;
+    if (!lajur[col]) { lajur[col] = []; for (let r = 1; r <= n; r++) lajur[col].push([table.values[r][col]]); }
+    return lajur[col];
+  };
+  const colSing1 = cariLajur_(header, ['Singkatan_P1', 'singkatanp1']);
+  const colSing2 = cariLajur_(header, ['Singkatan_P2', 'singkatanp2']);
+  const placeholder = function (v) { const t = String(v || '').trim(); return !t || t.charAt(0) === '(' || isNamaPlaceholder_(t); };
+  let baris = 0;
+  const gelKat = {};   // gelanggang -> { SR: true, SM: true }
+
+  for (let r = 1; r <= n; r++) {
+    const row = table.values[r];
+    const id = String(row[c.id] || '').trim().toUpperCase();
+    if (!id) continue;
+    baris++;
+    kosong.forEach(function (f) { const a = ambil(c[f]); if (a) a[r - 1][0] = ''; });
+    const aSt = ambil(c.status); if (aSt) aSt[r - 1][0] = 'BELUM BERMULA';
+    const aSah = ambil(c.pengesahan); if (aSah) aSah[r - 1][0] = 'MENUNGGU';
+    const x = asal[id];
+    if (x && x.gelanggang) { const aG = ambil(c.gelanggang); if (aG) aG[r - 1][0] = x.gelanggang; }
+    // Slot kalah mati yang telah diisi nama pasukan semasa ujian -> kembali kepada kod asal (MENANG-20, JOHAN-A ...)
+    if (x && x.kalahMati) {
+      [['1', c.namaP1, c.kodP1, colSing1, x.namaP1, x.kodP1], ['2', c.namaP2, c.kodP2, colSing2, x.namaP2, x.kodP2]].forEach(function (s) {
+        const aN = ambil(s[1]);
+        if (aN && !placeholder(row[s[1]])) aN[r - 1][0] = s[4];
+        const aK = ambil(s[2]);
+        if (aK && s[5]) aK[r - 1][0] = s[5];
+        const aS = ambil(s[3]);
+        if (aS && aN && !placeholder(row[s[1]])) aS[r - 1][0] = '';
+      });
+    }
+    const g = String((x && x.gelanggang) || (c.gelanggang !== undefined ? row[c.gelanggang] : '') || '').trim().toUpperCase();
+    if (/^[A-Z0-9]{1,3}$/.test(g)) {
+      const kat = katBm_({ kategori: c.kategori !== undefined ? row[c.kategori] : '', id: id });
+      (gelKat[g] = gelKat[g] || {})[kat || 'X'] = true;
+    }
+  }
+  Object.keys(lajur).forEach(function (col) {
+    sheet.getRange(2, Number(col) + 1, n, 1).setValues(lajur[col]);
+  });
+
+  // Urus Gelanggang Badminton -> senarai lalai daripada jadual asal, tiada susunan / kunci acara
+  const ids = Object.keys(gelKat).sort(function (a, b) { return String(a).localeCompare(String(b), 'ms', { numeric: true }); });
+  const senarai = bersihSenaraiGelanggang_(ids.map(function (id) {
+    const k = Object.keys(gelKat[id]).filter(function (x) { return x === 'SR' || x === 'SM'; });
+    return { id: id, nama: 'Gelanggang ' + id, kategori: k.length === 1 ? k[0] : 'SEMUA', aktif: true };
+  }));
+  let gelBm = null;
+  if (senarai.length) {
+    gelBm = { versi: versiBaru, senarai: senarai, dikemaskini: new Date().toISOString(), susunan: {}, kunciAcara: {} };
+    PropertiesService.getScriptProperties().setProperty(PROP_GELANGGANG_BM, JSON.stringify(gelBm));
+  } else {
+    PropertiesService.getScriptProperties().deleteProperty(PROP_GELANGGANG_BM);
+  }
+  gelanggangBmCache_ = null;
+  return { ok: true, baris: baris, dikosongkan: true, asalDiterima: Object.keys(asal).length, senaraiGelanggang: gelBm };
 }
 
 /* =========================================================

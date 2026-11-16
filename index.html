@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwt2byg-ESVqRzZJmqrREZkq47rlS0SUhfrhEN-a5gzwCzwp3470YRqj_byknsKz7fhHg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -3145,7 +3145,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 <button type="button" class="btn btn-sm" id="btnExportData">⬇ Eksport JSON</button>
                 <label class="btn btn-sm" for="importFile" style="cursor:pointer;">⬆ Import JSON</label>
                 <input type="file" id="importFile" accept="application/json" class="hidden" />
-                <button type="button" class="btn btn-danger btn-sm" id="btnResetEvent" title="Padam semua markah ujian (peranti ini &amp; Google Sheets). Pasukan, pengadil, pengguna &amp; gelanggang dikekalkan.">🧹 Reset Event (Hari Sebenar)</button>
+                <button type="button" class="btn btn-danger btn-sm" id="btnResetEvent" title="Kembalikan FUTSAL &amp; BADMINTON kepada keadaan asal untuk hari sebenar: semua markah, keputusan, log, undian &amp; susunan gelanggang (Urus Gelanggang / Jana Susunan) dipadam (peranti ini &amp; Google Sheets). Pasukan, pengadil &amp; pengguna dikekalkan.">🧹 Reset Event (Hari Sebenar)</button>
                 <button type="button" class="btn btn-danger btn-sm" id="btnResetData">⟲ Tetap Semula Kejohanan</button>
               </div>
             </div>
@@ -15864,14 +15864,36 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
 
-    // Reset Event: kosongkan SEMUA markah / keputusan / log (peranti ini + Google Sheets)
-    // tetapi KEKALKAN pasukan, pengadil, pengguna, tetapan & senarai gelanggang.
+    // v1.30.1: Reset Event (Hari Sebenar) - FUTSAL + BADMINTON + Urus Gelanggang (susunan & kunci acara)
+    // Semua markah / keputusan / log / undian dipadam (peranti ini + Google Sheets) dan susunan
+    // gelanggang kembali kepada jadual ASAL. Pasukan, pengadil, pengguna & tetapan DIKEKALKAN.
+    const RESET_GAS_MIN = '1.20.1';
+
+    // Jadual asal Badminton (BM_SEED) -> pelayan kembalikan gelanggang & slot kalah mati
+    function bmAsalUntukReset() {
+      return ((BM_SEED && BM_SEED.matches) || []).map(m => ({
+        id: m.id, gelanggang: m.gel, peringkat: m.peringkat,
+        kodP1: m.kod1, kodP2: m.kod2, namaP1: m.nama1, namaP2: m.nama2
+      }));
+    }
+
+    // Kosongkan data Badminton dalam memori peranti ini (dibaca semula daripada Google Sheets)
+    function resetBadmintonTempatan() {
+      try {
+        dash.bm.data = null; dash.bm.at = 0; dash.bm.err = ''; dash.bm.lama = false; dash.bm.gel = null; dash.bm.srvAt = 0;
+        Object.assign(bmc, { cfg: null, versi: 0, susunan: {}, kunci: {}, loaded: false, error: '', lastOk: null });
+        Object.assign(bmRef, { list: [], loaded: false, sel: null, fin: null, resit: null, msg: '', err: false, loadedAt: 0, lastTry: 0 });
+        Object.assign(bmSave, { timer: null, busy: false, pending: false, state: '', err: '', lastAt: 0 });
+      } catch (err) { console.warn('[resetBadmintonTempatan]', err); }
+      try { localStorage.removeItem(BM_SB_KEY); localStorage.removeItem(SB_TEAM_KEY); } catch (err) { /* abaikan */ }
+    }
+
     async function resetEventData() {
       if (!canManageSystem()) {
         showToast('Hanya Master Admin boleh reset event.', 'error');
         return false;
       }
-      if (!await uiConfirm('RESET EVENT untuk hari perlawanan sebenar?\n\nSemua markah, keputusan, log pengesahan, kunci gelanggang & undian Pusingan Kedua akan dipadam (dalam peranti ini DAN Google Sheets).\n\nPasukan, pengadil, pengguna & gelanggang DIKEKALKAN.\n\nDisyorkan: Eksport JSON dahulu sebagai sandaran.')) return false;
+      if (!await uiConfirm('RESET EVENT untuk hari perlawanan sebenar?\n\nFUTSAL & BADMINTON akan dikembalikan kepada keadaan ASAL (dalam peranti ini DAN Google Sheets):\n• Semua markah, keputusan, log pengesahan, kunci gelanggang & undian Pusingan Kedua dipadam\n• Urus Gelanggang: senarai gelanggang kembali lalai, susunan Jana Susunan & kunci Separuh Akhir / Akhir dipadam\n• Gelanggang setiap perlawanan kembali mengikut jadual asal\n\nPasukan, pengadil & pengguna DIKEKALKAN.\n\nDisyorkan: Eksport JSON dahulu sebagai sandaran.')) return false;
       const typed = await uiPrompt('Taip RESET EVENT untuk mengesahkan:');
       if (typed === null || typed.trim().toUpperCase() !== 'RESET EVENT') {
         showToast('Reset event dibatalkan.', 'info');
@@ -15881,20 +15903,33 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (btn) btn.disabled = true;
       try {
         let sheetsOk = false;
+        let res = null;
         if (getGasUrl()) {
+          if (!navigator.onLine) { showToast('Tiada sambungan internet. Reset event memerlukan Google Sheets. Tiada data dipadam.', 'error', 7000); return false; }
           const adminKey = await ensureAdminKey();
           if (!adminKey) { showToast('Reset dibatalkan: PIN Master Admin diperlukan untuk kosongkan Google Sheets.', 'error'); return false; }
-          const res = await callGas({ action: 'resetAcara', adminKey });
+          // Pastikan Code.gs menyokong reset dua sukan SEBELUM memadam apa-apa
+          const ping = await callGas({ action: 'ping' });
+          if (!ping || !ping.ok) {
+            showToast(`Google Sheets tidak dapat dihubungi: ${(ping && ping.error) || 'ralat rangkaian'}. Tiada data dipadam.`, 'error', 7000);
+            return false;
+          }
+          if (cmpVersi(ping.versi || '0', RESET_GAS_MIN) < 0) {
+            showToast(`Code.gs di Google Sheets masih v${ping.versi || '?'}. Reset Futsal + Badminton perlukan v${RESET_GAS_MIN}: tampal Code.gs terkini > Deploy > Manage deployments > ✏️ Edit > Version: New version > Deploy. Tiada data dipadam.`, 'error', 12000);
+            return false;
+          }
+          res = await callGas({ action: 'resetAcara', adminKey, bmAsal: bmAsalUntukReset() });
           if (!res || !res.ok) {
-            showToast(`Google Sheets gagal direset: ${(res && res.error) || 'ralat rangkaian'}. Tiada data dipadam.`, 'error', 7000);
+            showToast(`Google Sheets gagal direset: ${(res && res.error) || 'ralat rangkaian'}. Tiada data dipadam dalam peranti ini.`, 'error', 7000);
             return false;
           }
           sheetsOk = true;
         }
+        // ---------- FUTSAL (peranti ini) ----------
         const initTeams = deepClone(INITIAL_TEAMS);
         const keep = {
           users: state.users, referees: state.referees, settings: state.settings, session: state.session,
-          events: state.events, courtConfig: state.courtConfig, courtConfigVersi: state.courtConfigVersi,
+          events: state.events,
           teams: (state.teams || []).map(t => {
             // slot undian X1..Y3 dikembalikan kepada asal (undian ujian dibuang)
             if (/^SR-[XY]\d$/.test(t.id)) return initTeams.find(x => x.id === t.id) || t;
@@ -15902,18 +15937,34 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           }),
           ui: state.ui
         };
-        state = createDefaultState();
+        state = createDefaultState();   // courtConfig lalai, courtSusunan {}, courtKunciAcara {}, matches & courts asal
         Object.assign(state, keep);
+        const gelSrv = res && res.senaraiGelanggang;
+        state.courtConfigVersi = (gelSrv && Number(gelSrv.versi)) || Date.now();
+        state.courtConfigPending = false;
         state.matches.forEach(m => { m.eventId = (state.events[m.kategori] || {}).id || m.eventId; });
         state.courts.forEach(c => { c.eventId = (state.events[c.kategori] || {}).id || c.eventId || ''; });
         normalizeState();
         ensureSettings();
         saveState();
         lastSyncSignature = null;
+        // ---------- BADMINTON (peranti ini) ----------
+        resetBadmintonTempatan();
         renderAll();
-        if (sheetsOk) await syncToGoogleSheets({});
+        if (sheetsOk) {
+          await syncToGoogleSheets({});
+          try { await bmcLoad({ silent: true }); } catch (err) { console.warn('[resetEvent] bmcLoad', err); }
+          try { renderAll(); } catch (err) { /* abaikan */ }
+        }
         setActiveTab('tab-live');
-        showToast(sheetsOk ? 'Event direset. Semua markah ujian dipadam di peranti ini & Google Sheets. Sedia untuk hari sebenar!' : 'Event direset dalam peranti ini.', 'success', 6000);
+        const bm = res && res.badminton;
+        if (sheetsOk && bm && !bm.ok) {
+          showToast(`Futsal direset. Badminton GAGAL direset: ${bm.error || 'ralat tidak diketahui'}.`, 'error', 9000);
+        } else {
+          showToast(sheetsOk
+            ? 'Event direset: Futsal & Badminton kembali asal (markah, keputusan, log & susunan gelanggang). Sedia untuk hari sebenar!'
+            : 'Event direset dalam peranti ini (Google Sheets tidak disambung).', 'success', 7000);
+        }
         return true;
       } finally {
         if (btn) btn.disabled = false;
