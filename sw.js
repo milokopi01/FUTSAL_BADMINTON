@@ -7,7 +7,7 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.36.0';  // v1.36.0: peti keluar LocalStorage + anti spam klik + Background Sync (peti-keluar.js)
+const VERSI_SW = '1.37.0';  // v1.37.0: Peti Kelulusan Badminton sentiasa segerak + auto-fit gelanggang swa-pulih
 // const VERSI_SW_LAMA = '1.35.0';  // v1.35.0: cuba semula automatik + anti-bertindih (reqId) untuk Code.gs v1.22.0  // v1.34.1: pembaikan autosimpan pengadil Badminton  // v1.34.0: PRESTASI - Sahkan keputusan Badminton sepantas Futsal (tiada jem / lag)
 const CACHE = 'karnival-pk-kbb-' + VERSI_SW;
 const SHELL = ['./', './index.html', './admin-pasukan.js', './admin-jadual.js', './admin-skor.js', './peti-keluar.js', './manifest.json',

@@ -2223,8 +2223,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     /* Kad gelanggang badminton: regang isi skrin, gelanggang (padang) membesar */
     #tab-bm-live #bmStageWrap.af-fill { display: flex !important; flex-direction: column !important; overflow: hidden !important; box-sizing: border-box; }
     #tab-bm-live #bmStageWrap.af-fill > #bmCourtsGrid {
-      flex: 1 0 auto !important; min-height: auto !important; margin-bottom: 10px !important;
-      grid-auto-rows: auto !important; grid-template-rows: none !important;
+      flex: 1 1 auto !important; min-height: 0 !important; margin-bottom: 10px !important;
+      grid-auto-rows: 1fr !important; grid-template-rows: none !important;   /* v1.37.0: baris sama tinggi, isi skrin */
       align-content: stretch !important; align-items: stretch !important;
     }
     #tab-bm-live #bmStageWrap.af-fill .court-card {
@@ -9226,8 +9226,19 @@ void main() {
       state.ui.activeTab = tabId;
       saveState();
       try { applyMergeView(true); } catch (e) { /* abaikan */ }
-      if (tabId === 'tab-approval' && canApprove()) pullMatchesFromSheet();
+      if (tabId === 'tab-approval' && canApprove()) {
+        try { renderApprovals(); updateApprovalBadge(); } catch (e) { /* abaikan */ }   // v1.37.0: papar data sedia ada serta-merta
+        pullMatchesFromSheet({ silent: true, paksa: true });
+      }
     }
+
+    // v1.37.0: Peti Kelulusan disegerak automatik setiap 10 s semasa dibuka (keputusan pengadil masuk tanpa tekan butang)
+    setInterval(() => {
+      try {
+        if (document.hidden || !state.ui || state.ui.activeTab !== 'tab-approval' || !canApprove()) return;
+        pullMatchesFromSheet({ silent: true, paksa: true });
+      } catch (e) { /* abaikan */ }
+    }, 10000);
 
     function updateApprovalBadge() {
       const badge = document.getElementById('approvalCount');
@@ -10871,7 +10882,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const bmJob = bolehBm ? petiBmTarik(opts) : Promise.resolve(false);
       petiBm.job = bmJob;
       const [ok, bmBerubah] = await Promise.all([pullFutsalFromSheet(opts), bmJob.catch(() => false)]);
-      if (bmBerubah) petiBmSelepas();   // v1.34.0: satu lukisan digabung (tiada renderAdmin penuh)
+      petiBmSelepas();   // v1.37.0: SENTIASA lukis semula (data mungkin telah dikemas kini oleh papan live)
       return ok;
     }
 
@@ -15258,7 +15269,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     async function petiBmTarik(opts = {}) {
       if (petiBm.busy) { try { return await petiBm.job; } catch (e) { return false; } }
-      if (!opts.manual && Date.now() - petiBm.at < 12000) return false;
+      if (!opts.manual && !opts.paksa && Date.now() - petiBm.at < 12000) return false;
       if (!getGasUrl() || !navigator.onLine || typeof dashFetch !== 'function') return false;
       petiBm.busy = true;
       const sebelum = JSON.stringify(petiBmPending().map(m => [m.id, m.s1, m.s2]));
@@ -18439,7 +18450,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
     function bmApproved(m) { return m.sah === 'DISAHKAN' && m.s1 !== null && m.s2 !== null && m.s1 !== m.s2; }
     function bmIsLive(m) { return !bmApproved(m) && ['SEDANG BERLANGSUNG', 'LIVE', 'REHAT'].includes(m.status); }
-    function bmIsWaitSah(m) { return !bmApproved(m) && m.status === 'TAMAT'; }
+    function bmIsWaitSah(m) { return !bmApproved(m) && m.sah !== 'DISAHKAN' && String(m.status || '').indexOf('TAMAT') === 0; }   // v1.37.0: terima 'TAMAT' & 'TAMAT - TUNGGU SAH'
     function bmIsGroup(m) { return m.peringkat === 'PERINGKAT KUMPULAN'; }
     function bmPlaceholder(n) { const s = bmStr(n); return !s || s.charAt(0) === '('; }
     function bmOvRank(m) {
@@ -19710,6 +19721,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         renderBmKnockout(model);
         renderBmSchedule(model);
         renderBmLive(model);   // v1.19.0
+        // v1.37.0: Peti Kelulusan & lencana sentiasa sepadan dengan papan gelanggang
+        try { updateApprovalBadge(); } catch (e) { /* abaikan */ }
+        try { if (state.ui && state.ui.activeTab === 'tab-approval') renderApprovals(); } catch (e) { /* abaikan */ }
         const n = bmNoticeHtml();
         document.querySelectorAll('[data-bm-notice]').forEach(el => { el.innerHTML = n; });
       } catch (err) {
@@ -20122,10 +20136,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           stage.classList.add('af-fill');
           stage.style.height = availableH + 'px';
           // v1.27.1: jika Isi Penuh menyebabkan kandungan terpotong, kembali ke susun atur biasa
-          if (stage.scrollHeight > stage.clientHeight + 2) { stage.classList.remove('af-fill'); stage.style.height = ''; }
-          if (scaleInfo) scaleInfo.textContent = 'Skala: 100% · Isi Penuh';
+          if (stage.scrollHeight > stage.clientHeight + 2) { stage.classList.remove('af-fill'); stage.style.height = ''; lastFit.nofill = true; }
+          else lastFit.nofill = false;
+          if (scaleInfo) scaleInfo.textContent = lastFit.nofill ? 'Skala: 100%' : 'Skala: 100% · Isi Penuh';
           return;
         }
+        lastFit.nofill = false;
 
         // Langkah 2: kandungan melebihi skrin -> skala kecil, lebar dipadankan semula
         stage.classList.remove('af-fill');
@@ -20227,6 +20243,26 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
       // Perhati perubahan gelanggang & giliran
       window.addEventListener('resize', scheduleFit);
+      // v1.37.0: SWA-PULIH - semak setiap 1.5 s bahawa pentas benar-benar memenuhi skrin
+      // (fon lewat dimuat, zum pelayar, tukar paparan sukan, kad dilukis semula, skrin projektor).
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(fitLiveStage, 50));
+      window.addEventListener('load', () => setTimeout(fitLiveStage, 120));
+      window.addEventListener('orientationchange', () => setTimeout(fitLiveStage, 300));
+      setInterval(() => {
+        try {
+          if (document.hidden || !autoFitActive || !isDesktopFitView()) return;
+          const tabId = activeLiveTabId();
+          const stage = tabId ? document.getElementById(STAGES[tabId]) : null;
+          if (!stage || !stage.offsetParent) return;
+          if (document.documentElement.classList.contains('autofit-scroll')) return;
+          const r = stage.getBoundingClientRect();
+          const target = window.innerHeight - 10;
+          const terpotong = r.bottom > window.innerHeight + 4 || r.right > window.innerWidth + 4;
+          const kosong = target - r.bottom > 30 && !lastFit.nofill;
+          const lebarSalah = Math.abs(r.width - (stage.parentElement ? stage.parentElement.clientWidth : r.width)) > 8;
+          if (terpotong || kosong || lebarSalah) { lastFit.key = ''; fitLiveStage(); }
+        } catch (e) { /* abaikan */ }
+      }, 1500);
       document.addEventListener('fullscreenchange', () => setTimeout(fitLiveStage, 200));
       window.addEventListener('hashchange', () => setTimeout(fitLiveStage, 120));
       document.addEventListener('DOMContentLoaded', () => {
