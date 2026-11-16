@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxt3baaJI_xARDuY470OjEx_6n0_n_2wm4RASAXZQH7RRtXGD_LwoVVTUOy3PlFQL7QgQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -20050,6 +20050,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       'use strict';
       let autoFitActive = localStorage.getItem('karnival_autofit_live') !== 'off';
       let autoFitTimer = null;
+      let lastFit = { key: '', scale: 1 };
 
       const MIN_SCALE = 0.62; // v1.27.1: di bawah ini teks terlalu kecil untuk dibaca
       function isDesktopFitView() {
@@ -20149,6 +20150,13 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           // v1.27.1: elak kad gelanggang terpotong selepas Isi Penuh
           if (stage.scrollHeight > stage.clientHeight + 2) { stage.classList.remove('af-fill'); stage.style.height = ''; }
         }
+        // v1.28.1: histerisis - elak skala 'kecil besar' bila kemas kini kecil (pemasa/skor) berlaku
+        const vpKey = window.innerWidth + 'x' + window.innerHeight + ':' + tabId;
+        if (lastFit.key === vpKey && Math.abs(lastFit.scale - scale) < 0.03) {
+          scale = lastFit.scale;
+          stage.style.width = (100 / scale) + '%';
+        }
+        lastFit = { key: vpKey, scale: scale };
         stage.style.transformOrigin = 'top left';
         stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
         // v1.27.1: skrin kecil (cth. laptop 1366x768) -> jangan potong kandungan; benarkan skrol
@@ -20210,7 +20218,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         ].filter(Boolean);
 
         if (window.MutationObserver && targetNodes.length > 0) {
-          const obs = new MutationObserver(scheduleFit);
+          // v1.28.1: abaikan perubahan teks sahaja (pemasa 1 saat, skor) supaya skrin tidak berdenyut
+          const obs = new MutationObserver(muts => {
+            const structural = muts.some(m =>
+              [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1 && !(n.classList && n.classList.contains('shuttle'))));
+            if (structural) scheduleFit();
+          });
           targetNodes.forEach(node => {
             obs.observe(node, { childList: true, subtree: true });
           });
