@@ -3102,9 +3102,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 <div class="field" style="width:190px;">
                   <label for="newCourtKategori">Kategori</label>
                   <select class="select" id="newCourtKategori">
-                    <option value="SM">Sekolah Menengah (SM)</option>
-                    <option value="SR">Sekolah Rendah (SR)</option>
-                    <option value="SEMUA">Semua Kategori (Terbuka)</option>
+                    <option value="SEMUA" selected>Semua Kategori (Terbuka)</option>
                   </select>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" id="btnAddCourt">＋ Tambah Gelanggang</button>
@@ -3159,9 +3157,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 <div class="field" style="width:190px;">
                   <label for="bmNewCourtKategori">Kategori</label>
                   <select class="select" id="bmNewCourtKategori">
-                    <option value="SM">Sekolah Menengah (SM)</option>
-                    <option value="SR">Sekolah Rendah (SR)</option>
-                    <option value="SEMUA">Semua Kategori (Terbuka)</option>
+                    <option value="SEMUA" selected>Semua Kategori (Terbuka)</option>
                   </select>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" id="btnBmAddCourt">＋ Tambah Gelanggang</button>
@@ -8172,6 +8168,9 @@ void main() {
        --------------------------------------------------------- */
     const COURT_ID_RE = /^[A-Z0-9]{1,3}$/;
     const COURT_KAT_OPEN = 'SEMUA';   // v1.18.0: gelanggang terbuka kepada semua kategori
+    // v1.38.0: true -> SEMUA gelanggang (Futsal & Badminton) sentiasa terbuka kepada SR & SM,
+    // dan gelanggang kosong diisi automatik dengan baki perlawanan daripada gelanggang lain.
+    const SEMUA_GELANGGANG_TERBUKA = true;
     const COURT_MAX = 12;
     const COURT_STAGE_RANK = { 'PERINGKAT KUMPULAN': 0, 'PUSINGAN KEDUA': 1, 'SUKU AKHIR': 1, 'SEPARUH AKHIR': 2, 'TEMPAT 3/4': 3, 'AKHIR': 3 };
     const courtCfgSync = { busy: false, error: '', lastOk: null, changedAt: 0, lastTry: 0 };
@@ -8190,7 +8189,8 @@ void main() {
         if (!COURT_ID_RE.test(id) || seen[id] || (kat !== 'SR' && kat !== 'SM' && kat !== COURT_KAT_OPEN)) return;
         seen[id] = true;
         const nama = String(g.nama || '').replace(/\s+/g, ' ').trim().slice(0, 40) || `Gelanggang ${id}`;
-        out.push({ id, nama, kategori: kat, aktif: !(g.aktif === false || g.aktif === 'false') });
+        // v1.38.0: SEMUA gelanggang terbuka kepada Sekolah Rendah & Menengah
+        out.push({ id, nama, kategori: SEMUA_GELANGGANG_TERBUKA ? COURT_KAT_OPEN : kat, aktif: !(g.aktif === false || g.aktif === 'false') });
       });
       return out.slice(0, COURT_MAX);
     }
@@ -8574,7 +8574,7 @@ void main() {
       const namaEl = document.getElementById('newCourtName');
       const katEl = document.getElementById('newCourtKategori');
       const id = String(idEl ? idEl.value : '').trim().toUpperCase();
-      const kat = katEl ? katEl.value : 'SM';
+      const kat = SEMUA_GELANGGANG_TERBUKA ? COURT_KAT_OPEN : (katEl ? katEl.value : 'SM');
       if (!COURT_ID_RE.test(id)) { showToast('Kod gelanggang mesti 1-3 huruf / nombor (cth: E).', 'warn'); if (idEl) idEl.focus(); return false; }
       if (state.courtConfig.some(g => g.id === id)) { showToast(`Gelanggang ${id} sudah wujud. Gunakan butang "Aktifkan" jika ia ditutup.`, 'warn'); return false; }
       if (state.courtConfig.length >= COURT_MAX) { showToast(`Maksimum ${COURT_MAX} gelanggang.`, 'warn'); return false; }
@@ -8795,7 +8795,7 @@ void main() {
             <td class="mono">${escapeHtml(g.id)}</td>
             <td>${escapeHtml(g.nama)}</td>
             <td><select class="select" style="padding:4px 8px;font-size:.8rem;" data-court-kat="${escapeHtml(g.id)}" aria-label="Kategori Gelanggang ${escapeHtml(g.id)}">
-              ${['SM', 'SR', COURT_KAT_OPEN].map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === COURT_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
+              ${(SEMUA_GELANGGANG_TERBUKA ? [COURT_KAT_OPEN] : ['SM', 'SR', COURT_KAT_OPEN]).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === COURT_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
             </select></td>
             <td>${statusHtml}</td>
             <td class="num">${baki}</td>
@@ -14590,35 +14590,77 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const queueFor = (cid, exclude) => state.matches
         .filter(m => m.gelanggang === cid && m.status === MATCH_STATUS.MENUNGGU && !exclude.has(m.id))
         .sort(matchQueueCmp);
+      // v1.38.0: perlawanan yang SEDIA dimainkan (pasukan sudah ditentukan) didahulukan
+      const firstOf = list => list.find(m => isMatchReady(m)) || list[0] || null;
+
+      // v1.38.0: pasukan yang sedang bermain / sedang dipanggil di gelanggang lain
+      const teamsBusy = (exceptCourt) => {
+        const set = new Set();
+        state.matches.forEach(m => { if (m.status === MATCH_STATUS.LIVE) matchTeamKeys(m).forEach(k => set.add(k)); });
+        state.courts.forEach(c => {
+          if (c === exceptCourt) return;
+          const m = getMatch(c.matchSemasa);
+          if (m && (m.status === MATCH_STATUS.MENUNGGU || m.status === MATCH_STATUS.LIVE)) matchTeamKeys(m).forEach(k => set.add(k));
+        });
+        return set;
+      };
+      // v1.38.0: AUTO-ISI - gelanggang kosong mengambil baki perlawanan seterusnya daripada gelanggang lain
+      const takeFromOthers = (court, exclude) => {
+        if (!SEMUA_GELANGGANG_TERBUKA || court.ditutup) return null;
+        const busy = teamsBusy(court);
+        const cand = state.matches.filter(m => {
+          if (m.status !== MATCH_STATUS.MENUNGGU || m.gelanggang === court.id || exclude.has(m.id)) return false;
+          if (!courtAccepts(court, m.kategori) || !isMatchReady(m)) return false;
+          const lock = validEventLock(m);
+          if (lock && lock !== court.id) return false;   // Separuh Akhir / Akhir dikunci ke gelanggang lain
+          return !matchTeamKeys(m).some(k => busy.has(k));
+        }).sort(matchQueueCmp);
+        return cand[0] || null;
+      };
+      let moved = false;
 
       targets.forEach(court => {
         const current = getMatch(court.matchSemasa);
+        // v1.38.0: perlawanan semasa yang belum ditentukan pasukannya tidak menyekat gelanggang
+        const stuck = !!current && current.status === MATCH_STATUS.MENUNGGU && !isMatchReady(current) &&
+          court.status === COURT_STATUS.SEDIA && !court.pengadilId && !isCourtPaused(court);
         const isFree = court.status !== COURT_STATUS.LIVE &&
           court.status !== COURT_STATUS.TAMAT &&
-          (!current || current.status === MATCH_STATUS.SELESAI);
+          (!current || current.status === MATCH_STATUS.SELESAI || stuck);
 
         if (isFree) {
           if (current) occupied.delete(current.id);
-          const nextMatch = queueFor(court.id, occupied)[0] || null;
-          Object.assign(court, {
-            matchSemasa: nextMatch ? nextMatch.id : null,
-            status: COURT_STATUS.SEDIA,
-            skorLiveP1: 0,
-            skorLiveP2: 0,
-            fasaMasa: 'SEDIA',
-            fasaMulaPada: null,
-            masaMula: null,
-            kemaskiniTerakhir: now
-          });
-          if (nextMatch) {
-            occupied.add(nextMatch.id);
-            assignments.push({ courtId: court.id, matchId: nextMatch.id });
+          const own = queueFor(court.id, occupied);
+          let nextMatch = own.find(m => isMatchReady(m)) || null;
+          if (!nextMatch) {
+            const taken = takeFromOthers(court, occupied);
+            if (taken) {
+              taken.gelanggang = court.id;
+              nextMatch = taken;
+              moved = true;
+            }
           }
+          if (!nextMatch) nextMatch = own[0] || null;
+          if (!(stuck && nextMatch && current && nextMatch.id === current.id)) {
+            Object.assign(court, {
+              matchSemasa: nextMatch ? nextMatch.id : null,
+              status: COURT_STATUS.SEDIA,
+              skorLiveP1: 0,
+              skorLiveP2: 0,
+              fasaMasa: 'SEDIA',
+              fasaMulaPada: null,
+              masaMula: null,
+              kemaskiniTerakhir: now
+            });
+            if (nextMatch) assignments.push({ courtId: court.id, matchId: nextMatch.id });
+          }
+          if (nextMatch) occupied.add(nextMatch.id);
         }
 
-        const upcoming = queueFor(court.id, occupied)[0] || null;
-        court.matchSeterusnya = upcoming ? upcoming.id : null;
+        court.matchSeterusnya = (firstOf(queueFor(court.id, occupied)) || {}).id || null;
       });
+      // Perlawanan dipindahkan -> kemas kini "seterusnya" bagi semua gelanggang
+      if (moved) state.courts.forEach(c => { c.matchSeterusnya = (firstOf(queueFor(c.id, occupied)) || {}).id || null; });
 
       if (!options.silent) {
         saveState();
@@ -18942,7 +18984,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const kat = String(g.kategori || '').trim().toUpperCase();
         if (!BMC_ID_RE.test(id) || seen[id] || (kat !== 'SR' && kat !== 'SM' && kat !== BMC_KAT_OPEN)) return;
         seen[id] = true;
-        out.push({ id, nama: String(g.nama || '').replace(/\s+/g, ' ').trim().slice(0, 40) || `Gelanggang ${id}`, kategori: kat, aktif: !(g.aktif === false || g.aktif === 'false') });
+        out.push({ id, nama: String(g.nama || '').replace(/\s+/g, ' ').trim().slice(0, 40) || `Gelanggang ${id}`, kategori: SEMUA_GELANGGANG_TERBUKA ? BMC_KAT_OPEN : kat, aktif: !(g.aktif === false || g.aktif === 'false') });
       });
       return out.slice(0, BMC_MAX);
     }
@@ -18972,10 +19014,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const by = {};
       (model ? model.matches : []).forEach(m => { const g = bmUp(m.gel); if (BMC_ID_RE.test(g)) (by[g] = by[g] || new Set()).add(m.kat); });
       const ids = Object.keys(by).sort(bmcIdSort);
-      if (!ids.length) return BMC_LALAI.map(g => Object.assign({}, g));
+      if (!ids.length) return BMC_LALAI.map(g => Object.assign({}, g, SEMUA_GELANGGANG_TERBUKA ? { kategori: BMC_KAT_OPEN } : {}));
       return ids.map(id => {
         const k = Array.from(by[id]).filter(x => x === 'SR' || x === 'SM');
-        return { id, nama: `Gelanggang ${id}`, kategori: k.length === 1 ? k[0] : BMC_KAT_OPEN, aktif: true };
+        return { id, nama: `Gelanggang ${id}`, kategori: SEMUA_GELANGGANG_TERBUKA || k.length !== 1 ? BMC_KAT_OPEN : k[0], aktif: true };
       });
     }
     function bmcSyncFromServer() {
@@ -19163,7 +19205,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!bmcGuard('menambah gelanggang Badminton')) return false;
       const idEl = document.getElementById('bmNewCourtId'), namaEl = document.getElementById('bmNewCourtName'), katEl = document.getElementById('bmNewCourtKategori');
       const id = String(idEl ? idEl.value : '').trim().toUpperCase();
-      const kat = katEl ? katEl.value : 'SM';
+      const kat = SEMUA_GELANGGANG_TERBUKA ? BMC_KAT_OPEN : (katEl ? katEl.value : 'SM');
       if (!BMC_ID_RE.test(id)) { showToast('Kod gelanggang mesti 1-3 huruf / nombor (cth: 7).', 'warn'); if (idEl) idEl.focus(); return false; }
       const model = await bmcFresh();
       if (!model) return false;
@@ -19352,7 +19394,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <td class="mono">${escapeHtml(g.id)}</td>
             <td>${escapeHtml(g.nama)}</td>
             <td><select class="select" style="padding:4px 8px;font-size:.8rem;" data-bmc-kat="${escapeHtml(g.id)}" aria-label="Kategori Gelanggang Badminton ${escapeHtml(g.id)}" ${sibuk ? 'disabled' : ''}>
-              ${['SM', 'SR', BMC_KAT_OPEN].map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === BMC_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
+              ${(SEMUA_GELANGGANG_TERBUKA ? [BMC_KAT_OPEN] : ['SM', 'SR', BMC_KAT_OPEN]).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === BMC_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
             </select></td>
             <td>${g.aktif ? '<span class="badge badge-ready badge-dot">Aktif</span>' : '<span class="badge badge-off">Ditutup</span>'}</td>
             <td class="num">${baki}</td>
@@ -19421,7 +19463,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return ids.map(gel => {
         const ms = vis.filter(m => String(m.gel) === gel);
         const live = ms.find(bmIsLive) || null;
-        const pending = ms.filter(bmIsPending).sort(susCmp);
+        // v1.38.0: perlawanan yang pasukannya sudah ditentukan didahulukan (gelanggang tidak tersekat)
+        const pending = ms.filter(bmIsPending).sort((a, b) => ((a.tbd1 || a.tbd2) ? 1 : 0) - ((b.tbd1 || b.tbd2) ? 1 : 0) || susCmp(a, b));
         const wait = ms.filter(bmIsWaitSah);
         const done = live ? null : (wait[wait.length - 1] || null);
         const cur = live || done || pending[0] || null;
