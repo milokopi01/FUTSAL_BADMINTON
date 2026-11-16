@@ -188,6 +188,26 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  ditulis supaya SEMUA peranti menerima susunan asal.
  *                - Pasukan, pengadil, urusetia, peraturan & Sandaran_Data DIKEKALKAN.
  *
+ *              + v1.22.0 - KETAHANAN SERENTAK (100 PENGADIL SERENTAK, TIADA JEM / DATA BERTINDIH):
+ *                - SISTEM GILIRAN: setiap doPost beratur melalui LockService.getScriptLock().
+ *                  Kunci diperoleh dengan CUBAAN SEMULA berperingkat (backoff + jitter) dalam
+ *                  bajet KUNCI_BAJET_MS. Jika giliran masih penuh -> { ok:false, kod:'SIBUK',
+ *                  cubaLagi:true, cubaSelepasMs } dan TIADA data ditulis (selamat dihantar semula).
+ *                - BAHAGIAN KRITIKAL DIPENDEKKAN: kunci dipegang hanya semasa membaca + menulis
+ *                  Google Sheets + flush. Binaan papan live & isyarat Dashboard dibuat SELEPAS
+ *                  kunci dilepaskan (dilindungi nombor versi cache -> binaan lama tidak disimpan).
+ *                  -> giliran bergerak jauh lebih pantas bila ramai pengadil menekan serentak.
+ *                - ANTI-BERTINDIH (idempotensi): setiap POST boleh membawa 'reqId' unik. Respons
+ *                  berjaya disimpan 6 jam (v1.22.1; asal 10 minit); hantar semula dengan reqId sama (internet putus,
+ *                  tamat masa, cubaan semula automatik) TIDAK menulis dua kali -> { ulangan:true }.
+ *                - CUBA SEMULA RALAT SEMENTARA: ralat Google Sheets sementara (cth. "Service
+ *                  Spreadsheets timed out") dicuba semula sekali di dalam giliran yang sama.
+ *                - Papan live awam (doGet) TIDAK LAGI mengambil kunci skrip -> bacaan penonton /
+ *                  projektor tidak pernah melambatkan giliran pengadil.
+ *                - SpreadsheetApp.flush() SENTIASA dipanggil sebelum kunci dilepaskan supaya
+ *                  pengadil seterusnya dalam giliran membaca data terkini.
+ *                - ?action=ping membawa 'giliran' (statistik ringkas: bil. SIBUK, tunggu terakhir).
+ *
  *  Lajur dikesan melalui NAMA TAJUK (baris 1), jadi susunan lajur Bahagian 1
  *  boleh dikekalkan. Lajur yang tiada akan ditambah automatik di hujung.
  * =========================================================
@@ -205,7 +225,9 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.21.0';  // v1.21.0: PRESTASI - Sahkan / Tolak keputusan Badminton sepantas Futsal (tiada jem / lag)
+const API_VERSI = '1.22.1';  // v1.22.1: anti-bertindih reqId disimpan 6 jam (peti keluar telefon pengadil, index.html v1.36.0)
+// const API_VERSI_LAMA = '1.22.0';  // v1.22.0: KETAHANAN SERENTAK - giliran LockService + cuba semula + anti-bertindih (reqId)
+// const API_VERSI_LAMA = '1.21.1';  // v1.21.0: PRESTASI - Sahkan / Tolak keputusan Badminton sepantas Futsal (tiada jem / lag)
 // const API_VERSI_LAMA = '1.20.2';  // v1.20.2: Kalah mati Badminton - nama pasukan diisi automatik (butang pengadil aktif)
 // const API_VERSI_LAMA = '1.20.1';  // v1.20.1: Reset Event (Hari Sebenar) kini reset FUTSAL + BADMINTON + Urus Gelanggang & susunan
 // const API_VERSI_LAMA = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tutup / Jana Susunan / kunci Separuh Akhir & Akhir)
@@ -219,7 +241,7 @@ const API_VERSI = '1.21.0';  // v1.21.0: PRESTASI - Sahkan / Tolak keputusan Bad
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan', 'bmSahPantas'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan', 'bmSahPantas', 'giliranSerentak', 'antiBertindih', 'petiKeluar'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -412,7 +434,7 @@ function doGet(e) {
     }
     if (action === 'ping') {
       return output_({ ok: true, message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI,
-        sheetPengadil: SHEET_PENGADIL, senaraiGelanggang: bacaGelanggang_(), masa: new Date().toISOString() }, p.callback);
+        sheetPengadil: SHEET_PENGADIL, senaraiGelanggang: bacaGelanggang_(), giliran: statGiliran_(), masa: new Date().toISOString() }, p.callback);
     }
     if (action === 'gelanggang' || action === 'senaraigelanggang') {
       return output_({ ok: true, senaraiGelanggang: bacaGelanggang_(), masa: new Date().toISOString() }, p.callback);
@@ -539,6 +561,116 @@ function dataBadminton_() {
 }
 
 /* =========================================================
+   v1.22.0 - KETAHANAN SERENTAK (GILIRAN, CUBA SEMULA & ANTI-BERTINDIH)
+   Had Google Apps Script yang perlu difahami:
+   - Maks ~30 pelaksanaan serentak bagi satu skrip. Permintaan yang menunggu kunci turut
+     dikira. Lebihan ditolak oleh Google SENDIRI (sebelum doPost berjalan) -> aplikasi
+     (callGas dalam index.html) mencuba semula secara automatik dengan reqId yang sama.
+   - LockService.getScriptLock() = SATU giliran untuk SEMUA penulis. Hanya satu permintaan
+     menulis pada satu masa -> tiada baris bertindih / tulis ganti separuh jalan.
+   ========================================================= */
+const KUNCI_BAJET_MS = 18000;                       // jumlah masa maks menunggu giliran (< 30 s had aplikasi)
+const KUNCI_CUBAAN_MS = [1500, 2500, 3500, 4500, 6000];   // tempoh setiap cubaan tryLock (berperingkat)
+const IDEM_PREFIX = 'REQ_V122_';                    // cache respons mengikut reqId
+const IDEM_SAAT = 21600;                            // v1.22.1: 6 jam (maks CacheService) - peti keluar telefon boleh hantar semula lewat
+const IDEM_MAX_AKSARA = 90000;                      // had nilai CacheService ~100 KB
+const RALAT_SEMENTARA_RE = /Service Spreadsheets|timed out|Service error|Service unavailable|Internal error|Too many simultaneous|Rate exceeded|try again later|Server error|Lock timeout|Perkhidmatan/i;
+const RALAT_SEMENTARA_CUBA_MAX = 1;                 // cuba semula sekali di dalam giliran yang sama
+const STAT_GILIRAN_KEY = 'STAT_GILIRAN_V122';
+
+function reqIdSah_(v) {
+  const s = String(v === null || v === undefined ? '' : v).trim();
+  return /^[A-Za-z0-9_\-:.]{8,80}$/.test(s) ? s : '';
+}
+
+// Dapatkan kunci skrip dengan CUBAAN SEMULA berperingkat (backoff + jitter).
+// Pulangkan { lock, cubaan, tungguMs } atau null jika giliran masih penuh selepas bajet.
+function dapatKunciGiliran_(bajetMs) {
+  const bajet = Math.max(500, Number(bajetMs) || KUNCI_BAJET_MS);
+  const mula = Date.now();
+  let lock = null;
+  let cubaan = 0;
+  while (Date.now() - mula < bajet) {
+    cubaan++;
+    try { if (!lock) lock = LockService.getScriptLock(); } catch (errL) { lock = null; }
+    const baki = bajet - (Date.now() - mula);
+    const slot = Math.max(100, Math.min(baki, KUNCI_CUBAAN_MS[Math.min(cubaan - 1, KUNCI_CUBAAN_MS.length - 1)]));
+    let dapat = false;
+    try { dapat = !!(lock && lock.tryLock(slot)); }
+    catch (errT) { console.warn('tryLock cubaan ' + cubaan, errT); dapat = false; }   // ralat LockService sementara
+    if (dapat) return { lock: lock, cubaan: cubaan, tungguMs: Date.now() - mula };
+    // Rehat rawak pendek (jitter) supaya permintaan yang gagal tidak berebut serentak lagi
+    const rehat = Math.min(bajet - (Date.now() - mula), 40 + Math.floor(Math.random() * 120 * cubaan));
+    if (rehat > 0) Utilities.sleep(rehat);
+  }
+  return null;
+}
+
+function ambilResponsIdem_(reqId) {
+  if (!reqId) return null;
+  try {
+    const c = CacheService.getScriptCache().get(IDEM_PREFIX + reqId);
+    if (!c) return null;
+    const obj = JSON.parse(c);
+    obj.ulangan = true;   // permintaan ini telah diproses sebelum ini -> tiada tulisan kedua
+    return obj;
+  } catch (err) { return null; }
+}
+
+function simpanResponsIdem_(reqId, obj) {
+  if (!reqId || !obj || !obj.ok) return;   // hanya respons BERJAYA (gagal = selamat diulang)
+  try {
+    let s = JSON.stringify(obj);
+    if (s.length > IDEM_MAX_AKSARA) {
+      // respons besar: simpan ringkasan sahaja (cukup untuk mengesahkan 'sudah diterima')
+      s = JSON.stringify({ ok: true, versi: API_VERSI, ringkas: true, message: 'Permintaan telah diproses.', masa: obj.masa || new Date().toISOString() });
+    }
+    CacheService.getScriptCache().put(IDEM_PREFIX + reqId, s, IDEM_SAAT);
+  } catch (err) { /* cache pilihan sahaja */ }
+}
+
+function isRalatSementara_(err) {
+  return RALAT_SEMENTARA_RE.test(String(err && err.message || err));
+}
+
+// Statistik giliran ringkas (anggaran, bukan atom) -> dipaparkan dalam ?action=ping
+function catatStatGiliran_(jenis, tungguMs) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const st = JSON.parse(cache.get(STAT_GILIRAN_KEY) || '{}');
+    st.sibuk = Number(st.sibuk) || 0;
+    st.berjaya = Number(st.berjaya) || 0;
+    st.ulangan = Number(st.ulangan) || 0;
+    st.tungguMaksMs = Number(st.tungguMaksMs) || 0;
+    if (jenis === 'sibuk') { st.sibuk++; st.sibukTerakhir = new Date().toISOString(); }
+    else if (jenis === 'ulangan') st.ulangan++;
+    else st.berjaya++;
+    if (tungguMs !== undefined) {
+      st.tungguTerakhirMs = tungguMs;
+      st.tungguMaksMs = Math.max(st.tungguMaksMs, tungguMs);
+    }
+    st.dikemaskini = new Date().toISOString();
+    cache.put(STAT_GILIRAN_KEY, JSON.stringify(st), 21600);
+  } catch (err) { /* abaikan */ }
+}
+
+function statGiliran_() {
+  try {
+    const st = JSON.parse(CacheService.getScriptCache().get(STAT_GILIRAN_KEY) || '{}');
+    st.bajetMs = KUNCI_BAJET_MS;
+    return st;
+  } catch (err) { return { bajetMs: KUNCI_BAJET_MS }; }
+}
+
+function sibukRespons_() {
+  return {
+    ok: false, kod: 'SIBUK', cubaLagi: true, versi: API_VERSI,
+    cubaSelepasMs: 600 + Math.floor(Math.random() * 1400),
+    error: 'Pelayan sibuk (giliran penuh). Data BELUM disimpan - sedang cuba lagi secara automatik.'
+  };
+}
+
+/* =========================================================
    doPost(e) - KEMAS KINI DATA
    Format diterima (Content-Type text/plain atau application/json):
    1) Sync penuh daripada aplikasi (butang "Sync ke Google Sheets"):
@@ -566,148 +698,205 @@ function dataBadminton_() {
      pemegang kunci diterima.
    ========================================================= */
 function doPost(e) {
-  const lock = LockService.getScriptLock();
-  let ubahPapan = true;   // v1.9.2: buang cache papan live hanya bila data papan mungkin berubah
-  let tandaSukan = '';    // Bahagian 5: sukan yang datanya berubah -> isyarat kepada Dashboard
-  try {
-    lock.waitLock(20000);
-  } catch (err) {
-    return output_({ ok: false, error: 'Pelayan sibuk. Cuba lagi.' });
+  // v1.22.0: badan permintaan dihurai SEBELUM beratur -> masa memegang kunci lebih singkat
+  let body;
+  try { body = parseBody_(e); }
+  catch (err) { return output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err) }); }
+  const reqId = reqIdSah_(body && (body.reqId || body.idPermintaan));
+
+  // ANTI-BERTINDIH (laluan pantas): permintaan yang sama sudah diproses -> pulangkan respons asal
+  const ulangPantas = ambilResponsIdem_(reqId);
+  if (ulangPantas) { catatStatGiliran_('ulangan'); return output_(ulangPantas); }
+
+  // SISTEM GILIRAN: tunggu giliran menulis dengan cubaan semula berperingkat
+  const giliran = dapatKunciGiliran_(KUNCI_BAJET_MS);
+  if (!giliran) {
+    catatStatGiliran_('sibuk', KUNCI_BAJET_MS);
+    return output_(sibukRespons_());
   }
-
+  const lock = giliran.lock;
+  const ctx = {
+    ubahPapan: true,    // v1.9.2: bina semula papan live hanya bila data papan mungkin berubah
+    tandaSukan: ''      // Bahagian 5: sukan yang datanya berubah -> isyarat kepada Dashboard
+  };
+  let out = null;
+  let verPapan = '';
+  let berjaya = false;
   try {
-    const body = parseBody_(e);
-    if (API_TOKEN && body.token !== API_TOKEN) {
-      return output_({ ok: false, error: 'Token tidak sah.' });
-    }
+    // Semak semula SELEPAS mendapat giliran: salinan pendua yang menunggu di belakang
+    // permintaan asal tidak akan menulis kali kedua.
+    const ulang = ambilResponsIdem_(reqId);
+    if (ulang) { ctx.ubahPapan = false; ctx.tandaSukan = ''; catatStatGiliran_('ulangan', giliran.tungguMs); out = output_(ulang); return out; }
 
-    const action = String(body.action || '').toLowerCase();
-    const sukan = jenisSukan_(body.sukan);
-    if (ACTIONS_TANPA_ISYARAT.indexOf(action) < 0 &&
-        !(action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
-      tandaSukan = sukan;
-    }
-    // Tolak seluruh permintaan bercampur sebelum sebarang tulisan.
-    semakSukanRekod_(body.matches, sukan);
-    semakSukanRekod_(body.teams || body.pasukan, sukan);
-    semakSukanRekod_([body.match || body], sukan);
-    if (sukan === 'BADMINTON') ubahPapan = false;
-    // v1.19.0: akaun Urusetia & Sub Admin
-    if (URUSETIA_ACTIONS.indexOf(action) >= 0) {
-      ubahPapan = false;
-      return output_(handleUrusetia_(action, body));
-    }
-    if (action === 'simpanskorsukan') {
-      // v1.19.1: Sub Admin boleh Mula Perlawanan, Simpan Skor Sementara, Sahkan & Tolak keputusan
-      const subSah = !isMasterAdmin_(body) ? sesiSubAdmin_(body.tokenUrusetia) : null;
-      if (!isMasterAdmin_(body) && !(subSah && subSah.ok)) {
-        return output_({ ok: false, kod: subSah ? subSah.kod : 'BUKAN_ADMIN', error: subSah ? subSah.error : 'Hanya Master Admin atau Sub Admin boleh menyimpan skor.' });
+    let cubaRalat = 0;
+    while (true) {
+      try {
+        out = prosesPost_(body, ctx);
+        break;
+      } catch (err) {
+        // CUBA SEMULA: ralat Google Sheets sementara -> cuba sekali lagi dalam giliran yang sama
+        if (isRalatSementara_(err) && cubaRalat < RALAT_SEMENTARA_CUBA_MAX) {
+          cubaRalat++;
+          console.warn('doPost ralat sementara, cuba semula #' + cubaRalat, err);
+          try { SpreadsheetApp.flush(); } catch (errF) { /* abaikan */ }
+          Utilities.sleep(250 + Math.floor(Math.random() * 500));
+          continue;
+        }
+        console.error(err);
+        out = output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err),
+          cubaLagi: isRalatSementara_(err) || undefined });
+        break;
       }
-      return output_(simpanSkorSukan_(body, sukan, subSah && subSah.ok ? 'Sub Admin: ' + subSah.u.nama : 'Master Admin'));
     }
-    if (action === 'simpanjadual') {
-      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh mengubah jadual.' });
-      return output_(simpanJadualSukan_(body, sukan));
-    }
-    if (action === 'simpanpasukan' || action === 'syncpasukan') {
-      ubahPapan = false;
-      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan pasukan.' });
-      return output_(simpanPasukanSukan_(body, sukan));
-    }
-    // v1.18.0: skor Badminton oleh PENGADIL BADMINTON sahaja (token sesi). Pengadil Futsal ditolak.
-    if (action === 'skorpengadilbadminton') {
-      ubahPapan = false;
-      if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Skor pengadil Badminton mesti dihantar untuk sukan BADMINTON sahaja.' });
-      return output_(skorPengadilBadminton_(body));
-    }
-    // v1.20.0: Urus Gelanggang Badminton (Master Admin sahaja)
-    if (action === 'urusgelanggangbadminton') {
-      ubahPapan = false;
-      if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Urus Gelanggang Badminton mesti dihantar dengan sukan BADMINTON.' });
-      if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', versi: API_VERSI, error: 'Hanya Master Admin boleh mengurus gelanggang Badminton.' });
-      return output_(urusGelanggangBm_(body));
-    }
-    if (sukan === 'BADMINTON' && MATCH_ACTIONS.indexOf(action) < 0 && action !== 'ping') {
-      throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
-    }
-    if (sukan === 'BADMINTON' && !isMasterAdmin_(body) && action !== 'ping') {
-      return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Tulisan Badminton memerlukan kunci Master Admin.' });
-    }
-    // v1.19.0: Sahkan / Tolak daripada Peti Kelulusan -> Master Admin ATAU Sub Admin sahaja
-    if (String(body.sumber || '').toUpperCase() === 'PETI-KELULUSAN' && MATCH_ACTIONS.indexOf(action) >= 0 && !isMasterAdmin_(body)) {
-      const sub = sesiSubAdmin_(body.tokenUrusetia);
-      if (!sub.ok) return output_({ ok: false, kod: sub.kod, versi: API_VERSI, error: sub.error });
-    }
-    if (ACTIONS_TANPA_UBAH_PAPAN.indexOf(action) >= 0 ||
-        (action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
-      ubahPapan = false;
-    }
-
-    // Pangkalan data pengadil
-    if (PENGADIL_ACTIONS.indexOf(action) >= 0) {
-      return output_(handlePengadil_(action, body));
-    }
-    if (action === 'ping') {
-      return output_({ ok: true, message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI, masa: new Date().toISOString() });
-    }
-    if (MATCH_ACTIONS.indexOf(action) < 0) {
-      return output_({ ok: false, kod: 'TINDAKAN_TIDAK_DIKENALI', versi: API_VERSI, error: 'Tindakan tidak dikenali: ' + action });
-    }
-
-    let list = [];
-    if (Array.isArray(body.matches)) list = body.matches;
-    else if (action === 'updatematch' || body.id) list = [body.match || body];
-    if (!list.length) return output_({ ok: false, error: 'Tiada data perlawanan diterima.' });
-
-    // FASA 4: hanya kunci Master Admin yang sah boleh mengubah keputusan DISAHKAN
-    const admin = isMasterAdmin_(body);
-    const result = upsertMatches_(list, { admin: admin, sukan: sukan });
-    // v1.9.4: perlawanan yang telah DISAHKAN -> lepaskan kunci gelanggang supaya
-    // gelanggang boleh terus ke perlawanan seterusnya.
-    // v1.9.5: hanya bila ada keputusan DISAHKAN dalam penghantaran ini (elak bacaan jadual setiap gol)
-    const adaSah = Array.isArray(body.matches) && body.matches.some(function (x) {
-      return x && String(x.pengesahan || '').toUpperCase() === 'DISAHKAN';
-    });
-    if (adaSah && sukan === 'FUTSAL') { try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); } }
-
-    // Carta Liga dikira semula DI PELAYAN daripada Jadual_Perlawanan (bukan dipercayai
-    // bulat-bulat daripada peranti) supaya peranti dengan data lama tidak merosakkan carta.
-    if (sukan === 'FUTSAL') {
-      const carta = kiraCartaPelayan_(readTable_(getJadualSheet_()));
-      if (carta.length) writeStandings_(carta);
-      else if (Array.isArray(body.standings) && body.standings.length) writeStandings_(body.standings);
-    }
-    if (Array.isArray(body.approvalLog) && body.approvalLog.length) writeApprovalLog_(body.approvalLog, sukan);
-    // FASA 7: log Sahkan / Tolak daripada Peti Kelulusan -> ditambah, bukan ditulis ganti
-    if (Array.isArray(body.logBaharu) && body.logBaharu.length) tambahApprovalLog_(body.logBaharu, sukan);
-    if (sukan === 'BADMINTON') { SpreadsheetApp.flush(); CacheService.getScriptCache().remove(BM_CACHE_KEY); }
-
-    return output_({
-      ok: true,
-      sheet: tabSukan_(sukan, 'jadual'),
-      sukan: sukan,
-      versi: API_VERSI,
-      dikemaskini: result.updated,
-      ditambah: result.inserted,
-      ditolak: result.skipped,
-      dilindungi: result.protectedRows,   // perlawanan dikunci pengadil (markah tidak ditulis ganti)
-      idDilindungi: result.idDilindungi || [],   // v1.9.6: ID yang tidak ditulis (peranti kembalikan ke Peti Kelulusan)
-      dimuktamad: result.finalRows,       // keputusan DISAHKAN yang cuba diubah tanpa kunci Master Admin
-      lapuk: result.staleRows,            // data peranti lama (versi pembetulan tidak sepadan)
-      masa: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error(err);
-    return output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err) });
+    berjaya = RESPONS_OK_;
+    if (berjaya) simpanResponsIdem_(reqId, RESPONS_OBJ_);
+    catatStatGiliran_('berjaya', giliran.tungguMs);
+    return out;
   } finally {
+    // Semua tulisan DIKOMIT sebelum giliran diserahkan -> pengadil seterusnya membaca data terkini
+    try { SpreadsheetApp.flush(); } catch (errF) { console.warn('flush', errF); }
+    // Naikkan versi papan DI DALAM kunci: binaan papan yang bermula sebelum tulisan ini dibuang
+    if (ctx.ubahPapan) { try { verPapan = naikVersiPapan_(); } catch (errV) { verPapan = ''; } }
+    try { lock.releaseLock(); } catch (errR) { console.warn('releaseLock', errR); }
+    // --- DI LUAR KUNCI (giliran sudah bergerak) ---
     // v1.9.3: papan dibina semula terus ke cache -> dashboard / projektor nampak gol serta-merta
-    try { if (ubahPapan) segarkanPapan_(); }
-    finally {
-      // Bahagian 5: cap masa ditulis SELEPAS data & cache disegarkan -> Dashboard tidak membaca data lama
-      try { if (tandaSukan && RESPONS_OK_) tandaPerubahan_(tandaSukan); } catch (errI) { console.warn('tandaPerubahan_', errI); }
-      lock.releaseLock();
-    }
+    try { if (ctx.ubahPapan) segarkanPapan_(verPapan); } catch (errP) { console.warn('segarkanPapan_', errP); }
+    // Bahagian 5: cap masa ditulis SELEPAS data & cache disegarkan -> Dashboard tidak membaca data lama
+    try { if (ctx.tandaSukan && berjaya) tandaPerubahan_(ctx.tandaSukan); } catch (errI) { console.warn('tandaPerubahan_', errI); }
   }
+}
+
+// v1.22.0: logik tindakan doPost (dijalankan DI DALAM giliran / kunci skrip).
+// Pulangkan output_(...). ctx.ubahPapan / ctx.tandaSukan dikemas kini di sini.
+function prosesPost_(body, ctx) {
+  ctx.ubahPapan = true;
+  ctx.tandaSukan = '';
+  if (API_TOKEN && body.token !== API_TOKEN) {
+    return output_({ ok: false, error: 'Token tidak sah.' });
+  }
+
+  const action = String(body.action || '').toLowerCase();
+  const sukan = jenisSukan_(body.sukan);
+  if (ACTIONS_TANPA_ISYARAT.indexOf(action) < 0 &&
+      !(action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
+    ctx.tandaSukan = sukan;
+  }
+  // Tolak seluruh permintaan bercampur sebelum sebarang tulisan.
+  semakSukanRekod_(body.matches, sukan);
+  semakSukanRekod_(body.teams || body.pasukan, sukan);
+  semakSukanRekod_([body.match || body], sukan);
+  if (sukan === 'BADMINTON') ctx.ubahPapan = false;
+  // v1.19.0: akaun Urusetia & Sub Admin
+  if (URUSETIA_ACTIONS.indexOf(action) >= 0) {
+    ctx.ubahPapan = false;
+    return output_(handleUrusetia_(action, body));
+  }
+  if (action === 'simpanskorsukan') {
+    // v1.19.1: Sub Admin boleh Mula Perlawanan, Simpan Skor Sementara, Sahkan & Tolak keputusan
+    const subSah = !isMasterAdmin_(body) ? sesiSubAdmin_(body.tokenUrusetia) : null;
+    if (!isMasterAdmin_(body) && !(subSah && subSah.ok)) {
+      return output_({ ok: false, kod: subSah ? subSah.kod : 'BUKAN_ADMIN', error: subSah ? subSah.error : 'Hanya Master Admin atau Sub Admin boleh menyimpan skor.' });
+    }
+    return output_(simpanSkorSukan_(body, sukan, subSah && subSah.ok ? 'Sub Admin: ' + subSah.u.nama : 'Master Admin'));
+  }
+  if (action === 'simpanjadual') {
+    if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh mengubah jadual.' });
+    return output_(simpanJadualSukan_(body, sukan));
+  }
+  if (action === 'simpanpasukan' || action === 'syncpasukan') {
+    ctx.ubahPapan = false;
+    if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh menyimpan pasukan.' });
+    return output_(simpanPasukanSukan_(body, sukan));
+  }
+  // v1.18.0: skor Badminton oleh PENGADIL BADMINTON sahaja (token sesi). Pengadil Futsal ditolak.
+  if (action === 'skorpengadilbadminton') {
+    ctx.ubahPapan = false;
+    if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Skor pengadil Badminton mesti dihantar untuk sukan BADMINTON sahaja.' });
+    return output_(skorPengadilBadminton_(body));
+  }
+  // v1.20.0: Urus Gelanggang Badminton (Master Admin sahaja)
+  if (action === 'urusgelanggangbadminton') {
+    ctx.ubahPapan = false;
+    if (sukan !== 'BADMINTON') return output_({ ok: false, kod: 'SUKAN_LAIN', versi: API_VERSI, error: 'Urus Gelanggang Badminton mesti dihantar dengan sukan BADMINTON.' });
+    if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', versi: API_VERSI, error: 'Hanya Master Admin boleh mengurus gelanggang Badminton.' });
+    return output_(urusGelanggangBm_(body));
+  }
+  if (sukan === 'BADMINTON' && MATCH_ACTIONS.indexOf(action) < 0 && action !== 'ping') {
+    throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
+  }
+  const petiSubBm_ = sukan === 'BADMINTON' && !isMasterAdmin_(body) && String(body.sumber || '').toUpperCase() === 'PETI-KELULUSAN' &&
+    MATCH_ACTIONS.indexOf(action) >= 0 && sesiSubAdmin_(body.tokenUrusetia).ok;   // v1.21.1: Sub Admin Peti Kelulusan Badminton
+  if (sukan === 'BADMINTON' && !isMasterAdmin_(body) && !petiSubBm_ && action !== 'ping') {
+    return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Tulisan Badminton memerlukan kunci Master Admin.' });
+  }
+  // v1.19.0: Sahkan / Tolak daripada Peti Kelulusan -> Master Admin ATAU Sub Admin sahaja
+  if (String(body.sumber || '').toUpperCase() === 'PETI-KELULUSAN' && MATCH_ACTIONS.indexOf(action) >= 0 && !isMasterAdmin_(body)) {
+    const sub = sesiSubAdmin_(body.tokenUrusetia);
+    if (!sub.ok) return output_({ ok: false, kod: sub.kod, versi: API_VERSI, error: sub.error });
+  }
+  if (ACTIONS_TANPA_UBAH_PAPAN.indexOf(action) >= 0 ||
+      (action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
+    ctx.ubahPapan = false;
+  }
+
+  // Pangkalan data pengadil
+  if (PENGADIL_ACTIONS.indexOf(action) >= 0) {
+    return output_(handlePengadil_(action, body));
+  }
+  if (action === 'ping') {
+    return output_({ ok: true, message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI, giliran: statGiliran_(), masa: new Date().toISOString() });
+  }
+  if (MATCH_ACTIONS.indexOf(action) < 0) {
+    return output_({ ok: false, kod: 'TINDAKAN_TIDAK_DIKENALI', versi: API_VERSI, error: 'Tindakan tidak dikenali: ' + action });
+  }
+
+  let list = [];
+  if (Array.isArray(body.matches)) list = body.matches;
+  else if (action === 'updatematch' || body.id) list = [body.match || body];
+  if (!list.length) return output_({ ok: false, error: 'Tiada data perlawanan diterima.' });
+
+  // FASA 4: hanya kunci Master Admin yang sah boleh mengubah keputusan DISAHKAN
+  const admin = isMasterAdmin_(body);
+  const result = upsertMatches_(list, { admin: admin, sukan: sukan });
+  // v1.9.4: perlawanan yang telah DISAHKAN -> lepaskan kunci gelanggang supaya
+  // gelanggang boleh terus ke perlawanan seterusnya.
+  // v1.9.5: hanya bila ada keputusan DISAHKAN dalam penghantaran ini (elak bacaan jadual setiap gol)
+  const adaSah = list.some(function (x) {
+    return x && String(x.pengesahan || '').toUpperCase() === 'DISAHKAN';
+  });
+  if (adaSah && sukan === 'FUTSAL') { try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); } }
+
+  // Carta Liga dikira semula DI PELAYAN daripada Jadual_Perlawanan (bukan dipercayai
+  // bulat-bulat daripada peranti) supaya peranti dengan data lama tidak merosakkan carta.
+  if (sukan === 'FUTSAL') {
+    const carta = kiraCartaPelayan_(readTable_(getJadualSheet_()));
+    if (carta.length) writeStandings_(carta);
+    else if (Array.isArray(body.standings) && body.standings.length) writeStandings_(body.standings);
+  }
+  if (Array.isArray(body.approvalLog) && body.approvalLog.length) writeApprovalLog_(body.approvalLog, sukan);
+  // FASA 7: log Sahkan / Tolak daripada Peti Kelulusan -> ditambah, bukan ditulis ganti
+  if (Array.isArray(body.logBaharu) && body.logBaharu.length) tambahApprovalLog_(body.logBaharu, sukan);
+  if (sukan === 'BADMINTON') {
+    SpreadsheetApp.flush();
+    // v1.21.1: keputusan DISAHKAN melalui Peti Kelulusan -> isi slot kalah mati serta-merta (butang pengadil muncul tanpa tunggu 45 s)
+    if (adaSah) { try { rombakJadualBadminton_(); } catch (errR) { console.warn('rombakJadualBadminton_', errR); } }
+    CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  }
+
+  return output_({
+    ok: true,
+    sheet: tabSukan_(sukan, 'jadual'),
+    sukan: sukan,
+    versi: API_VERSI,
+    dikemaskini: result.updated,
+    ditambah: result.inserted,
+    ditolak: result.skipped,
+    dilindungi: result.protectedRows,   // perlawanan dikunci pengadil (markah tidak ditulis ganti)
+    idDilindungi: result.idDilindungi || [],   // v1.9.6: ID yang tidak ditulis (peranti kembalikan ke Peti Kelulusan)
+    dimuktamad: result.finalRows,       // keputusan DISAHKAN yang cuba diubah tanpa kunci Master Admin
+    lapuk: result.staleRows,            // data peranti lama (versi pembetulan tidak sepadan)
+    masa: new Date().toISOString()
+  });
 }
 
 /* =========================================================
@@ -2439,9 +2628,10 @@ function papanAwam_(data, cache) {
   return data;
 }
 
-function simpanPapan_(cache, data) {
+function simpanPapan_(cache, data, ver) {
   try {
     data.dibina = Date.now();
+    data.verPapan = ver || '';
     cache.put(PAPAN_CACHE_KEY, JSON.stringify(data), PAPAN_CACHE_MAX_SAAT);
   } catch (err) { /* abaikan */ }
 }
@@ -2451,10 +2641,24 @@ function binaPapanCache_(cache) {
   const data = papanLive_();
   if (cache) {
     try {
-      if ((cache.get(PAPAN_CACHE_VER) || '') === verSebelum) simpanPapan_(cache, data);
+      if ((cache.get(PAPAN_CACHE_VER) || '') === verSebelum) simpanPapan_(cache, data, verSebelum);
     } catch (err) { /* abaikan */ }
   }
   return data;
+}
+
+// v1.22.0: token binaan (CacheService) menggantikan kunci skrip untuk pembaca papan.
+// Pembaca papan TIDAK LAGI beratur dalam giliran pengadil.
+const PAPAN_BINA_KEY = 'PAPAN_BINA_V122';
+function ambilTokenBina_(cache) {
+  try {
+    if (cache.get(PAPAN_BINA_KEY)) return false;
+    cache.put(PAPAN_BINA_KEY, '1', 15);
+    return true;
+  } catch (err) { return true; }
+}
+function lepasTokenBina_(cache) {
+  try { cache.remove(PAPAN_BINA_KEY); } catch (err) { /* abaikan */ }
 }
 
 function papanLiveCached_() {
@@ -2463,42 +2667,57 @@ function papanLiveCached_() {
   if (!cache) return papanAwam_(papanLive_(), false);
   let lama = null;
   try {
-    const hit = cache.get(PAPAN_CACHE_KEY);
+    const got = cache.getAll([PAPAN_CACHE_KEY, PAPAN_CACHE_VER]) || {};
+    const hit = got[PAPAN_CACHE_KEY];
     if (hit) {
       const data = JSON.parse(hit);
       const umur = Date.now() - (Number(data.dibina) || 0);
-      if (umur >= 0 && umur <= PAPAN_CACHE_SAAT * 1000) return papanAwam_(data, true);
+      const verSemasa = got[PAPAN_CACHE_VER] || '';
+      const verSama = !data.verPapan || !verSemasa || data.verPapan === verSemasa;
+      if (verSama && umur >= 0 && umur <= PAPAN_CACHE_SAAT * 1000) return papanAwam_(data, true);
       lama = data;
     }
   } catch (err) { lama = null; }
   if (lama) {
     // Salinan lama wujud: hanya satu permintaan membina semula, yang lain terus dilayan
-    let kunci = null;
-    try { kunci = LockService.getScriptLock(); } catch (err) { kunci = null; }
-    if (!kunci || !kunci.tryLock(0)) return papanAwam_(lama, true);
+    if (!ambilTokenBina_(cache)) return papanAwam_(lama, true);
     try {
       return papanAwam_(binaPapanCache_(cache), false);
     } catch (err) {
       return papanAwam_(lama, true);
-    } finally {
-      try { kunci.releaseLock(); } catch (err) { /* abaikan */ }
+    } finally { lepasTokenBina_(cache); }
+  }
+  // Tiada salinan langsung: tunggu sebentar jika permintaan lain sedang membina
+  if (!ambilTokenBina_(cache)) {
+    for (let i = 0; i < 8; i++) {
+      Utilities.sleep(250);
+      try {
+        const c = cache.get(PAPAN_CACHE_KEY);
+        if (c) return papanAwam_(JSON.parse(c), true);
+      } catch (err) { /* cuba lagi */ }
     }
   }
-  const kunci = LockService.getScriptLock();
-  if (!kunci.tryLock(1000)) return { ok: false, error: 'Pelayan sedang mengemas kini papan. Cuba lagi.' };
   try { return papanAwam_(binaPapanCache_(cache), false); }
-  finally { kunci.releaseLock(); }
+  finally { lepasTokenBina_(cache); }
 }
 
-// v1.9.3: dipanggil oleh doPost (masih di bawah LockService) selepas penulisan
-function segarkanPapan_() {
-  SpreadsheetApp.flush();
+// v1.22.0: dipanggil DI DALAM kunci selepas tulisan -> versi baharu papan
+function naikVersiPapan_() {
+  const ver = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
+  CacheService.getScriptCache().put(PAPAN_CACHE_VER, ver, 21600);
+  return ver;
+}
+
+// v1.9.3 / v1.22.0: dipanggil oleh doPost SELEPAS kunci dilepaskan. Papan hanya disimpan
+// jika tiada tulisan lain selepas tulisan ini (versi masih sama) -> tiada papan basi.
+function segarkanPapan_(verSaya) {
   let cache = null;
   try { cache = CacheService.getScriptCache(); } catch (err) { cache = null; }
   if (!cache) return;
   try {
-    cache.put(PAPAN_CACHE_VER, String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8), 21600);
-    simpanPapan_(cache, papanLive_());
+    if (!verSaya) verSaya = naikVersiPapan_();
+    const data = papanLive_();
+    if ((cache.get(PAPAN_CACHE_VER) || '') === verSaya) simpanPapan_(cache, data, verSaya);
   } catch (err) {
     bustPapanCache_();
   }
@@ -2506,7 +2725,7 @@ function segarkanPapan_() {
 
 /* =========================================================
    Bahagian 5: ISYARAT PERUBAHAN MASA NYATA (Admin -> Dashboard)
-   - tandaPerubahan_(sukan): dipanggil oleh doPost (di bawah LockService) & onEdit.
+   - tandaPerubahan_(sukan): dipanggil oleh doPost (SELEPAS kunci dilepaskan, v1.22.0) & onEdit.
    - isyaratPerubahan_()   : ?action=perubahan -> { futsal, badminton } cap masa (ms).
    - Pelayar membandingkan cap masa; jika berubah, data sukan itu dibaca semula serta-merta.
    ========================================================= */
@@ -3255,8 +3474,10 @@ function parseBody_(e) {
 
 // Bahagian 6: status respons terakhir -> isyarat perubahan hanya dihantar bila penulisan BERJAYA
 let RESPONS_OK_ = false;
+let RESPONS_OBJ_ = null;   // v1.22.0: respons terakhir (untuk cache anti-bertindih)
 function output_(obj, callback) {
   RESPONS_OK_ = !!(obj && obj.ok);
+  RESPONS_OBJ_ = obj || null;
   const json = JSON.stringify(obj);
   if (callback && /^[A-Za-z_$][\w$.]{0,63}$/.test(callback)) {
     return ContentService.createTextOutput(callback + '(' + json + ');')
@@ -3726,7 +3947,7 @@ function simpanSkorSukan_(body, sukan, oleh) {
         statusBaris_(d).indexOf('TAMAT') < 0 || String(d.pengesahan || '').toUpperCase() === 'DISAHKAN') {
       return { ok:false, kod:'LAPUK', versi:API_VERSI, error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
     }
-  } else if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
+  } else if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', versi:API_VERSI, error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
   // v1.18.1: Tolak keputusan Badminton (Peti Kelulusan) -> kembali kepada pengadil
   if ((body.skor || {}).keputusan === 'DITOLAK') return tolakKeputusanSukan_(sheet, table, rec, id, sukan, body.skor);
   const x = body.skor || {};
@@ -3833,7 +4054,7 @@ function skorPengadilBadminton_(body) {
       return { ok: false, kod: 'DIKUNCI', error: 'Keputusan ' + id + ' telah dihantar oleh pengadil ' + lama + ' dan sedang menunggu pengesahan Master Admin.' };
     }
     const kemas = d.kemaskini ? new Date(d.kemaskini).getTime() : 0;
-    if (status === 'LIVE' && kemas && Date.now() - kemas < BM_PENGADIL_TERBIAR_MINIT * 60000) {
+    if (status === 'LIVE' && kemas && !isNaN(kemas) && Date.now() - kemas < BM_PENGADIL_TERBIAR_MINIT * 60000) {
       return { ok: false, kod: 'DIKUNCI', error: 'Perlawanan ' + id + ' sedang diadili oleh pengadil ' + lama + '.' };
     }
   }
@@ -4086,8 +4307,9 @@ function rombakJadualBadminton_(sheet, table) {
 
 // Jalankan manual dari editor Apps Script jika perlu (cth. selepas import jadual).
 function isiKalahMatiBadminton() {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  const giliran = dapatKunciGiliran_(30000);
+  if (!giliran) throw new Error('Pelayan sibuk. Cuba lagi sebentar.');
+  const lock = giliran.lock;
   try {
     const res = rombakJadualBadminton_();
     console.log(res.perubahan.length ? res.perubahan.join('\n') : 'Tiada slot kalah mati Badminton yang perlu diisi.');
