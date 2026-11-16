@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwuslxouCRsDY3HmreRADGfZ0A1JKn19aoniJH0hhADKJKlZlP3-1cABgSzmiXluVlqXg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -20199,6 +20199,32 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         autoFitTimer = setTimeout(fitLiveStage, 80);
       }
 
+      // v1.28.2: kunci saiz. Kemas kini data (skor, pemasa, render semula kad) TIDAK lagi
+      // mengira semula saiz. Hanya bila bilangan gelanggang/giliran berubah, saiz skrin,
+      // skrin penuh, atau tukar tab.
+      function layoutSig() {
+        const tabId = activeLiveTabId();
+        const stage = tabId ? document.getElementById(STAGES[tabId]) : null;
+        if (!stage) return '';
+        let n = 0;
+        stage.querySelectorAll('[id]').forEach(el => { if (el.children) n = n * 31 + el.children.length & 0xffffff; });
+        return tabId + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + n;
+      }
+      let lastSig = '';
+      let structTimer = null;
+      function scheduleStructFit() {
+        clearTimeout(structTimer);
+        structTimer = setTimeout(() => {
+          const sig = layoutSig();
+          if (sig && sig === lastSig) return;
+          lastSig = sig;
+          fitLiveStage();
+        }, 600);
+      }
+      const _fit = fitLiveStage;
+      fitLiveStage = function() { _fit(); lastSig = layoutSig(); };
+      window.fitLiveStage = fitLiveStage;
+
       // Perhati perubahan gelanggang & giliran
       window.addEventListener('resize', scheduleFit);
       document.addEventListener('fullscreenchange', () => setTimeout(fitLiveStage, 200));
@@ -20222,7 +20248,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           const obs = new MutationObserver(muts => {
             const structural = muts.some(m =>
               [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1 && !(n.classList && n.classList.contains('shuttle'))));
-            if (structural) scheduleFit();
+            if (structural) scheduleStructFit();
           });
           targetNodes.forEach(node => {
             obs.observe(node, { childList: true, subtree: true });
