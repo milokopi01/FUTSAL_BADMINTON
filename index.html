@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzocejM9e8PvR-dON3OEqLAls07kbvmAdSb-NnW9HQ2eXrj3xc822Kd0HmnxQz2lYH3oA/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -994,6 +994,24 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     @media (max-width: 860px) { .courts-grid.bm-courts { grid-template-columns: 1fr; } }
     @media (max-width: 600px) { .sb-grid.bm-sb-grid { grid-template-columns: minmax(0, 1fr); } }
     @media (prefers-reduced-motion: reduce) { .status-live .bm-pitch .shuttle { animation: none; } }
+
+    /* v1.32.0 (Pilihan A): Kad gelanggang Badminton "Seterusnya · belum mula"
+       Warna BIRU, garisan putus-putus, tiada skor (VS), tiada animasi -> tidak boleh disangka LIVE. */
+    :root { --court-next: #38bdf8; --court-next-soft: #7dd3fc; --court-next-bg: rgba(56,189,248,.12); }
+    .court-card.status-next { border: 1px dashed rgba(56,189,248,.6); box-shadow: 0 0 0 1px rgba(56,189,248,.12), 0 12px 40px rgba(56,189,248,.08); animation: none; }
+    .court-card.status-next::before { background: repeating-linear-gradient(90deg, var(--court-next) 0 12px, transparent 12px 20px); animation: none; }
+    .status-next .court-letter { color: var(--court-next-soft); border-color: rgba(56,189,248,.5); border-style: dashed; }
+    .badge-next { color: var(--court-next-soft); background: var(--court-next-bg); border-color: rgba(56,189,248,.45); animation: none; white-space: normal; text-align: center; line-height: 1.2; max-width: 100%; min-width: 0; }
+    .status-next .court-head { flex-wrap: wrap; row-gap: 6px; }
+    .court-card .badge-next { white-space: normal; }
+    .badge-next::before { content: "⏭"; font-size: .8em; line-height: 1; }
+    .status-next .pitch.bm-pitch { background: linear-gradient(135deg, #252c36, #191e26); border-color: rgba(56,189,248,.35); border-style: dashed; }
+    .status-next .pitch-overlay { color: #e0f2fe; background: rgba(8, 24, 48, .55); letter-spacing: .08em; text-align: center; padding: 0 10px; line-height: 1.3; }
+    .status-next .pitch-overlay b { display: block; color: var(--court-next-soft); font-size: 1.05em; }
+    .status-next .score-box.score-next { font-size: 1.15rem; letter-spacing: .14em; color: var(--court-next-soft); border: 1px dashed rgba(56,189,248,.45); background: rgba(56,189,248,.06); text-shadow: none; }
+    .status-next .team-side .team-name { color: var(--text-1); }
+    .status-next .next-fasa { color: var(--court-next-soft) !important; }
+    .legend .l-next { background: transparent; border: 2px dashed var(--court-next); box-sizing: border-box; }
 
     /* FASA 5: Rehat Kecemasan (penangguhan sementara) */
     .badge-rehat { color: #fde68a; background: rgba(250,204,21,.14); border-color: rgba(250,204,21,.55); }
@@ -2236,6 +2254,15 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     #tab-bm-live .pitch.bm-pitch::after { border-top-color: rgba(255,255,255,.55) !important; border-bottom-color: rgba(255,255,255,.55) !important; }
     #tab-bm-live .bm-pitch .bm-ln { background: rgba(255,255,255,.55) !important; }
     #tab-bm-live .bm-pitch .shuttle { font-size: clamp(1.1rem, 2.6vh, 1.9rem) !important; }
+    /* v1.32.0 (Pilihan A): gelanggang "Seterusnya · belum mula" kelabu-biru gelap, sempadan putus-putus (bukan biru terang seperti Live) */
+    #tab-live .status-next .pitch.bm-pitch, #tab-bm-live .status-next .pitch.bm-pitch, #projection .status-next .pitch.bm-pitch {
+      background: linear-gradient(135deg, #252c36, #191e26) !important;
+      border: 2px dashed rgba(56,189,248,.55) !important;
+    }
+    #tab-live .status-next .bm-pitch .bm-ln, #tab-bm-live .status-next .bm-pitch .bm-ln { background: rgba(255,255,255,.22) !important; }
+    body[data-sukan="SEMUA"] #tab-live .status-next .pitch-overlay,
+    body.autofit-active[data-sukan="SEMUA"] #tab-live #liveStageWrap .status-next .pitch-overlay { font-size: .66rem !important; letter-spacing: .04em !important; line-height: 1.25 !important; }
+    body[data-sukan="SEMUA"] #tab-live .status-next .score-box.score-next { font-size: 1rem !important; padding: 6px 10px !important; }
 
     /* Giliran seterusnya (Badminton): padat, 6 gelanggang dalam satu baris supaya muat skrin */
     body.autofit-active #tab-bm-live #bmStageWrap > .standby-board { flex: 0 0 auto !important; margin: 0 !important; padding: 10px 0 0 !important; }
@@ -2500,6 +2527,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           </div>
           <div class="legend" aria-label="Petunjuk warna gelanggang">
             <span><i class="l-ready"></i> Kosong / Sedia</span>
+            <span><i class="l-next"></i> Seterusnya · Belum Mula</span>
             <span><i class="l-live"></i> Live / Sedang Berlangsung</span>
             <span><i class="l-done"></i> Tamat · Menunggu Pengesahan</span>
           </div>
@@ -2628,6 +2656,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           </div>
           <div class="legend" aria-label="Petunjuk warna gelanggang">
             <span><i class="l-ready"></i> Kosong / Sedia</span>
+            <span class="only-semua-flex" style="align-items:center;gap:7px;"><i class="l-next"></i> 🏸 Seterusnya · Belum Mula</span>
             <span><i class="l-live"></i> Live / Sedang Berlangsung</span>
             <span><i class="l-done"></i> Tamat · Menunggu Pengesahan</span>
           </div>
@@ -19169,11 +19198,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const ref = bmRefBoleh();
       const showSc = c.st !== 'ready' && m;
       const s1 = showSc ? (m.s1 ?? 0) : 0, s2 = showSc ? (m.s2 ?? 0) : 0;
-      const overlay = !m ? 'Tiada perlawanan'
-        : c.st === 'done' ? 'Tamat · Menunggu pengesahan'
-        : c.st === 'ready' ? (m.tbd1 || m.tbd2 ? 'Menunggu penetapan pasukan' : 'Sedia · Menunggu servis mula') : '';
+      // v1.32.0 (Pilihan A): gelanggang belum bermula tetapi ada perlawanan -> "Seterusnya · belum mula" (biru, tiada skor)
+      const isNext = c.st === 'ready' && !!m;
+      const vSt = isNext ? 'next' : c.st;
+      const overlayHtml = !m ? dashEsc('Tiada perlawanan')
+        : c.st === 'done' ? dashEsc('Tamat · Menunggu pengesahan')
+        : isNext ? `<span><b>⏭ Seterusnya · belum mula</b>${m.tbd1 || m.tbd2 ? 'Menunggu penetapan pasukan' : 'Menunggu servis mula'}</span>` : '';
       const badge = c.st === 'live' ? (m.status === 'REHAT' ? '<span class="badge badge-live badge-dot">Rehat</span>' : '<span class="badge badge-live badge-dot">Live</span>')
         : c.st === 'done' ? '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>'
+        : isNext ? '<span class="badge badge-next" title="Perlawanan seterusnya di gelanggang ini. Belum bermula.">Seterusnya · belum mula</span>'
         : '<span class="badge badge-ok badge-dot">Kosong / Sedia</span>';
       const refM = c.live || c.done;
       const pengadil = refM && refM.pengadil ? `🧑‍⚖️ Pengadil: ${dashEsc(refM.pengadil)}` : 'Pengadil: belum ditetapkan';
@@ -19181,7 +19214,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const nextText = next
         ? `🟡 Standby: <strong>${dashEsc(next.ov)} · ${dashEsc(next.id)}</strong> — ${bmTeamLine(next, '1')} lwn ${bmTeamLine(next, '2')}`
         : 'Seterusnya: <strong>Tiada</strong>';
-      const fasa = c.st === 'live' ? (m.status === 'REHAT' ? 'Rehat' : 'Sedang berlangsung') : c.st === 'done' ? 'Tamat' : 'Sedia';
+      const fasa = c.st === 'live' ? (m.status === 'REHAT' ? 'Rehat' : 'Sedang berlangsung') : c.st === 'done' ? 'Tamat' : isNext ? 'Belum mula' : 'Sedia';
       let act = '';
       if (ref && m && !m.tbd1 && !m.tbd2) {
         const mine = c.live && c.live.pengadil && refNameKey(c.live.pengadil) === refNameKey(ref.nama);
@@ -19193,7 +19226,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         act = `<button type="button" class="btn btn-primary btn-sm" onclick="bmAdminBuka('${dashEsc(m.id)}')">${lbl}</button>`;
       }
       return `
-        <article class="court-card bm-court status-${c.st}${scoreFxOn('B:' + c.gel) ? ' goal-fx' : ''}" data-bm-court="${dashEsc(c.gel)}">
+        <article class="court-card bm-court status-${vSt}${scoreFxOn('B:' + c.gel) ? ' goal-fx' : ''}" data-bm-court="${dashEsc(c.gel)}">
           <div class="court-head">
             <div class="court-name">
               <div class="court-letter">${dashEsc(c.gel)}</div>
@@ -19209,14 +19242,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <span class="bm-ln bm-svc-l"></span><span class="bm-ln bm-svc-r"></span>
             <span class="bm-ln bm-mid-l"></span><span class="bm-ln bm-mid-r"></span>
             ${c.st === 'live' && m.status !== 'REHAT' ? '<span class="shuttle">🏸</span>' : ''}
-            ${overlay ? `<div class="pitch-overlay">${dashEsc(overlay)}</div>` : ''}
+            ${overlayHtml ? `<div class="pitch-overlay">${overlayHtml}</div>` : ''}
           </div>
           <div class="scoreboard">
             <div class="team-side">
               <div class="team-code">${m ? dashEsc(m.sing1 || m.kod1 || '-') : '-'}</div>
               <div class="team-name">${m ? bmTeamLine(m, '1') : '—'}</div>
             </div>
-            <div class="score-box" aria-label="Skor"><span${scoreHitCls('B:' + c.gel, 1)}>${s1}</span><span class="sep">:</span><span${scoreHitCls('B:' + c.gel, 2)}>${s2}</span></div>
+            ${isNext
+              ? '<div class="score-box score-next" aria-label="Belum bermula, tiada skor">VS</div>'
+              : `<div class="score-box" aria-label="Skor"><span${scoreHitCls('B:' + c.gel, 1)}>${s1}</span><span class="sep">:</span><span${scoreHitCls('B:' + c.gel, 2)}>${s2}</span></div>`}
             <div class="team-side right">
               <div class="team-code">${m ? dashEsc(m.sing2 || m.kod2 || '-') : '-'}</div>
               <div class="team-name">${m ? bmTeamLine(m, '2') : '—'}</div>
@@ -19224,7 +19259,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           </div>
           <div class="court-meta">
             <span>${m ? `${dashEsc(m.ov)} · ${dashEsc(m.id)} · ${dashEsc(bmStageText(m))}` : 'Tiada perlawanan'}</span>
-            <span>Fasa: <strong style="color:var(--text-0);">${fasa}</strong> · ${c.selesai}/${c.jumlah} disahkan</span>
+            <span>Fasa: <strong class="${isNext ? 'next-fasa' : ''}" style="color:var(--text-0);">${fasa}</strong> · ${c.selesai}/${c.jumlah} disahkan</span>
           </div>
           ${c.st === 'done' ? '<div class="court-done-note">✅ Keputusan telah dihantar pengadil. Menunggu pengesahan Master Admin.</div>' : ''}
           <div class="court-next">${nextText}</div>
