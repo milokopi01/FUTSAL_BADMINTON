@@ -205,7 +205,9 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.20.1';  // v1.20.1: Reset Event (Hari Sebenar) kini reset FUTSAL + BADMINTON + Urus Gelanggang & susunan
+const API_VERSI = '1.21.0';  // v1.21.0: PRESTASI - Sahkan / Tolak keputusan Badminton sepantas Futsal (tiada jem / lag)
+// const API_VERSI_LAMA = '1.20.2';  // v1.20.2: Kalah mati Badminton - nama pasukan diisi automatik (butang pengadil aktif)
+// const API_VERSI_LAMA = '1.20.1';  // v1.20.1: Reset Event (Hari Sebenar) kini reset FUTSAL + BADMINTON + Urus Gelanggang & susunan
 // const API_VERSI_LAMA = '1.20.0';  // v1.20.0: Urus Gelanggang Badminton (tambah / tutup / Jana Susunan / kunci Separuh Akhir & Akhir)
 // const API_VERSI_LAMA = '1.19.1';  // v1.19.0: akaun Urusetia (nama + kata laluan) di tab Senarai_Urusetia & lantikan Sub Admin (sahkan markah)
 // const API_VERSI_LAMA = '1.18.1';  // v1.18.1: Master Admin boleh Tolak keputusan Badminton dari Peti Kelulusan (simpanSkorSukan keputusan DITOLAK)
@@ -217,7 +219,7 @@ const API_VERSI = '1.20.1';  // v1.20.1: Reset Event (Hari Sebenar) kini reset F
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan', 'bmSahPantas'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -434,6 +436,18 @@ function doGet(e) {
 
     const sheet = getJadualSheet_(sukan);
     const table = readTable_(sheet);
+    // v1.20.2: isi slot kalah mati Badminton yang sudah layak (pengadil terus nampak butang Adili)
+    // v1.21.0 PRESTASI: sebelum ini SETIAP bacaan (pengadil setiap 20 s, Peti Kelulusan, Admin)
+    // mengambil kunci skrip sehingga 4 s & membaca tab pasukan -> beratur dengan Sahkan (doPost).
+    // Kini: paling kerap sekali setiap 45 s, kunci dicuba 300 ms sahaja (bacaan tidak pernah tersekat).
+    if (sukan === 'BADMINTON' && bmRombakBacaPerlu_()) {
+      const kunciBaca = LockService.getScriptLock();
+      if (kunciBaca.tryLock(300)) {
+        try { rombakJadualBadminton_(sheet, table); }
+        catch (errR) { console.warn('rombakJadualBadminton_', errR); }
+        finally { kunciBaca.releaseLock(); }
+      }
+    }
     let rows = table.rows.map(function (r) { return Object.assign({}, r.data, { sukan: sukan }); });
 
     if (p.id) rows = rows.filter(function (r) { return String(r.id).toUpperCase() === String(p.id).toUpperCase(); });
@@ -2917,7 +2931,7 @@ function pemenangBaris_(d) {
 
 function isNamaPlaceholder_(nama) {
   const n = String(nama || '').toUpperCase();
-  return !n || n === '(MENUNGGU UNDIAN)' || n.indexOf('JOHAN KUMPULAN') === 0 || n.indexOf('NAIB JOHAN KUMPULAN') === 0 ||
+  return !n || n.trim().charAt(0) === '(' || n.indexOf('PEMENANG ') === 0 || n.indexOf('JOHAN KUMPULAN') === 0 || n.indexOf('NAIB JOHAN KUMPULAN') === 0 ||
     n.indexOf('MENANG PERLAWANAN') === 0 || n.indexOf('KALAH PERLAWANAN') === 0;
 }
 
@@ -3690,7 +3704,12 @@ function simpanSkorSukan_(body, sukan, oleh) {
   const id = String(body.id || '').trim().toUpperCase();
   const sheet = getJadualSheet_(sukan);
   const table = readTable_(sheet);
-  const rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  let rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  // v1.21.0 PRESTASI: rombak awal hanya bila baris ini masih menunggu nama pasukan (sebelum ini setiap simpanan)
+  if (sukan === 'BADMINTON' && (!rec || bmBarisPerluRombak_(rec.data))) {
+    try { rombakJadualBadminton_(sheet, table); } catch (errR) { console.warn('rombakJadualBadminton_', errR); }
+    rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  }
   if (!rec) throw new Error('Perlawanan tidak dijumpai untuk ' + sukan + '.');
   const d = rec.data;
   // Master Admin boleh menyimpan markah walaupun ada kunci pengadil
@@ -3698,7 +3717,16 @@ function simpanSkorSukan_(body, sukan, oleh) {
   if (sukan === 'FUTSAL' && isRowFinal_(table.values[rec.rowIndex], table.colOf)) throw new Error('Keputusan Futsal disahkan: gunakan Pembetulan Markah sedia ada.');
   if (String(d.fasaMasa || '').toUpperCase() === 'REHAT KECEMASAN') throw new Error('Skor dibekukan semasa Rehat Kecemasan.');
   const fields = ['skorP1','skorP2','status','pengesahan','pemenangPenalti'];
-  if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
+  // v1.21.0 PRESTASI: Peti Kelulusan Badminton (asalRingan) -> tiada bacaan tambahan di peranti.
+  // Keselamatan dikekalkan: skor mesti sama dengan yang dipaparkan, status mesti TAMAT & belum DISAHKAN.
+  const kepRingan = String((body.skor || {}).keputusan || '');
+  const ringan = sukan === 'BADMINTON' && body.asalRingan === true && (kepRingan === 'DISAHKAN' || kepRingan === 'DITOLAK');
+  if (ringan) {
+    if (!body.asal || !samaNilai_(d.skorP1, body.asal.skorP1) || !samaNilai_(d.skorP2, body.asal.skorP2) ||
+        statusBaris_(d).indexOf('TAMAT') < 0 || String(d.pengesahan || '').toUpperCase() === 'DISAHKAN') {
+      return { ok:false, kod:'LAPUK', versi:API_VERSI, error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
+    }
+  } else if (!body.asal || fields.some(function (f) { return !samaNilai_(d[f], body.asal[f]); })) return { ok:false, kod:'LAPUK', error:'Skor telah berubah. Muat semula sebelum menyimpan.' };
   // v1.18.1: Tolak keputusan Badminton (Peti Kelulusan) -> kembali kepada pengadil
   if ((body.skor || {}).keputusan === 'DITOLAK') return tolakKeputusanSukan_(sheet, table, rec, id, sukan, body.skor);
   const x = body.skor || {};
@@ -3732,7 +3760,18 @@ function simpanSkorSukan_(body, sukan, oleh) {
   sheet.getRange(rec.rowIndex+1,1,1,row.length).setValues([row]);
   tambahApprovalLog_([{masa:now.toISOString(),matchId:id,keputusan:s1+' - '+s2,tindakan:final?'SKOR ADMIN DISAHKAN':'SKOR ADMIN SEMENTARA',oleh:oleh}],sukan);
   SpreadsheetApp.flush();
-  if (sukan === 'BADMINTON') CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  if (sukan === 'BADMINTON') {
+    // v1.20.2: keputusan disahkan -> isi pemenang / Johan kumpulan ke pusingan seterusnya
+    // v1.21.0 PRESTASI: guna jadual dalam memori (tiada bacaan semula seluruh tab selepas tulisan)
+    if (final) {
+      try {
+        table.values[rec.rowIndex] = row;
+        Object.assign(d, { skorP1: s1, skorP2: s2, status: 'SELESAI', pengesahan: 'DISAHKAN', fasaMasa: 'Tamat' });
+        rombakJadualBadminton_(sheet, table);
+      } catch (errR) { console.warn('rombakJadualBadminton_', errR); }
+    }
+    CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  }
   else if (final) {
     rombakJadualPelayan_(); lepasKunciMuktamad_();
     // Bahagian 5: Carta Liga di Google Sheets dikira semula selepas keputusan Admin disahkan
@@ -3771,7 +3810,12 @@ function skorPengadilBadminton_(body) {
 
   const sheet = getJadualSheet_('BADMINTON');
   const table = readTable_(sheet);
-  const rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  let rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  // v1.21.0 PRESTASI: autosimpan skor (setiap 1.2 s) tidak lagi merombak seluruh jadual & membaca tab pasukan
+  if (!rec || bmBarisPerluRombak_(rec.data)) {
+    try { rombakJadualBadminton_(sheet, table); } catch (errR) { console.warn('rombakJadualBadminton_', errR); }
+    rec = table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; });
+  }
   if (!rec) return { ok: false, error: 'Perlawanan ' + id + ' tidak dijumpai dalam jadual Badminton.' };
   const d = rec.data;
   const status = statusBaris_(d);
@@ -3845,4 +3889,208 @@ function tolakKeputusanSukan_(sheet, table, rec, id, sukan, x) {
   SpreadsheetApp.flush();
   CacheService.getScriptCache().remove(BM_CACHE_KEY);
   return { ok: true, versi: API_VERSI, sukan: sukan, id: id, keputusan: 'DITOLAK', catatan: sebab };
+}
+
+
+/* =========================================================
+   v1.20.2: KALAH MATI BADMINTON - ISI NAMA PASUKAN AUTOMATIK
+   Punca pepijat: keputusan Badminton yang DISAHKAN tidak pernah mengisi slot
+   kalah mati (JOHAN-A, NJOHAN-B, MENANG-10 ...) dalam tab Jadual_Badminton.
+   Nama pasukan kekal kosong / "(MENUNGGU KEPUTUSAN)" -> butang pengadil terkunci
+   dan pelayan menolak skor ("Pasukan bertanding belum lengkap").
+   Fungsi ini:
+   - Kira carta setiap kumpulan (Menang 3 / Kalah 0 | Mata > Beza Mata > Kod),
+     sama seperti aplikasi (bmStandings).
+   - Isi JOHAN-x / NJOHAN-x bila SEMUA perlawanan kumpulan x disahkan dan tiada seri.
+   - Isi MENANG-n / KALAH-n bila perlawanan n disahkan.
+   - Hanya slot yang masih placeholder & BELUM BERMULA diubah (nama yang diisi
+     manual oleh Master Admin tidak ditimpa).
+   - Dipanggil: selepas keputusan Badminton disahkan, sebelum skor pengadil / admin
+     disimpan, dan semasa ?action=read&sukan=BADMINTON (pulih sendiri).
+   ========================================================= */
+function bmNamaPlaceholder_(n) {
+  const t = String(n === null || n === undefined ? '' : n).trim();
+  return !t || t.charAt(0) === '(' || isNamaPlaceholder_(t);
+}
+
+function bmLulus_(d) {
+  if (String(d.pengesahan || '').trim().toUpperCase() !== 'DISAHKAN' && statusBaris_(d) !== 'SELESAI') return false;
+  if (d.skorP1 === null || d.skorP1 === '' || d.skorP2 === null || d.skorP2 === '') return false;
+  const a = Number(d.skorP1), b = Number(d.skorP2);
+  return isFinite(a) && isFinite(b) && a !== b;
+}
+
+// v1.21.0 PRESTASI: rombak semasa GET read dihadkan sekali setiap 45 s (pulih sendiri selepas suntingan manual Sheets).
+const BM_ROMBAK_BACA_KEY = 'BM_ROMBAK_BACA_V121';
+function bmRombakBacaPerlu_() {
+  try {
+    const c = CacheService.getScriptCache();
+    if (c.get(BM_ROMBAK_BACA_KEY)) return false;
+    c.put(BM_ROMBAK_BACA_KEY, '1', 45);
+  } catch (err) { /* cache pilihan sahaja */ }
+  return true;
+}
+
+// v1.21.0 PRESTASI: adakah baris ini memerlukan rombakan (nama pasukan masih placeholder)?
+function bmBarisPerluRombak_(d) {
+  return !!d && (bmNamaPlaceholder_(d.namaP1) || bmNamaPlaceholder_(d.namaP2));
+}
+
+// v1.21.0 PRESTASI: tab pasukan Badminton dibaca SEKALI sahaja bagi setiap permintaan
+let BM_PASUKAN_MEMO_ = null;
+function bmPasukanAktif_() {
+  if (BM_PASUKAN_MEMO_) return BM_PASUKAN_MEMO_;
+  BM_PASUKAN_MEMO_ = bmPasukanAktif0_();
+  return BM_PASUKAN_MEMO_;
+}
+function bmPasukanAktif0_() {
+  const out = { aktif: null, sing: {} };
+  let list = null;
+  try { list = bacaObjekSheet_(SHEET_BM_PASUKAN); } catch (err) { list = null; }
+  if (!list || !list.length) return out;
+  out.aktif = {};
+  list.forEach(function (o) {
+    const g = {};
+    Object.keys(o).forEach(function (k) { g[normalizeKey_(k)] = o[k]; });
+    const ev = String(g.idevent || '').trim().toUpperCase();
+    const kat = ev.slice(-2) === 'SR' || ev.slice(-2) === 'SM' ? ev.slice(-2)
+      : (String(g.kategori || '').toUpperCase().indexOf('RENDAH') >= 0 ? 'SR' : 'SM');
+    const kod = String(g.kod || '').trim().toUpperCase();
+    const status = String(g.statuspenyertaan || 'AKTIF').trim().toUpperCase() || 'AKTIF';
+    const nama = String(g.namapasukan || g.namasekolah || '').trim();
+    if (kod && status === 'AKTIF') out.aktif[kat + '|' + kod] = true;
+    if (nama && g.singkatan) out.sing[nama.toUpperCase()] = String(g.singkatan).trim();
+  });
+  return out;
+}
+
+function bmCartaKumpulan_(rows, pasukan) {
+  const groups = {};
+  rows.forEach(function (r) {
+    const d = r.data;
+    if (String(d.peringkat || '').trim().toUpperCase() !== 'PERINGKAT KUMPULAN') return;
+    const kat = katBm_(d), kum = String(d.kumpulan || '').trim().toUpperCase();
+    if (!kat || !kum || kum === '-') return;
+    const key = kat + '|' + kum;
+    const g = groups[key] || (groups[key] = { teams: {}, total: 0, done: 0 });
+    g.total++;
+    [['kodP1', 'namaP1'], ['kodP2', 'namaP2']].forEach(function (k) {
+      const kod = String(d[k[0]] || '').trim().toUpperCase();
+      if (!kod || g.teams[kod]) return;
+      if (pasukan.aktif && !pasukan.aktif[kat + '|' + kod]) return;   // pasukan tarik diri
+      g.teams[kod] = { kod: kod, nama: String(d[k[1]] || '').trim(), P: 0, Mata: 0, MD: 0, ML: 0 };
+    });
+  });
+  rows.forEach(function (r) {
+    const d = r.data;
+    if (String(d.peringkat || '').trim().toUpperCase() !== 'PERINGKAT KUMPULAN' || !bmLulus_(d)) return;
+    const g = groups[katBm_(d) + '|' + String(d.kumpulan || '').trim().toUpperCase()];
+    if (!g) return;
+    g.done++;
+    const a = g.teams[String(d.kodP1 || '').trim().toUpperCase()], b = g.teams[String(d.kodP2 || '').trim().toUpperCase()];
+    if (!a || !b) return;
+    const s1 = Number(d.skorP1), s2 = Number(d.skorP2);
+    a.P++; b.P++; a.MD += s1; a.ML += s2; b.MD += s2; b.ML += s1;
+    if (s1 > s2) a.Mata += 3; else b.Mata += 3;
+  });
+  Object.keys(groups).forEach(function (key) {
+    const g = groups[key];
+    const list = Object.keys(g.teams).map(function (k) { const t = g.teams[k]; t.BM = t.MD - t.ML; return t; });
+    list.sort(function (x, y) { return (y.Mata - x.Mata) || (y.BM - x.BM) || x.kod.localeCompare(y.kod); });
+    const sama = function (x, y) { return !!x && !!y && x.Mata === y.Mata && x.BM === y.BM && x.P > 0; };
+    list.forEach(function (t, i) { t.seri = t.P > 0 && (sama(t, list[i - 1]) || sama(t, list[i + 1])); });
+    g.list = list;
+    g.complete = g.total > 0 && g.done === g.total && list.length >= 2 &&
+      !list.some(function (t) { return bmNamaPlaceholder_(t.nama); });
+  });
+  return groups;
+}
+
+// sheet/table pilihan: jika diberi, table.rows[].data & table.values dikemas kini terus (tiada bacaan semula).
+function rombakJadualBadminton_(sheet, table) {
+  sheet = sheet || getJadualSheet_('BADMINTON');
+  table = table || readTable_(sheet);
+  const colOf = table.colOf;
+  if (colOf.namaP1 === undefined || colOf.namaP2 === undefined || colOf.kodP1 === undefined || colOf.kodP2 === undefined) return { perubahan: [] };
+  const header = (table.values[0] || []).map(normalizeKey_);
+  const colSing = { 1: header.indexOf('singkatanp1'), 2: header.indexOf('singkatanp2') };
+
+  const ada = table.rows.some(function (r) {
+    return /^(N?JOHAN|MENANG|KALAH)-/.test(String(r.data.kodP1 || '').toUpperCase()) ||
+           /^(N?JOHAN|MENANG|KALAH)-/.test(String(r.data.kodP2 || '').toUpperCase());
+  });
+  if (!ada) return { perubahan: [] };
+  // v1.21.0 PRESTASI: semua slot kalah mati sudah berisi -> keluar terus (tiada bacaan tab pasukan / pengiraan carta)
+  const kodSlot = /^(N?JOHAN|MENANG|KALAH)-/;
+  const adaSlotKosong = table.rows.some(function (r) {
+    const d = r.data;
+    if (!bmBelumMula_(d)) return false;
+    return (kodSlot.test(String(d.kodP1 || '').toUpperCase()) && bmNamaPlaceholder_(d.namaP1)) ||
+           (kodSlot.test(String(d.kodP2 || '').toUpperCase()) && bmNamaPlaceholder_(d.namaP2));
+  });
+  if (!adaSlotKosong) return { perubahan: [] };
+
+  const pasukan = bmPasukanAktif_();
+  const groups = bmCartaKumpulan_(table.rows, pasukan);
+  const urut = table.rows.slice().sort(function (a, b) {
+    const ka = katBm_(a.data), kb = katBm_(b.data);
+    return ka === kb ? (Number(a.data.no) || 0) - (Number(b.data.no) || 0) : (ka < kb ? -1 : 1);
+  });
+  const byKatNo = {};
+  urut.forEach(function (r) { byKatNo[katBm_(r.data) + '|' + (Number(r.data.no) || 0)] = r.data; });
+
+  const tulis = [];
+  const perubahan = [];
+  urut.forEach(function (r) {   // ikut No_Per -> QF diisi sebelum SF, SF sebelum Akhir
+    const d = r.data;
+    const kat = katBm_(d);
+    [1, 2].forEach(function (side) {
+      const kod = String(d['kodP' + side] || '').trim().toUpperCase();
+      let nama = null, m;
+      if ((m = /^(N?)JOHAN-([A-Z])$/.exec(kod))) {
+        const g = groups[kat + '|' + m[2]];
+        if (g && g.complete) {
+          const t = g.list[m[1] ? 1 : 0];
+          if (t && !t.seri) nama = t.nama;
+        }
+      } else if ((m = /^(MENANG|KALAH)-(\d+)$/.exec(kod))) {
+        const src = byKatNo[kat + '|' + Number(m[2])];
+        if (src && bmLulus_(src) && !bmNamaPlaceholder_(src.namaP1) && !bmNamaPlaceholder_(src.namaP2)) {
+          const p1Menang = Number(src.skorP1) > Number(src.skorP2);
+          const menang = p1Menang ? src.namaP1 : src.namaP2, kalah = p1Menang ? src.namaP2 : src.namaP1;
+          nama = String(m[1] === 'MENANG' ? menang : kalah).trim();
+        }
+      }
+      if (!nama || !bmNamaPlaceholder_(d['namaP' + side]) || !bmBelumMula_(d)) return;
+      d['namaP' + side] = nama;
+      table.values[r.rowIndex][colOf['namaP' + side]] = nama;
+      tulis.push([r.rowIndex + 1, colOf['namaP' + side] + 1, nama]);
+      const sing = pasukan.sing[nama.toUpperCase()];
+      if (sing && colSing[side] >= 0 && !String(table.values[r.rowIndex][colSing[side]] || '').trim()) {
+        table.values[r.rowIndex][colSing[side]] = sing;
+        tulis.push([r.rowIndex + 1, colSing[side] + 1, sing]);
+      }
+      perubahan.push(d.id + ' P' + side + ': ' + nama);
+    });
+  });
+  if (!tulis.length) return { perubahan: [] };
+  tulis.forEach(function (t) { sheet.getRange(t[0], t[1]).setValue(t[2]); });
+  SpreadsheetApp.flush();
+  try { CacheService.getScriptCache().remove(BM_CACHE_KEY); } catch (err) { /* abaikan */ }
+  try {
+    tambahApprovalLog_([{ masa: new Date().toISOString(), matchId: '-', keputusan: perubahan.join(' | ').slice(0, 450),
+      tindakan: 'KALAH MATI DIISI AUTOMATIK', oleh: 'Sistem' }], 'BADMINTON');
+  } catch (err) { /* log pilihan sahaja */ }
+  return { perubahan: perubahan };
+}
+
+// Jalankan manual dari editor Apps Script jika perlu (cth. selepas import jadual).
+function isiKalahMatiBadminton() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const res = rombakJadualBadminton_();
+    console.log(res.perubahan.length ? res.perubahan.join('\n') : 'Tiada slot kalah mati Badminton yang perlu diisi.');
+    return res;
+  } finally { lock.releaseLock(); }
 }
