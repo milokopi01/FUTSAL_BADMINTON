@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwuslxouCRsDY3HmreRADGfZ0A1JKn19aoniJH0hhADKJKlZlP3-1cABgSzmiXluVlqXg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyjCXJvFHGUKjW80rb3RFla7XftdcUlC9iAoRWvBNFTqK4M9pOcrnevYTZ4M26CrF2Q/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -11975,7 +11975,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
        - Skor semasa disimpan automatik ke Google Sheets (skorPengadilBadminton, SEMASA).
        - Keputusan akhir (TAMAT) menunggu pengesahan Master Admin.
        ========================================================= */
-    const BM_AUTOSAVE_MS = 1200;
+    const BM_AUTOSAVE_MS = 2500;   // v1.36.1: kurangkan tulisan serentak (skor terkini tetap digabung & dihantar)
     const BM_POLL_MS = 20000;
     const bmSave = { timer: null, busy: false, pending: false, state: '', err: '', lastAt: 0 };
     let bmPollHandle = null;

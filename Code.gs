@@ -4013,6 +4013,38 @@ function simpanSkorSukan_(body, sukan, oleh) {
    ========================================================= */
 const BM_PENGADIL_TERBIAR_MINIT = 30;
 
+// v1.36.1: tampal satu baris Jadual_Badminton ke dalam cache dataBadminton_ (tanpa baca Sheets).
+// Pulangkan true jika berjaya; false -> pemanggil membuang cache seperti biasa.
+function tampalCacheBm_(header, row, colId, id) {
+  try {
+    if (colId === undefined || !header || !row) return false;
+    const cache = CacheService.getScriptCache();
+    const c = cache.get(BM_CACHE_KEY);
+    if (!c) return true;   // tiada cache -> bacaan seterusnya membina semula daripada Sheets
+    const d = JSON.parse(c);
+    if (!d || !Array.isArray(d.jadual)) return false;
+    const kunciId = String(header[colId] === null || header[colId] === undefined ? '' : header[colId]).trim();
+    if (!kunciId) return false;
+    const idx = d.jadual.findIndex(function (o) { return String(o && o[kunciId] || '').trim().toUpperCase() === id; });
+    if (idx < 0) return false;
+    const o = {};
+    header.forEach(function (h, i) {
+      const k = String(h === null || h === undefined ? '' : h).trim();
+      if (!k) return;
+      let v = row[i];
+      if (v instanceof Date) v = v.toISOString();
+      o[k] = v;
+    });
+    d.jadual[idx] = o;
+    d.masa = new Date().toISOString();
+    delete d.cache;
+    const s = JSON.stringify(d);
+    if (s.length >= 95000) return false;
+    cache.put(BM_CACHE_KEY, s, BM_CACHE_SAAT);
+    return true;
+  } catch (err) { console.warn('tampalCacheBm_', err); return false; }
+}
+
 function skorPengadilBadminton_(body) {
   const sesi = sahkanSesi_(body.token);
   if (!sesi.ok) return sesi;
@@ -4078,7 +4110,13 @@ function skorPengadilBadminton_(body) {
       tindakan: 'KEPUTUSAN PENGADIL (TUNGGU SAH)', oleh: 'Pengadil ' + ref.nama }], 'BADMINTON');
   }
   SpreadsheetApp.flush();
-  CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  // v1.36.1 PRESTASI SERENTAK: skor SEMASA tidak lagi membuang cache papan Badminton.
+  // Baris yang baru ditulis ditampal terus ke dalam cache -> papan / projektor / telefon
+  // penonton tidak perlu membaca semula 6 tab Google Sheets selepas SETIAP mata
+  // (sebelum ini 6 gelanggang serentak menyebabkan pelayan sesak & skor lewat berminit-minit).
+  if (jenis !== 'SEMASA' || !tampalCacheBm_(table.values[0], row, table.colOf.id, id)) {
+    CacheService.getScriptCache().remove(BM_CACHE_KEY);
+  }
   return { ok: true, versi: API_VERSI, sukan: 'BADMINTON', id: id, skorP1: s1, skorP2: s2, jenis: jenis,
     status: jenis === 'TAMAT' ? 'TAMAT' : 'SEDANG BERLANGSUNG', pengadil: ref.nama };
 }
