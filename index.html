@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw5eamsh-tn8Hbqzj6J5e2gx3nDhAZQ3-JCzagmg3nqsHd8aqt82T4Uq0t9fsuIEPICsQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -10972,14 +10972,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     // v1.14.6: Google Sheets tidak menulis pengesahan (gelanggang masih dikunci pengadil)
     // -> kembalikan perlawanan ke Peti Kelulusan supaya peranti & Google Sheets kekal sepadan.
-    function revertUnwrittenApprovals(ids) {
+    function revertUnwrittenApprovals(ids, sebab) {
       const reverted = [];
       ids.forEach(id => {
         const m = getMatch(id);
         if (!m || m.status !== MATCH_STATUS.SELESAI) return;
         Object.assign(m, { status: MATCH_STATUS.TUNGGU_SAH, pengesahan: 'MENUNGGU', disahkanOleh: null, disahkanPada: null });
         delete recentDecisions[id];
-        addApprovalLog(m, 'PENGESAHAN BELUM DITULIS (GELANGGANG MASIH DIKUNCI PENGADIL)');
+        addApprovalLog(m, sebab || 'PENGESAHAN BELUM DITULIS (GELANGGANG MASIH DIKUNCI PENGADIL)');
         reverted.push(id);
       });
       if (reverted.length) {
@@ -11093,6 +11093,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     const resultSync = { busy: false, lastOk: null, error: '', lastPullAt: 0 };
     const DECISION_HOLD_MS = 120000;     // abaikan data pelayan bagi keputusan yang baru diputuskan di peranti ini
     const recentDecisions = {};          // matchId -> masa (ms) keputusan tempatan
+
+    // v1.44.3: pengesahan yang perlu dihantar semula (peranti SELESAI, Google Sheets masih TUNGGU SAH)
+    const sahSemula = { ids: new Set(), at: {}, busy: false };
 
     function markDecision(matchId) { recentDecisions[matchId] = Date.now(); }
     function isDecisionHeld(matchId) {
@@ -11214,11 +11217,29 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         // -> keputusan itu tidak sah; Google Sheets ialah sumber rasmi. Dahulu baris ini diabaikan sepenuhnya,
         // jadi jaringan penalti yang dibetulkan pengadil TIDAK PERNAH masuk Peti Kelulusan Urusetia.
         const lapukTiadaPemenang = match.status === MATCH_STATUS.SELESAI && isKnockoutSeriTanpaPenalti(match);
-        if (match.status === MATCH_STATUS.SELESAI && !lapukTiadaPemenang) return null;
+        // v1.44.3: peranti ini memaparkan SELESAI tetapi Google Sheets masih TUNGGU SAH -> pengesahan
+        // TIDAK PERNAH sampai / ditolak (cth. SM-37: cop Versi Pembetulan lama). Dahulu baris ini diabaikan
+        // selama-lamanya: Carta Kalah Mati "Selesai" tetapi Jadual & Keputusan "Tunggu Sah".
+        let bekasSelesai = false;
+        if (match.status === MATCH_STATUS.SELESAI && !lapukTiadaPemenang) {
+          const samaSkor = s1 !== null && s2 !== null && Number(match.skorP1) === s1 && Number(match.skorP2) === s2 &&
+            (s1 !== s2 || (match.pemenangPenalti || null) === (penalti || null));
+          let pelulus = false;
+          try { pelulus = canApprove(); } catch (e) { pelulus = false; }
+          if (samaSkor && pelulus && match.pengesahan === 'DISAHKAN') {
+            // Urusetia memang telah mengesahkan keputusan yang SAMA -> hantar semula pengesahan (cop versi pelayan)
+            if (row.versiPembetulan) match.versiPembetulan = String(row.versiPembetulan);
+            sahSemula.ids.add(match.id);
+            return null;
+          }
+          // Skor berbeza / peranti bukan Urusetia -> ikut Google Sheets (kembali ke Peti Kelulusan)
+          bekasSelesai = true;
+        }
         const same = match.status === MATCH_STATUS.TUNGGU_SAH && Number(match.skorP1) === s1 &&
           Number(match.skorP2) === s2 && (match.pemenangPenalti || null) === penalti &&
           (match.penaltiP1 ?? null) === pen1 && (match.penaltiP2 ?? null) === pen2 && !match.perluPenalti &&
-          (match.sahPengadil || null) === (row.sahPengadil || null) && !match.dipulihkan;
+          (match.sahPengadil || null) === (row.sahPengadil || null) && !match.dipulihkan &&
+          String(match.versiPembetulan || '') === String(row.versiPembetulan || match.versiPembetulan || '');
         if (same) return null;
         Object.assign(match, {
           skorP1: s1 === null ? 0 : s1,
@@ -11234,9 +11255,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           sahPengadilPada: row.sahPengadilPada || null,
           disahkanOleh: null, disahkanPada: null,
           catatan: row.catatan || match.catatan || null,
+          versiPembetulan: String(row.versiPembetulan || match.versiPembetulan || ''),   // v1.44.3: cop versi pelayan
           dipulihkan: false
         });
-        if (lapukTiadaPemenang && typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+        if ((lapukTiadaPemenang || bekasSelesai) && typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+        if (bekasSelesai) addApprovalLog(match, 'BELUM DISAHKAN DI GOOGLE SHEETS - DIKEMBALIKAN KE PETI KELULUSAN');
         const court = findCourt();
         if (court) { clearCourtLock(court); resetCourt(court); autoAssignCourts(court.id, { silent: true }); }
         addApprovalLog(match, `DITERIMA DARIPADA PENGADIL${match.sahPengadil ? ' (' + match.sahPengadil + ')' : ''}`);
@@ -11345,10 +11368,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (url !== getGasUrl()) return false;
         const count = { baharu: 0, disahkan: 0, ditolak: 0 };
         const baru = [];
+        sahSemula.ids.clear();
         data.matches.forEach(row => {
           const kind = mergeServerMatch(row);
           if (kind) { count[kind] += 1; if (kind === 'baharu') baru.push(String(row.id).toUpperCase()); }
         });
+        try { hantarSahSemula(); } catch (e) { console.warn('[hantarSahSemula]', e); }   // v1.44.3
         // v1.17.0: senarai gelanggang & susunan baki perlawanan daripada Google Sheets
         let susunBerubah = applyServerCourtConfig(data.senaraiGelanggang);
         if (!state.courtConfigPending && (courtCfgSync.changedAt || 0) < resultSync.lastPullAt - 2000) {
@@ -11390,6 +11415,24 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
     }
 
+    // v1.44.3: hantar semula pengesahan yang belum ditulis di Google Sheets (sekali setiap 60 s bagi setiap ID)
+    async function hantarSahSemula() {
+      if (sahSemula.busy || !sahSemula.ids.size || !canApprove()) return;
+      const now = Date.now();
+      const ids = Array.from(sahSemula.ids).filter(id => now - (sahSemula.at[id] || 0) > 60000);
+      if (!ids.length) return;
+      ids.forEach(id => { sahSemula.at[id] = now; });
+      sahSemula.busy = true;
+      try {
+        const res = await pushDecisions(ids);
+        if (res && res.ok) {
+          const gagal = new Set([].concat(res.idLapuk || [], res.idSeriTanpaPenalti || [], res.dibatalkan || []).map(x => String(x).toUpperCase()));
+          const ok = ids.filter(id => !gagal.has(id));
+          if (ok.length) showToast(`☁ Pengesahan ${ok.join(', ')} kini ditulis di Google Sheets.`, 'success', 5000);
+        }
+      } finally { sahSemula.busy = false; }
+    }
+
     // Hantar keputusan Sahkan / Tolak terus ke Google Sheets
     async function pushDecisions(ids) {
       if (!getGasUrl() || !ids || !ids.length) return null;
@@ -11408,6 +11451,17 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (res && res.ok) {
         ids.forEach(id => { recentDecisions[id] = Date.now() - DECISION_HOLD_MS + 20000; });
         if (res.dimuktamad) showToast('Sebahagian keputusan telah pun disahkan di Google Sheets sebelum ini.', 'info');
+        // v1.44.3: pengesahan DITOLAK pelayan (cop versi lama / seri tanpa penalti) -> JANGAN papar "Selesai"
+        const tidakDitulis = [].concat(res.idLapuk || [], res.idSeriTanpaPenalti || []).map(x => String(x).toUpperCase())
+          .filter((x, i, a) => a.indexOf(x) === i && ids.includes(x));
+        if (tidakDitulis.length) {
+          const balikV = revertUnwrittenApprovals(tidakDitulis, 'PENGESAHAN DITOLAK GOOGLE SHEETS (DATA PERANTI LAMA) - SILA SAHKAN SEMULA');
+          if (balikV.length) {
+            res.dibatalkan = (res.dibatalkan || []).concat(balikV);
+            showToast(`${balikV.join(', ')}: Google Sheets belum menerima pengesahan. Keputusan dikembalikan ke Peti Kelulusan - tekan "Semak Keputusan Baharu" kemudian Sahkan semula.`, 'warn', 9000);
+            setTimeout(() => { try { pullMatchesFromSheet({ silent: true, paksa: true }); } catch (e) { /* abaikan */ } }, 1200);
+          }
+        }
         // v1.14.6: baris dilindungi kunci pengadil -> pengesahan TIDAK ditulis di Google Sheets
         const dilindungi = Array.isArray(res.idDilindungi)
           ? res.idDilindungi.map(x => String(x).toUpperCase())

@@ -263,7 +263,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.25.1';  // v1.25.1: keputusan kalah mati DISAHKAN Urusetia / Sub Admin (Peti Kelulusan) kini TERUS mengisi slot Menang / Kalah perlawanan seterusnya di Google Sheets (dahulu hanya Master Admin) - Mod Pengadil tidak lagi kosong (cth. SM-39 / SM-40 selepas SM-38 menang penalti); pemenang penalti dibaca tanpa beza huruf besar / ruang
+const API_VERSI = '1.25.2';  // v1.25.2: PENGESAHAN Urusetia / Sub Admin bagi perlawanan yang pernah DIBETULKAN (ada cop Versi Pembetulan, cth. SM-37) tidak lagi DITOLAK SENYAP - jika skor sama dengan Google Sheets, pengesahan diterima; ID yang tidak ditulis dipulangkan (idLapuk / idSeriTanpaPenalti) supaya peranti kembalikan ke Peti Kelulusan
+// const API_VERSI_1251 = '1.25.1';  // v1.25.1: keputusan kalah mati DISAHKAN Urusetia / Sub Admin (Peti Kelulusan) kini TERUS mengisi slot Menang / Kalah perlawanan seterusnya di Google Sheets (dahulu hanya Master Admin) - Mod Pengadil tidak lagi kosong (cth. SM-39 / SM-40 selepas SM-38 menang penalti); pemenang penalti dibaca tanpa beza huruf besar / ruang
 // const API_VERSI_1250 = '1.25.0';  // v1.25.0: RALAT PENALTI - seri kalah mati tanpa penalti dipaparkan kepada pengadil bertanggungjawab; pengadil masukkan JARINGAN penalti (cth. 4-3) tanpa main semula; Master Admin boleh kemas kini terus; lajur Penalti P1 / Penalti P2; pepijat nama pemenang penalti dianggap 'tiada penalti' dibaiki
 // const API_VERSI_1240 = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
 // const API_VERSI_1238 = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
@@ -993,6 +994,8 @@ function prosesPost_(body, ctx) {
     idDilindungi: result.idDilindungi || [],   // v1.9.6: ID yang tidak ditulis (peranti kembalikan ke Peti Kelulusan)
     dimuktamad: result.finalRows,       // keputusan DISAHKAN yang cuba diubah tanpa kunci Master Admin
     lapuk: result.staleRows,            // data peranti lama (versi pembetulan tidak sepadan)
+    idLapuk: result.idLapuk || [],      // v1.25.2: ID yang tidak ditulis (peranti kembalikan ke Peti Kelulusan)
+    idSeriTanpaPenalti: result.seriTanpaPenalti || [],   // v1.25.2: seri kalah mati tanpa pemenang penalti (tidak disahkan)
     masa: new Date().toISOString()
   });
 }
@@ -1020,6 +1023,7 @@ function upsertMatches_(list, opts) {
   const now = new Date();
   let updated = 0, inserted = 0, skipped = 0, protectedRows = 0, finalRows = 0, staleRows = 0;
   const idDilindungi = [];   // v1.9.6: ID perlawanan yang tidak ditulis kerana dikunci pengadil
+  const idLapuk = [];        // v1.25.2: ID yang tidak ditulis kerana cop Versi Pembetulan tidak sepadan
   const seriTanpaPenalti = [];   // v1.23.5: kalah mati seri tanpa pemenang penalti (pengesahan ditolak)
   const barisBerubah = {};   // v1.9.3: indeks baris yang disentuh
 
@@ -1048,7 +1052,12 @@ function upsertMatches_(list, opts) {
     // FASA 4: keputusan DISAHKAN dikunci; versi pembetulan menghalang data peranti lama
     const muktamad = isRowFinal_(row, colOf);
     const versiBaris = colOf.versiPembetulan !== undefined ? String(row[colOf.versiPembetulan] || '') : '';
-    const versiSepadan = !versiBaris || String(m.versiPembetulan || '') === versiBaris;
+    let versiSepadan = !versiBaris || String(m.versiPembetulan || '') === versiBaris;
+    // v1.25.2: PENGESAHAN SAHAJA (Sahkan di Peti Kelulusan) bagi baris TAMAT - TUNGGU SAH yang skornya
+    // SAMA dengan Google Sheets -> tiada risiko data lama menimpa pembetulan. Dahulu peranti Urusetia
+    // yang tidak memegang cop versi terkini (cth. SM-37 selepas Pembetulan Markah + main semula) DITOLAK
+    // SENYAP: aplikasi memaparkan "Selesai" tetapi Google Sheets kekal "Tunggu Sah".
+    if (!versiSepadan && !admin && sahSahaja_(row, colOf, m)) versiSepadan = true;
     let ditolakMuktamad = false, ditolakLapuk = false;
     const asalBaris = row.slice();   // v1.23.5: salinan sebelum tulisan (untuk pengesahan seri kalah mati)
 
@@ -1091,7 +1100,7 @@ function upsertMatches_(list, opts) {
     }
     if (dilindungi) { protectedRows++; idDilindungi.push(id); }
     if (ditolakMuktamad) finalRows++;
-    if (ditolakLapuk) staleRows++;
+    if (ditolakLapuk) { staleRows++; idLapuk.push(id); }
     row[colOf.kemaskini] = now;
     barisBerubah[rowIdx] = true;
   });
@@ -1106,14 +1115,36 @@ function upsertMatches_(list, opts) {
       }
       sheet.getRange(i + 1, 1, 1, width).setValues([values[i]]);
     });
-    return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti };
+    return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti, idLapuk: idLapuk };
   }
   if (colOf.versiPembetulan !== undefined) {
     sheet.getRange(1, colOf.versiPembetulan + 1, values.length, 1).setNumberFormat('@');
   }
   sheet.getRange(1, 1, values.length, width).setValues(values);
   formatDateColumns_(sheet, colOf, values.length);
-  return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti };
+  return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti, idLapuk: idLapuk };
+}
+
+// v1.25.2: tulisan ini hanya MENGESAHKAN keputusan yang sedang menunggu (TAMAT - TUNGGU SAH -> SELESAI / DISAHKAN)
+// dengan skor & pemenang penalti yang SAMA seperti di Google Sheets?
+function sahSahaja_(row, colOf, m) {
+  if (!m || colOf.status === undefined || colOf.pengesahan === undefined) return false;
+  if (String(row[colOf.status] || '').toUpperCase() !== 'TAMAT - TUNGGU SAH') return false;
+  if (cleanValue_('status', String(m.status || '')) !== 'SELESAI') return false;
+  if (cleanValue_('pengesahan', String(m.pengesahan || '')) !== 'DISAHKAN') return false;
+  const a = skorInt_(row[colOf.skorP1]), b = skorInt_(row[colOf.skorP2]);
+  if (a === null || b === null) return false;
+  if (('skorP1' in m && skorInt_(m.skorP1) !== a) || ('skorP2' in m && skorInt_(m.skorP2) !== b)) return false;
+  if (a === b && colOf.pemenangPenalti !== undefined) {
+    const n1 = colOf.namaP1 !== undefined ? row[colOf.namaP1] : undefined;
+    const n2 = colOf.namaP2 !== undefined ? row[colOf.namaP2] : undefined;
+    const srv = penaltiSisi_(row[colOf.pemenangPenalti], n1, n2);
+    if (!srv) return false;
+    if ('pemenangPenalti' in m && penaltiSisi_(m.pemenangPenalti, n1, n2) !== srv) return false;
+  }
+  if ('namaP1' in m && colOf.namaP1 !== undefined && String(m.namaP1 || '').trim().toUpperCase() !== String(row[colOf.namaP1] || '').trim().toUpperCase()) return false;
+  if ('namaP2' in m && colOf.namaP2 !== undefined && String(m.namaP2 || '').trim().toUpperCase() !== String(row[colOf.namaP2] || '').trim().toUpperCase()) return false;
+  return true;
 }
 
 // Baris perlawanan telah DISAHKAN (SELESAI) -> keputusan muktamad
