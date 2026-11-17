@@ -19690,10 +19690,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // Halaman hadapan: Dashboard Utama (pengadil kekal di Gelanggang Live / Meja Pengadil).
+    // v1.48.0: telefon -> JADUAL jadi paparan utama (buka sahaja terus nampak jadual).
     function defaultHomeTab() {
       try {
         const s = getSession();
         if (s && s.peranan === 'PENGADIL') return refSukanOf(s) === 'BADMINTON' ? 'tab-bm-schedule' : 'tab-live';   // v1.18.0
+      } catch (e) { /* abaikan */ }
+      try {
+        // Paparan projektor & telefon: jangan tukar halaman hadapan
+        if (new URLSearchParams(location.search).get('display') === 'projector') return 'tab-dashboard';
+        if (modTelefonAsing()) return getSukan() === 'BADMINTON' ? 'tab-bm-schedule' : 'tab-schedule';
       } catch (e) { /* abaikan */ }
       return 'tab-dashboard';
     }
