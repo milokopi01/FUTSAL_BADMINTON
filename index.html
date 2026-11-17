@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwiKk22kChrXz09syrb5NbS97mJy7HeUkKt9W6sxiq1kFFf3fGoHlv3RPUJ7chCHYkOgg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -990,6 +990,33 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .bm-live-strip h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 800; }
     .bm-live-strip p { color: var(--text-2); font-size: .78rem; margin-top: 2px; }
     #tab-bm-live .live-board { margin-bottom: 16px; }
+    /* v1.38.2: Giliran perlawanan Badminton (No. Perlawanan Keseluruhan P1, P2 ...) diserlahkan */
+    .bm-p-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; padding: 2px 8px; border-radius: 999px;
+      font-family: var(--font-mono, monospace); font-size: .74rem; font-weight: 800; letter-spacing: .02em; line-height: 1.4;
+      color: var(--text-1); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); vertical-align: middle; }
+    .court-name h3 .bm-p-chip { font-size: .82rem; margin-left: 6px; }
+    .bm-p-chip.is-live { color: #fecaca; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.6); box-shadow: 0 0 10px rgba(239,68,68,.25); }
+    .bm-p-chip.is-done { color: #fde68a; background: rgba(250,204,21,.14); border-color: rgba(250,204,21,.5); }
+    .bm-p-chip.is-next, .bm-p-chip.is-ready { color: #e0f2fe; background: rgba(56,189,248,.2); border-color: rgba(56,189,248,.7); box-shadow: 0 0 10px rgba(56,189,248,.25); }
+    .bm-p-chip.is-standby { color: #fef3c7; background: rgba(250,204,21,.16); border-color: rgba(250,204,21,.6); }
+    .bm-p-chip.is-queue { color: var(--text-2); }
+    .bm-p-chip.is-tbd { opacity: .55; border-style: dashed; }
+    .bm-giliran { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 20px 0; }
+    .bm-giliran-lbl, .bm-turutan-lbl { font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin-right: 4px; }
+    .bm-giliran-arrow { color: var(--text-2); font-weight: 800; }
+    .bm-giliran-more { font-size: .72rem; color: var(--text-2); font-weight: 700; }
+    .bm-turutan { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); }
+    .bm-turutan-item { display: inline-flex; flex-direction: column; align-items: center; min-width: 52px; padding: 4px 8px; border-radius: 10px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14); line-height: 1.15; }
+    .bm-turutan-item b { font-family: var(--font-mono, monospace); font-size: .86rem; color: var(--text-0); }
+    .bm-turutan-item small { font-size: .64rem; color: var(--text-2); }
+    .bm-turutan-item.is-live { background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.6); }
+    .bm-turutan-item.is-live b { color: #fecaca; }
+    .bm-turutan-item.is-first { background: rgba(56,189,248,.2); border-color: rgba(56,189,248,.8); box-shadow: 0 0 12px rgba(56,189,248,.35); animation: bm-first-glow 1.8s ease-in-out infinite; }
+    .bm-turutan-item.is-first b { color: #e0f2fe; }
+    .bm-turutan-item.is-tbd { opacity: .55; border-style: dashed; }
+    @keyframes bm-first-glow { 0%, 100% { box-shadow: 0 0 6px rgba(56,189,248,.25); } 50% { box-shadow: 0 0 16px rgba(56,189,248,.55); } }
+    @media (prefers-reduced-motion: reduce) { .bm-turutan-item.is-first { animation: none; } }
     @media (max-width: 1100px) { .courts-grid.bm-courts, .sb-grid.bm-sb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 860px) { .courts-grid.bm-courts { grid-template-columns: 1fr; } }
     @media (max-width: 600px) { .sb-grid.bm-sb-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -10291,6 +10318,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!isMatchReady(match)) {
         return { error: `Pasukan bagi ${match.id} belum ditentukan (undian / keputusan peringkat sebelumnya).`, level: 'warn' };
       }
+      // v1.38.1: KUNCI PENGANJUR - perlawanan dikunci ke gelanggang lain tidak boleh dimulakan di sini
+      const kunciPenganjur = validEventLock(match);
+      if (kunciPenganjur && kunciPenganjur !== court.id) {
+        return { error: `${match.id} telah dikunci oleh penganjur ke Gelanggang ${kunciPenganjur}. Sila mulakan di Gelanggang ${kunciPenganjur}.`, level: 'error' };
+      }
       const clash = state.courts.find(c => c.id !== court.id && c.matchSemasa === match.id);
       if (clash) {
         return { error: `${match.id} sudah ditempatkan di Gelanggang ${clash.id}.`, level: 'error' };
@@ -14618,6 +14650,23 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return cand[0] || null;
       };
       let moved = false;
+
+      // v1.38.1: KUNCI PENGANJUR - Separuh Akhir / Tempat 3/4 / Akhir yang dikunci ke gelanggang
+      // tertentu SENTIASA dikembalikan ke gelanggang kuncinya (kecuali sudah dipegang pengadil).
+      state.matches.forEach(m => {
+        if (m.status !== MATCH_STATUS.MENUNGGU) return;
+        const lock = validEventLock(m);
+        if (!lock || m.gelanggang === lock) return;
+        const holder = state.courts.find(c => c.matchSemasa === m.id);
+        if (holder && (holder.pengadilId || holder.status !== COURT_STATUS.SEDIA || isCourtPaused(holder))) return;
+        if (holder) {
+          holder.matchSemasa = null;
+          occupied.delete(m.id);
+          if (!targets.includes(holder)) targets.push(holder);
+        }
+        m.gelanggang = lock;
+        moved = true;
+      });
 
       targets.forEach(court => {
         const current = getMatch(court.matchSemasa);
@@ -19464,7 +19513,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const ms = vis.filter(m => String(m.gel) === gel);
         const live = ms.find(bmIsLive) || null;
         // v1.38.0: perlawanan yang pasukannya sudah ditentukan didahulukan (gelanggang tidak tersekat)
-        const pending = ms.filter(bmIsPending).sort((a, b) => ((a.tbd1 || a.tbd2) ? 1 : 0) - ((b.tbd1 || b.tbd2) ? 1 : 0) || susCmp(a, b));
+        // v1.38.2: giliran ikut No. Perlawanan Keseluruhan (P1, P2, P3 ...) seperti Jadual Badminton
+        const pending = ms.filter(bmIsPending).sort((a, b) => ((a.tbd1 || a.tbd2) ? 1 : 0) - ((b.tbd1 || b.tbd2) ? 1 : 0) ||
+          bmOvRank(a) - bmOvRank(b) || susCmp(a, b));
         const wait = ms.filter(bmIsWaitSah);
         const done = live ? null : (wait[wait.length - 1] || null);
         const cur = live || done || pending[0] || null;
@@ -19581,6 +19632,22 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (m) bmRefPick(m.id); else showToast(`Perlawanan ${id} tidak dijumpai dalam jadual Badminton.`, 'warn');
     }
 
+    // v1.38.2: Turutan giliran keseluruhan (P1, P2, P3 ...) - LIVE & baki perlawanan, giliran terendah diserlahkan
+    function bmTurutanHtml(model) {
+      const vis = model.matches.filter(m => dashKatOk(m.kat) && (bmIsLive(m) || bmIsPending(m)))
+        .sort((a, b) => bmOvRank(a) - bmOvRank(b));
+      if (!vis.length) return '';
+      const firstPending = vis.find(m => bmIsPending(m) && !m.tbd1 && !m.tbd2);
+      const list = vis.slice(0, 12).map(m => {
+        const cls = bmIsLive(m) ? 'is-live' : (m === firstPending ? 'is-first' : (m.tbd1 || m.tbd2 ? 'is-tbd' : 'is-queue'));
+        const st = bmIsLive(m) ? 'Sedang berlangsung' : (m === firstPending ? 'Giliran seterusnya' : (m.tbd1 || m.tbd2 ? 'Menunggu penetapan pasukan' : 'Menunggu giliran'));
+        return `<span class="bm-turutan-item ${cls}" title="${dashEsc(m.id)} · ${dashEsc(m.nama1)} lwn ${dashEsc(m.nama2)} · ${st}">
+          <b>${dashEsc(m.ov || m.id)}</b><small>Gel. ${dashEsc(m.gel || '-')}</small></span>`;
+      }).join('');
+      const baki = vis.length > 12 ? `<span class="bm-giliran-more">+${vis.length - 12} lagi</span>` : '';
+      return `<div class="bm-turutan"><span class="bm-turutan-lbl">🔢 Turutan Giliran</span>${list}${baki}</div>`;
+    }
+
     function bmCourtCard(c) {
       const m = c.cur;
       const ref = bmRefBoleh();
@@ -19600,8 +19667,16 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const pengadil = refM && refM.pengadil ? `🧑‍⚖️ Pengadil: ${dashEsc(refM.pengadil)}` : 'Pengadil: belum ditetapkan';
       const next = c.queue[0];
       const nextText = next
-        ? `🟡 Standby: <strong>${dashEsc(next.ov)} · ${dashEsc(next.id)}</strong> — ${bmTeamLine(next, '1')} lwn ${bmTeamLine(next, '2')}`
+        ? `🟡 Standby: <span class="bm-p-chip is-standby">${dashEsc(next.ov || next.id)}</span> <strong>${dashEsc(next.id)}</strong> — ${bmTeamLine(next, '1')} lwn ${bmTeamLine(next, '2')}`
         : 'Seterusnya: <strong>Tiada</strong>';
+      // v1.38.2: giliran perlawanan gelanggang ini ikut turutan P
+      const pCur = m ? `<span class="bm-p-chip is-${vSt}" title="Giliran semasa gelanggang ini">${dashEsc(m.ov || m.id)}</span>` : '';
+      const giliranHtml = (m || c.queue.length) ? `<div class="bm-giliran" aria-label="Giliran perlawanan Gelanggang ${dashEsc(c.gel)}">
+            <span class="bm-giliran-lbl">Giliran</span>
+            ${m ? `<span class="bm-p-chip is-${vSt}">${dashEsc(m.ov || m.id)}</span>` : ''}
+            ${c.queue.slice(0, 5).map((q, i) => `<span class="bm-giliran-arrow" aria-hidden="true">›</span><span class="bm-p-chip ${i === 0 ? 'is-standby' : 'is-queue'}${q.tbd1 || q.tbd2 ? ' is-tbd' : ''}" title="${dashEsc(q.id)} · ${dashEsc(q.nama1)} lwn ${dashEsc(q.nama2)}">${dashEsc(q.ov || q.id)}</span>`).join('')}
+            ${c.queue.length > 5 ? `<span class="bm-giliran-more">+${c.queue.length - 5}</span>` : ''}
+          </div>` : '';
       const fasa = c.st === 'live' ? (m.status === 'REHAT' ? 'Rehat' : 'Sedang berlangsung') : c.st === 'done' ? 'Tamat' : isNext ? 'Belum mula' : 'Sedia';
       let act = '';
       if (ref && m && !m.tbd1 && !m.tbd2) {
@@ -19619,7 +19694,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <div class="court-name">
               <div class="court-letter">${dashEsc(c.gel)}</div>
               <div>
-                <h3>Gelanggang ${dashEsc(c.gel)}</h3>
+                <h3>Gelanggang ${dashEsc(c.gel)} ${pCur}</h3>
                 <small>${pengadil} · ${dashEsc(c.kat)}</small>
               </div>
             </div>
@@ -19650,6 +19725,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <span>Fasa: <strong class="${isNext ? 'next-fasa' : ''}" style="color:var(--text-0);">${fasa}</strong> · ${c.selesai}/${c.jumlah} disahkan</span>
           </div>
           ${c.st === 'done' ? '<div class="court-done-note">✅ Keputusan telah dihantar pengadil. Menunggu pengesahan Master Admin.</div>' : ''}
+          ${giliranHtml}
           <div class="court-next">${nextText}</div>
           ${act ? `<div class="bm-court-act">${act}</div>` : ''}
         </article>`;
@@ -19672,7 +19748,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             ${nTunggu ? `<span class="badge badge-done">${nTunggu} menunggu pengesahan</span>` : ''}
             ${bmRefBoleh() ? '<button type="button" class="btn btn-sm" onclick="bukaMejaBadminton()">🏸 Meja Pengadil</button>' : ''}
             <button type="button" class="btn btn-sm" onclick="dashRefresh(true)" title="Muat semula daripada Google Sheets">↻</button>
-          </div></div>`;
+          </div></div>${bmTurutanHtml(model)}`;
       }
       const cardsHtml = rows.map(bmCourtCard).join('') ||
         '<div class="card glass empty-state" style="grid-column:1/-1;"><div class="icon">🏸</div><p>Tiada gelanggang badminton untuk kategori ini.</p></div>';

@@ -147,6 +147,13 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  tidak diambil.
  *                - Sepak Mula diterima untuk perlawanan yang baru dipindahkan ke gelanggang ini.
  *                - Giliran papan live: perlawanan yang SEDIA dimainkan didahulukan.
+ *              + v1.23.1 - KUNCI PENGANJUR SENTIASA DIPATUHI:
+ *                - Perlawanan yang dikunci penganjur (Urus Gelanggang > kunci Separuh Akhir /
+ *                  Tempat 3/4 / Akhir) TIDAK PERNAH diambil oleh gelanggang lain semasa auto-isi.
+ *                - Jika perlawanan berkunci berada di gelanggang lain, ia dikembalikan secara
+ *                  automatik ke gelanggang kuncinya.
+ *                - Sepak Mula perlawanan berkunci di gelanggang lain DITOLAK (kod DIKUNCI_PENGANJUR).
+ *                - Kunci kepada gelanggang yang DITUTUP diabaikan (perlawanan boleh dimainkan di mana-mana).
  *              + v1.10.0 - JANA SUSUNAN & GELANGGANG TERBUKA (MASTER ADMIN SAHAJA):
  *                - Kategori gelanggang boleh 'SEMUA' (terbuka kepada SR & SM).
  *                - 'Jana Susunan' (aplikasi) membuka semua gelanggang kepada semua kategori
@@ -238,7 +245,9 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.0';  // v1.23.0: SEMUA gelanggang TERBUKA (SR + SM) + AUTO-ISI gelanggang kosong dengan baki perlawanan
+const API_VERSI = '1.23.2';  // v1.23.2: auto-isi Badminton ikut turutan No. Perlawanan Keseluruhan (P1, P2, P3 ...)
+// const API_VERSI_LAMA = '1.23.1';  // v1.23.1: KUNCI PENGANJUR (Separuh Akhir / Akhir) sentiasa dipatuhi oleh auto-isi & Sepak Mula
+// const API_VERSI_LAMA = '1.23.0';  // v1.23.0: SEMUA gelanggang TERBUKA (SR + SM) + AUTO-ISI gelanggang kosong dengan baki perlawanan
 // const API_VERSI_LAMA = '1.22.1';  // v1.22.1: anti-bertindih reqId disimpan 6 jam (peti keluar telefon pengadil, index.html v1.36.0)
 // const API_VERSI_LAMA = '1.22.0';  // v1.22.0: KETAHANAN SERENTAK - giliran LockService + cuba semula + anti-bertindih (reqId)
 // const API_VERSI_LAMA = '1.21.1';  // v1.21.0: PRESTASI - Sahkan / Tolak keputusan Badminton sepantas Futsal (tiada jem / lag)
@@ -2206,7 +2215,7 @@ function rancangIsiGelanggang_(o) {
   o.courts.forEach(function (g) { aktif[g] = { live: false, pending: [] }; });
   const sibuk = {};
   const tandaSibuk = function (d) { kunciPasukanAuto_(d, o.katOf(d)).forEach(function (k) { sibuk[k] = true; }); };
-  const lain = [];   // baki perlawanan di gelanggang ditutup / tanpa gelanggang
+  let lain = [];   // baki perlawanan di gelanggang ditutup / tanpa gelanggang
   o.rows.forEach(function (d) {
     const g = o.gelOf(d);
     if (o.isLive(d)) { if (aktif[g]) aktif[g].live = true; tandaSibuk(d); return; }
@@ -2214,6 +2223,22 @@ function rancangIsiGelanggang_(o) {
     if (o.pegangId[String(d.id).toUpperCase()]) { tandaSibuk(d); return; }   // dikunci pengadil -> akan bermula
     if (aktif[g]) aktif[g].pending.push(d); else lain.push(d);
   });
+  // v1.23.1: KUNCI PENGANJUR - perlawanan berkunci yang berada di gelanggang lain dikembalikan
+  // ke gelanggang kuncinya (jika gelanggang itu aktif).
+  const ka = o.kunciAcara || {};
+  const pindahKunci = [];
+  const ikutKunci = function (gSemasa) {
+    return function (d) {
+      const id = String(d.id).toUpperCase();
+      const gk = ka[id];
+      if (!gk || gk === gSemasa || !aktif[gk]) return true;
+      aktif[gk].pending.push(d);
+      pindahKunci.push({ id: id, gel: gk, d: d });
+      return false;
+    };
+  };
+  o.courts.forEach(function (g) { aktif[g].pending = aktif[g].pending.filter(ikutKunci(g)); });
+  lain = lain.filter(ikutKunci(''));
   const sus = o.susunan || {};
   const cmp = function (a, b) {
     const ia = String(a.id).toUpperCase(), ib = String(b.id).toUpperCase();
@@ -2237,7 +2262,7 @@ function rancangIsiGelanggang_(o) {
     if (pertama) { simpanan[String(pertama.id).toUpperCase()] = true; tandaSibuk(pertama); return; }
     kosong.push(g);
   });
-  if (!kosong.length) return [];
+  if (!kosong.length) return pindahKunci;
   let calon = [];
   o.courts.forEach(function (g) { calon = calon.concat(aktif[g].pending); });
   calon = calon.concat(lain).filter(function (d) {
@@ -2261,7 +2286,7 @@ function rancangIsiGelanggang_(o) {
       break;
     }
   });
-  return pindah;
+  return pindahKunci.concat(pindah);
 }
 
 function isiGelanggangKosongFutsal_() {
@@ -2312,6 +2337,16 @@ function isiGelanggangKosongBm_() {
     courts = Object.keys(ada).sort(function (a, b) { return String(a).localeCompare(String(b), 'ms', { numeric: true }); });
   }
   if (courts.length < 2) return 0;
+  // v1.23.2: giliran Badminton ikut No. Perlawanan Keseluruhan (P1, P2, P3 ...) seperti Jadual Badminton
+  const colP = (table.values[0] || []).map(normalizeKey_).indexOf('noperkeseluruhan');
+  const turutanP = {};
+  if (colP >= 0) {
+    table.rows.forEach(function (r) {
+      const m = /^P(\d+)$/i.exec(String(table.values[r.rowIndex][colP] || '').trim());
+      if (m) turutanP[String(r.data.id).toUpperCase()] = Number(m[1]);
+    });
+  }
+  const adaP = Object.keys(turutanP).length > 0;
   const pindah = rancangIsiGelanggang_({
     courts: courts,
     rows: table.rows.map(function (r) { return r.data; }),
@@ -2320,7 +2355,7 @@ function isiGelanggangKosongBm_() {
     isLive: function (d) { return statusBaris_(d) === 'LIVE' && String(d.pengesahan || '').toUpperCase() !== 'DISAHKAN'; },
     isPending: function (d) { return bmBelumMula_(d); },
     dipegang: {}, pegangId: {},
-    kunciAcara: cfg.kunciAcara || {}, susunan: cfg.susunan || {}
+    kunciAcara: cfg.kunciAcara || {}, susunan: adaP ? turutanP : (cfg.susunan || {})
   });
   if (!pindah.length) return 0;
   const rowOf = {};
@@ -2569,6 +2604,17 @@ function kunciGelanggang_(body) {
   }
   if (perbaharui && k.pengadilId !== ref.id) {
     return { ok: false, kod: 'HILANG', error: 'Kunci Gelanggang ' + g + ' telah dilepaskan.', kunci: statusKunci_(db) };
+  }
+
+  // v1.23.1: KUNCI PENGANJUR - perlawanan dikunci ke gelanggang lain tidak boleh dimulakan di sini
+  const idMula = normMatchId_(body.matchId);
+  if (!perbaharui && idMula && !k.rehat) {
+    const gKunci = (bacaGelanggang_().kunciAcara || {})[idMula];
+    if (gKunci && gKunci !== g && isGelanggangAktif_(gKunci)) {
+      return { ok: false, kod: 'DIKUNCI_PENGANJUR',
+        error: 'Perlawanan ' + idMula + ' telah dikunci oleh penganjur ke Gelanggang ' + gKunci + '. Sila mulakan di Gelanggang ' + gKunci + '.',
+        kunci: statusKunci_(db) };
+    }
   }
 
   const diambilAlihDaripada = k.pengadilId && k.pengadilId !== ref.id ? k.nama : null;

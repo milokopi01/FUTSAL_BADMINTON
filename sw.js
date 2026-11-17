@@ -7,7 +7,9 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.38.0';  // v1.38.0: semua gelanggang terbuka SR + SM + auto-isi gelanggang kosong
+const VERSI_SW = '1.38.2';  // v1.38.2: giliran Badminton ikut turutan P + diserlahkan dalam Simulasi Gelanggang
+// const VERSI_SW_1381 = '1.38.1';  // v1.38.1: kunci penganjur (Separuh Akhir / Akhir) sentiasa dipatuhi
+// const VERSI_SW_138 = '1.38.0';  // v1.38.0: semua gelanggang terbuka SR + SM + auto-isi gelanggang kosong
 // const VERSI_SW_137 = '1.37.0';  // v1.37.0: Peti Kelulusan Badminton sentiasa segerak + auto-fit gelanggang swa-pulih
 // const VERSI_SW_LAMA = '1.35.0';  // v1.35.0: cuba semula automatik + anti-bertindih (reqId) untuk Code.gs v1.22.0  // v1.34.1: pembaikan autosimpan pengadil Badminton  // v1.34.0: PRESTASI - Sahkan keputusan Badminton sepantas Futsal (tiada jem / lag)
 const CACHE = 'karnival-pk-kbb-' + VERSI_SW;
