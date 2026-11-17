@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -2386,6 +2386,62 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     @keyframes tabArrowNudge { 0%,100% { transform: translateY(-50%) translateX(0); } 50% { transform: translateY(-50%) translateX(3px); } }
     @media (max-width: 640px) { .tab-arrow { width: 30px; height: 30px; font-size: 1.3rem; } }
   </style>
+  <style>
+    /* v1.45.0: PAPARAN PENGURUS PASUKAN (?view=pasukan) - minimalis, telefon & komputer */
+    body.tm-mode .app-header, body.tm-mode main, body.tm-mode .app-footer, body.tm-mode #refMobile { display: none !important; }
+    body.tm-mode { background: var(--bg-0); }
+    .tm-view { max-width: 980px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px 40px; color: var(--text-0); }
+    .tm-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .tm-brand { min-width: 0; }
+    .tm-brand small { display: block; color: var(--text-2); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+    .tm-brand h1 { margin: 2px 0 0; font-size: clamp(1.05rem, 3.6vw, 1.4rem); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tm-sync { display: inline-flex; align-items: center; gap: 6px; font-size: .74rem; color: var(--text-2); white-space: nowrap; }
+    .tm-sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--court-ready); box-shadow: 0 0 0 3px var(--court-ready-bg); }
+    .tm-sync.warn i { background: var(--court-done); box-shadow: 0 0 0 3px var(--court-done-bg); }
+    .tm-pick { display: flex; gap: 8px; align-items: center; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 6px 6px 6px 14px; }
+    .tm-pick span { font-size: .8rem; color: var(--text-2); white-space: nowrap; }
+    .tm-pick input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; font-size: 1rem; font-weight: 600; padding: 10px 4px; }
+    .tm-pick input::placeholder { color: var(--text-2); font-weight: 500; }
+    .tm-pick button { flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px; background: var(--glass-strong); color: var(--text-1); font-size: 1rem; }
+    .tm-mine { display: grid; gap: 10px; margin: 12px 0 18px; }
+    .tm-card { border-radius: var(--radius-lg); padding: 16px 18px; background: var(--glass); border: 1px solid var(--glass-border); }
+    .tm-card .tm-sport { font-size: .74rem; font-weight: 700; color: var(--text-2); letter-spacing: .06em; text-transform: uppercase; }
+    .tm-card .tm-state { margin-top: 6px; font-family: var(--font-display); font-weight: 800; font-size: clamp(1.15rem, 4.6vw, 1.5rem); line-height: 1.2; }
+    .tm-card .tm-where { margin-top: 2px; font-size: clamp(1.6rem, 7vw, 2.2rem); font-family: var(--font-display); font-weight: 800; }
+    .tm-card .tm-vs { margin-top: 8px; color: var(--text-1); font-size: .95rem; }
+    .tm-card .tm-vs b { color: var(--text-0); }
+    .tm-card.live { border-color: var(--court-live); background: var(--court-live-bg); }
+    .tm-card.live .tm-state { color: var(--court-live); }
+    .tm-card.now { border-color: var(--brand); background: var(--cat-soft); }
+    .tm-card.now .tm-state { color: var(--brand); }
+    .tm-card.standby { border-color: var(--court-done); background: var(--court-done-bg); }
+    .tm-card.standby .tm-state { color: var(--court-done); }
+    .tm-card.done .tm-state { color: var(--text-1); }
+    .tm-card.none { color: var(--text-2); }
+    .tm-hint { text-align: center; color: var(--text-2); font-size: .9rem; padding: 18px 10px; border: 1px dashed var(--glass-border); border-radius: var(--radius); }
+    .tm-tabs { display: flex; gap: 6px; margin: 0 0 10px; }
+    .tm-tabs button { padding: 7px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; color: var(--text-2); background: var(--glass); border: 1px solid var(--glass-border); }
+    .tm-tabs button[aria-pressed="true"] { color: var(--bg-0); background: var(--brand); border-color: var(--brand); }
+    .tm-cols { display: grid; gap: 16px; }
+    @media (min-width: 860px) { .tm-cols.both { grid-template-columns: 1fr 1fr; } }
+    .tm-sec h2 { margin: 0 0 8px; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+    .tm-list { display: grid; gap: 6px; }
+    .tm-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--glass); border: 1px solid transparent; }
+    .tm-row.mine { border-color: var(--brand); background: var(--cat-soft); }
+    .tm-g { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: .85rem; background: var(--glass-strong); }
+    .tm-row.live .tm-g { background: var(--court-live-bg); color: var(--court-live); }
+    .tm-r { min-width: 0; }
+    .tm-r .t { font-size: .9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tm-r .t b { font-family: var(--font-mono, monospace); color: var(--accent); margin: 0 4px; }
+    .tm-r .t em { font-style: normal; color: var(--text-2); font-size: .78rem; margin: 0 4px; }
+    .tm-r .n { font-size: .76rem; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    .tm-r .n.me { color: var(--brand); font-weight: 700; }
+    .tm-chip { font-size: .68rem; font-weight: 800; letter-spacing: .04em; padding: 4px 8px; border-radius: 999px; background: var(--glass-strong); color: var(--text-1); white-space: nowrap; }
+    .tm-chip.live { background: var(--court-live-bg); color: var(--court-live); }
+    .tm-chip.ready { background: var(--court-ready-bg); color: var(--court-ready); }
+    .tm-chip.done { background: var(--court-done-bg); color: var(--court-done); }
+    .tm-foot { margin-top: 22px; text-align: center; font-size: .74rem; color: var(--text-2); }
+  </style>
 </head>
 <body data-category="SEMUA">
 
@@ -3610,6 +3666,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
   <!-- Bekas notifikasi -->
   <!-- MOD PENGADIL TELEFON (Fasa 6): paparan ringkas skrin penuh untuk pengadil -->
   <div class="ref-mobile hidden" id="refMobile" aria-live="polite"></div>
+  <!-- v1.45.0: PAPARAN PENGURUS PASUKAN (?view=pasukan) - ringkas, tanpa Simulasi Gelanggang -->
+  <div class="tm-view" id="tmView" hidden></div>
 
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
@@ -9339,7 +9397,8 @@ void main() {
         'renderAdmin',
         'updateFooter',
         'renderDashboard',        // v2.0 Dashboard Utama (baca sahaja)
-        'renderBadmintonViews'    // v2.0 paparan badminton (baca sahaja)
+        'renderBadmintonViews',   // v2.0 paparan badminton (baca sahaja)
+        'renderTeamView'          // v1.45.0 Paparan Pengurus Pasukan
       ];
       renderers.forEach(name => {
         if (typeof window[name] === 'function') {
@@ -9357,7 +9416,7 @@ void main() {
       try {
         const params = new URLSearchParams(window.location.search);
         const v = (params.get('view') || '').toLowerCase();
-        return v === 'live' || v === 'public';
+        return v === 'live' || v === 'public' || v === 'pasukan';   // v1.45.0: pasukan = Paparan Pengurus Pasukan
       } catch (err) {
         return false;
       }
@@ -15341,6 +15400,183 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return { v, match, queue, source };
     }
 
+    // =========================================================
+    // v1.45.0: PAPARAN PENGURUS PASUKAN (?view=pasukan)
+    // Ringkas & padat: status pasukan anda + gelanggang semasa / seterusnya. Tiada Simulasi Gelanggang.
+    // =========================================================
+    const TM_SUKAN_KEY = 'fpk_kbb_tm_sukan';
+    function isTeamView() {
+      try { return (new URLSearchParams(location.search).get('view') || '').toLowerCase() === 'pasukan'; } catch (e) { return false; }
+    }
+    function tmNorm(x) { return String(x || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+    function tmIsMine(team, n) {
+      const t = tmNorm(team), v = tmNorm(n);
+      return !!t && !!v && (v === t || v.indexOf(t + ' (') === 0);
+    }
+    function tmFsEntries() {
+      return (state.courts || []).filter(c => c && !c.ditutup).map(c => {
+        const d = courtDisplay(c);
+        const live = d.v.status === COURT_STATUS.LIVE;
+        const m = d.match;
+        const one = x => ({ id: x.id, p1: x.namaP1, p2: x.namaP2, ready: isMatchReady(x) });
+        return {
+          sukan: 'FUTSAL', gel: c.id,
+          st: d.v.rehat ? 'rehat' : live ? 'live' : (d.v.status === COURT_STATUS.TAMAT ? 'done' : 'ready'),
+          cur: m ? Object.assign(one(m), { s1: Number(d.v.skorLiveP1) || 0, s2: Number(d.v.skorLiveP2) || 0,
+            fasa: live ? (COURT_PHASE_LABELS[d.v.fasaMasa] || d.v.fasaMasa || '') : '' }) : null,
+          queue: (d.queue || []).map(one)
+        };
+      });
+    }
+    function tmBmEntries() {
+      if (typeof bmCourtRows !== 'function' || typeof bmModel !== 'function') return [];
+      const one = x => ({ id: (x.ov ? x.ov + ' · ' : '') + x.id, p1: x.nama1, p2: x.nama2, ready: !x.tbd1 && !x.tbd2 });
+      return bmCourtRows(bmModel()).map(r => ({
+        sukan: 'BADMINTON', gel: String(r.gel), st: r.st,
+        cur: r.cur ? Object.assign(one(r.cur), { s1: r.cur.s1, s2: r.cur.s2, fasa: '' }) : null,
+        queue: (r.queue || []).map(one)
+      }));
+    }
+    function tmTeamNames(entries) {
+      const names = new Set();
+      const add = n => { const v = String(n || '').replace(/\s+/g, ' ').trim(); if (v && !isPlaceholderName(v) && v.charAt(0) !== '(') names.add(v); };
+      entries.forEach(e => [e.cur].concat(e.queue).forEach(m => { if (m && m.ready) { add(m.p1); add(m.p2); } }));
+      (state.matches || []).forEach(m => { add(m.namaP1); add(m.namaP2); });
+      try { bmModel().matches.forEach(m => { if (!m.tbd1) add(m.nama1); if (!m.tbd2) add(m.nama2); }); } catch (e) { /* abaikan */ }
+      return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+    function tmCardFor(team, sukan, entries) {
+      const ikon = sukan === 'FUTSAL' ? '⚽ Futsal' : '🏸 Badminton';
+      const mine = m => m && (tmIsMine(team, m.p1) || tmIsMine(team, m.p2));
+      let best = null;
+      entries.forEach(e => {
+        if (mine(e.cur)) { if (!best || best.pos > -1) best = { e, m: e.cur, pos: -1 }; return; }
+        const i = e.queue.findIndex(mine);
+        if (i >= 0 && (!best || i < best.pos)) best = { e, m: e.queue[i], pos: i };
+      });
+      if (!best) return '';
+      const { e, m, pos } = best;
+      const lawan = tmIsMine(team, m.p1) ? m.p2 : m.p1;
+      const vsTxt = m.ready ? `lawan <b>${escapeHtml(lawan || '-')}</b>` : 'lawan belum ditentukan';
+      const gel = `Gelanggang ${escapeHtml(e.gel)}`;
+      let cls = 'wait', state1 = '';
+      if (pos === -1 && (e.st === 'live' || e.st === 'rehat')) {
+        cls = 'live';
+        state1 = e.st === 'rehat' ? '⏸ Rehat sementara' : '🔴 Sedang bermain';
+      } else if (pos === -1 && e.st === 'done') { cls = 'done'; state1 = '✅ Tamat · menunggu pengesahan'; }
+      else if (pos === -1) { cls = 'now'; state1 = '👉 Masuk gelanggang sekarang'; }
+      else if (pos === 0) { cls = 'standby'; state1 = '🟡 Standby di tepi gelanggang'; }
+      else { state1 = `⏳ ${pos + 1} perlawanan lagi`; }
+      const skor = cls === 'live' && m.s1 !== null && m.s1 !== undefined ? ` · <b>${m.s1} – ${m.s2}</b>${m.fasa ? ' · ' + escapeHtml(m.fasa) : ''}` : '';
+      return `<div class="tm-card ${cls}"><div class="tm-sport">${ikon} · ${escapeHtml(m.id)}</div>
+        <div class="tm-state">${state1}</div><div class="tm-where">${gel}</div>
+        <div class="tm-vs">${vsTxt}${skor}</div></div>`;
+    }
+    function tmRow(e, team) {
+      const m = e.cur;
+      const mine = x => !!team && !!x && (tmIsMine(team, x.p1) || tmIsMine(team, x.p2));
+      const nx = e.queue[0] || null;
+      const chip = !m ? '<span class="tm-chip">KOSONG</span>'
+        : e.st === 'live' ? '<span class="tm-chip live">LIVE</span>'
+        : e.st === 'rehat' ? '<span class="tm-chip done">REHAT</span>'
+        : e.st === 'done' ? '<span class="tm-chip done">TAMAT</span>'
+        : '<span class="tm-chip ready">SEDIA</span>';
+      const nm = x => x.ready ? `${escapeHtml(x.p1)}<em>lwn</em>${escapeHtml(x.p2)}` : `${escapeHtml(x.id)} · pasukan belum ditentukan`;
+      const main = !m ? '<span style="color:var(--text-2)">Tiada perlawanan</span>'
+        : (e.st === 'live' || e.st === 'rehat' || e.st === 'done') && m.ready && m.s1 !== null && m.s1 !== undefined
+          ? `${escapeHtml(m.p1)}<b>${m.s1}–${m.s2}</b>${escapeHtml(m.p2)}` : nm(m);
+      const next = nx ? `<div class="n${mine(nx) ? ' me' : ''}">Seterusnya: ${nx.ready ? `${escapeHtml(nx.p1)} lwn ${escapeHtml(nx.p2)}` : 'pasukan belum ditentukan'}</div>` : '';
+      return `<div class="tm-row ${e.st}${mine(m) || mine(nx) ? ' mine' : ''}"><span class="tm-g">${escapeHtml(e.gel)}</span>
+        <div class="tm-r"><div class="t">${main}</div>${next}</div>${chip}</div>`;
+    }
+    function tmShell(el) {
+      el.innerHTML = `
+        <div class="tm-top">
+          <div class="tm-brand"><small>Paparan Pengurus Pasukan</small><h1>Karnival Sukan PK KBB 2026</h1></div>
+          <span class="tm-sync" id="tmSync"><i></i><span>Menyambung…</span></span>
+        </div>
+        <label class="tm-pick"><span>🔎 Pasukan</span>
+          <input id="tmTeam" list="tmTeams" type="text" autocomplete="off" placeholder="Taip nama sekolah anda" aria-label="Nama pasukan anda" />
+          <button type="button" id="tmClear" aria-label="Padam pilihan pasukan">✕</button>
+        </label>
+        <datalist id="tmTeams"></datalist>
+        <div class="tm-mine" id="tmMine"></div>
+        <div class="tm-tabs" id="tmTabs" role="group" aria-label="Pilih sukan">
+          <button type="button" data-s="SEMUA">Semua</button><button type="button" data-s="FUTSAL">⚽ Futsal</button><button type="button" data-s="BADMINTON">🏸 Badminton</button>
+        </div>
+        <div id="tmCourts"></div>
+        <div class="tm-foot">Dikemas kini automatik daripada Google Sheets. Sila bersedia di tepi gelanggang sebelum giliran anda.</div>`;
+      const inp = el.querySelector('#tmTeam');
+      inp.value = getStandbyTeam();
+      const simpan = () => { try { const v = inp.value.trim(); v ? localStorage.setItem(SB_TEAM_KEY, v) : localStorage.removeItem(SB_TEAM_KEY); } catch (e) { /* abaikan */ } renderTeamView(); };
+      inp.addEventListener('change', simpan);
+      inp.addEventListener('input', () => { clearTimeout(inp._t); inp._t = setTimeout(simpan, 400); });
+      el.querySelector('#tmClear').addEventListener('click', () => { inp.value = ''; simpan(); inp.focus(); });
+      el.querySelectorAll('#tmTabs button').forEach(b => b.addEventListener('click', () => {
+        try { localStorage.setItem(TM_SUKAN_KEY, b.dataset.s); } catch (e) { /* abaikan */ }
+        renderTeamView();
+      }));
+      el._shell = true;
+    }
+    function renderTeamView() {
+      const el = document.getElementById('tmView');
+      if (!el || !isTeamView()) return;
+      if (!el._shell) tmShell(el);
+      let fs = [], bm = [];
+      try { fs = tmFsEntries(); } catch (e) { console.warn('[tmFsEntries]', e); }
+      try { bm = tmBmEntries(); } catch (e) { console.warn('[tmBmEntries]', e); }
+      // Senarai pasukan (datalist)
+      const names = tmTeamNames(fs.concat(bm));
+      const dl = el.querySelector('#tmTeams');
+      const sig = names.join('|');
+      if (dl && dl._sig !== sig) { dl.innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join(''); dl._sig = sig; }
+      // Status pasukan anda
+      const team = getStandbyTeam();
+      let mineHtml;
+      if (!team) mineHtml = '<div class="tm-hint">Taip nama sekolah anda di atas untuk melihat gelanggang &amp; giliran pasukan anda.</div>';
+      else {
+        mineHtml = tmCardFor(team, 'FUTSAL', fs) + tmCardFor(team, 'BADMINTON', bm);
+        if (!mineHtml) mineHtml = `<div class="tm-card none"><div class="tm-state" style="font-size:1rem">Tiada perlawanan akan datang untuk <b>${escapeHtml(team)}</b>.</div><div class="tm-vs">Semak ejaan nama sekolah, atau pasukan anda telah selesai bermain.</div></div>`;
+      }
+      const mineEl = el.querySelector('#tmMine');
+      if (mineEl._html !== mineHtml) { mineEl.innerHTML = mineHtml; mineEl._html = mineHtml; }
+      // Gelanggang
+      let pilih = 'SEMUA';
+      try { pilih = localStorage.getItem(TM_SUKAN_KEY) || 'SEMUA'; } catch (e) { /* abaikan */ }
+      el.querySelectorAll('#tmTabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === pilih ? 'true' : 'false'));
+      const sec = (title, list) => `<section class="tm-sec"><h2>${title}</h2><div class="tm-list">${list.map(e => tmRow(e, team)).join('') || '<div class="tm-hint">Menunggu data…</div>'}</div></section>`;
+      const parts = [];
+      if (pilih !== 'BADMINTON') parts.push(sec('⚽ Futsal · gelanggang', fs));
+      if (pilih !== 'FUTSAL') parts.push(sec('🏸 Badminton · gelanggang', bm));
+      const courtsHtml = `<div class="tm-cols${parts.length > 1 ? ' both' : ''}">${parts.join('')}</div>`;
+      const cEl = el.querySelector('#tmCourts');
+      if (cEl._html !== courtsHtml) { cEl.innerHTML = courtsHtml; cEl._html = courtsHtml; }
+      // Status segerak
+      const sy = el.querySelector('#tmSync');
+      if (sy) {
+        const t = publicLive.lastOk ? new Date(publicLive.lastOk) : null;
+        const txt = t && !isNaN(t.getTime()) ? `Live · ${t.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}` : 'Menyambung…';
+        sy.classList.toggle('warn', !t || publicSyncWarn());
+        const span = sy.querySelector('span');
+        if (span.textContent !== txt) span.textContent = txt;
+      }
+    }
+    function tmInit() {
+      if (!isTeamView()) return;
+      document.body.classList.add('tm-mode');
+      const el = document.getElementById('tmView');
+      if (el) el.hidden = false;
+      try { document.title = 'Paparan Pengurus Pasukan · Karnival Sukan PK KBB 2026'; } catch (e) { /* abaikan */ }
+      // Data Futsal + Badminton: paparan utama, semua sukan & semua kategori
+      try { if (state.ui && state.ui.kategori !== 'SEMUA') switchEvent('SEMUA'); } catch (e) { /* abaikan */ }
+      try { if (state.ui && state.ui.activeTab !== 'tab-dashboard' && typeof setActiveTab === 'function') setActiveTab('tab-dashboard'); } catch (e) { /* abaikan */ }
+      try { if (typeof dash !== 'undefined' && dash.sukan !== 'SEMUA') applySukan('SEMUA'); } catch (e) { /* abaikan */ }
+      renderTeamView();
+      setInterval(() => { if (!document.hidden) renderTeamView(); }, 3000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(tmInit, 300));
+    else setTimeout(tmInit, 300);
+
     // ---------- FASA 7: Makluman Standby untuk pengurus pasukan ----------
     const SB_TEAM_KEY = 'fpk_kbb_sb_team';
     function getStandbyTeam() { try { return localStorage.getItem(SB_TEAM_KEY) || ''; } catch (e) { return ''; } }
@@ -18437,7 +18673,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     async function copyShareLink() {
-      const url = `${location.origin}${location.pathname}?view=live`;
+      // v1.45.0: pautan untuk pengurus pasukan -> paparan ringkas (tanpa Simulasi Gelanggang)
+      const url = `${location.origin}${location.pathname}?view=pasukan`;
       try {
         if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(url);
@@ -18452,11 +18689,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           document.execCommand('copy');
           ta.remove();
         }
-        showToast('Pautan live (tontonan sahaja) disalin. Kongsi kepada penonton!', 'success');
+        showToast('Pautan Paparan Pengurus Pasukan disalin. Kongsi kepada pengurus pasukan!', 'success', 4500);
         return true;
       } catch (err) {
         console.warn('[copyShareLink]', err);
-        await uiPrompt('Salin pautan live ini:', url);
+        await uiPrompt('Salin pautan Paparan Pengurus Pasukan ini:', url);
         return false;
       }
     }
@@ -21023,6 +21260,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         try { if (state.ui && state.ui.activeTab === 'tab-approval') renderApprovals(); } catch (e) { /* abaikan */ }
         const n = bmNoticeHtml();
         document.querySelectorAll('[data-bm-notice]').forEach(el => { el.innerHTML = n; });
+        try { if (typeof renderTeamView === 'function') renderTeamView(); } catch (e) { /* abaikan */ }   // v1.45.0
       } catch (err) {
         console.error('[renderBadmintonViews]', err);
       }
