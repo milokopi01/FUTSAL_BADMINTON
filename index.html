@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwSb3Aj5_Y5DQWR-DIy6yiknnPONGo1bM6mGyADbv2kxBaWl7UOcuc_iNx-oOkocqG3/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -11872,6 +11872,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           else reason = m._kmSeri ? '⚖ Kedudukan kumpulan seri · Master Admin perlu tetapkan pasukan' : '⏳ Menunggu keputusan pusingan sebelumnya disahkan (kalah mati)';
         }
         else reason = tunggu.length ? '✅ Semua perlawanan dimainkan · menunggu pengesahan' : '✅ Semua perlawanan gelanggang ini selesai';
+        // v1.40.2: gelanggang tanpa perlawanan sedia -> akan mengambil perlawanan gelanggang lain secara automatik
+        if (!can && !live.length && !tolak.length && !m?._kmSeri) reason += ' · Perlawanan daripada gelanggang lain akan dipindahkan ke sini secara automatik bila pasukannya bebas';
         const next = belum.find(x => x !== m) || null;
         const queue = belum.filter(x => x !== m);
         return { gel, m, can, reason, next, baki: queue.length, kat: ms[0] ? (ms[0].kategori || '') : '',

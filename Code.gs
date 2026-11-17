@@ -147,6 +147,18 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  tidak diambil.
  *                - Sepak Mula diterima untuk perlawanan yang baru dipindahkan ke gelanggang ini.
  *                - Giliran papan live: perlawanan yang SEDIA dimainkan didahulukan.
+ *              + v1.23.4 - AUTO-ISI BADMINTON LEBIH CEPAT:
+ *                - Auto-isi kini juga dijalankan bila pengadil Badminton MULA perlawanan (skor
+ *                  pertama). Saat gelanggang lain mula bermain, perlawanan seterusnya gelanggang itu
+ *                  terus boleh diambil oleh gelanggang yang kosong (sebelum ini hanya selepas
+ *                  keputusan dihantar / disahkan).
+ *                - Gelanggang yang kosong tetapi tidak dapat diisi kini dicatat dalam log
+ *                  (Executions) bersama sebabnya: pasukan bertembung / belum ditentukan / dikunci.
+ *                - Fungsi manual semakAutoIsiBadminton(): jalankan dari editor untuk isi gelanggang
+ *                  kosong serta-merta & lihat sebabnya.
+ *                - Peraturan kekal: satu pasukan tidak boleh dijadualkan di dua gelanggang serentak,
+ *                  dan perlawanan seterusnya gelanggang yang sedang menunggu (tiada perlawanan
+ *                  berlangsung) tidak diambil - kerana pasukannya akan bermain di sana sekarang.
  *              + v1.23.1 - KUNCI PENGANJUR SENTIASA DIPATUHI:
  *                - Perlawanan yang dikunci penganjur (Urus Gelanggang > kunci Separuh Akhir /
  *                  Tempat 3/4 / Akhir) TIDAK PERNAH diambil oleh gelanggang lain semasa auto-isi.
@@ -245,7 +257,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.3';  // v1.23.3: bacaan pengadil menyertakan No. Perlawanan Keseluruhan (P1, P2 ...) supaya Paparan Pengadil tulis giliran
+const API_VERSI = '1.23.4';  // v1.23.4: auto-isi gelanggang Badminton juga berjalan bila perlawanan BARU BERMULA + log sebab gelanggang tidak diisi
+// const API_VERSI_LAMA = '1.23.3';  // v1.23.3: bacaan pengadil menyertakan No. Perlawanan Keseluruhan (P1, P2 ...) supaya Paparan Pengadil tulis giliran
 // const API_VERSI_LAMA = '1.23.1';  // v1.23.1: KUNCI PENGANJUR (Separuh Akhir / Akhir) sentiasa dipatuhi oleh auto-isi & Sepak Mula
 // const API_VERSI_LAMA = '1.23.0';  // v1.23.0: SEMUA gelanggang TERBUKA (SR + SM) + AUTO-ISI gelanggang kosong dengan baki perlawanan
 // const API_VERSI_LAMA = '1.22.1';  // v1.22.1: anti-bertindih reqId disimpan 6 jam (peti keluar telefon pengadil, index.html v1.36.0)
@@ -2171,6 +2184,9 @@ const AUTO_ISI_TINDAKAN_FUTSAL = ['', 'syncall', 'updatematch', 'updatematches',
 const AUTO_ISI_TINDAKAN_BM = ['', 'syncall', 'updatematch', 'updatematches', 'urusgelanggangbadminton', 'simpanjadual',
   'simpanskorsukan', 'skorpengadilbadminton'];
 
+// v1.23.4: ditanda oleh skorPengadilBadminton_ bila perlawanan bertukar BELUM BERMULA -> LIVE (satu pelaksanaan sahaja)
+let BM_BARU_MULA_ = false;
+
 function autoIsiSelepasPost_(body, ctx) {
   if (!AUTO_ISI_GELANGGANG || !body) return 0;
   const action = String(body.action || '').toLowerCase();
@@ -2178,7 +2194,8 @@ function autoIsiSelepasPost_(body, ctx) {
   if (sukan === 'BADMINTON') {
     if (AUTO_ISI_TINDAKAN_BM.indexOf(action) < 0) return 0;
     // Autosimpan skor (SEMASA) tidak membebaskan gelanggang -> abaikan (kekal pantas)
-    if (action === 'skorpengadilbadminton' && String(body.jenis || '').toUpperCase() !== 'TAMAT') return 0;
+    // v1.23.4: kecuali skor PERTAMA (perlawanan baru bermula) -> gelanggang kosong boleh terus ambil giliran seterusnya
+    if (action === 'skorpengadilbadminton' && String(body.jenis || '').toUpperCase() !== 'TAMAT' && !BM_BARU_MULA_) return 0;
     const nBm = isiGelanggangKosongBm_();
     if (nBm) ctx.tandaSukan = 'BADMINTON';
     return nBm;
@@ -2282,18 +2299,26 @@ function rancangIsiGelanggang_(o) {
   const pindah = [];
   const diambil = {};
   kosong.forEach(function (g) {
+    let nKunci = 0, nBertembung = 0, dapat = false;
     for (let i = 0; i < calon.length; i++) {
       const d = calon[i];
       const id = String(d.id).toUpperCase();
       if (diambil[id]) continue;
       const kunci = (o.kunciAcara || {})[id];
-      if (kunci && kunci !== g && aktif[kunci]) continue;   // Separuh Akhir / Akhir dikunci ke gelanggang lain
+      if (kunci && kunci !== g && aktif[kunci]) { nKunci++; continue; }   // Separuh Akhir / Akhir dikunci ke gelanggang lain
       const keys = kunciPasukanAuto_(d, o.katOf(d));
-      if (keys.some(function (k) { return sibuk[k]; })) continue;
+      if (keys.some(function (k) { return sibuk[k]; })) { nBertembung++; continue; }
       diambil[id] = true;
       keys.forEach(function (k) { sibuk[k] = true; });
       pindah.push({ id: id, gel: g, d: d });
+      dapat = true;
       break;
+    }
+    // v1.23.4: catat sebab gelanggang kosong tidak diisi (dipaparkan dalam log Executions)
+    if (!dapat && Array.isArray(o.catatan)) {
+      o.catatan.push('Gelanggang ' + g + ' kosong tetapi tidak diisi: ' + (calon.length
+        ? nBertembung + ' perlawanan pasukannya sedang bermain / akan bermain di gelanggang lain' + (nKunci ? ', ' + nKunci + ' dikunci penganjur ke gelanggang lain' : '')
+        : 'tiada baki perlawanan lain yang kedua-dua pasukannya sudah ditentukan'));
     }
   });
   return pindahKunci.concat(pindah);
@@ -2359,6 +2384,7 @@ function isiGelanggangKosongBm_() {
     });
   }
   const adaP = Object.keys(turutanP).length > 0;
+  const catatan = [];
   const pindah = rancangIsiGelanggang_({
     courts: courts,
     rows: table.rows.map(function (r) { return r.data; }),
@@ -2367,8 +2393,10 @@ function isiGelanggangKosongBm_() {
     isLive: function (d) { return statusBaris_(d) === 'LIVE' && String(d.pengesahan || '').toUpperCase() !== 'DISAHKAN'; },
     isPending: function (d) { return bmBelumMula_(d); },
     dipegang: {}, pegangId: {},
-    kunciAcara: cfg.kunciAcara || {}, susunan: adaP ? turutanP : (cfg.susunan || {})
+    kunciAcara: cfg.kunciAcara || {}, susunan: adaP ? turutanP : (cfg.susunan || {}),
+    catatan: catatan
   });
+  if (catatan.length) console.log('Auto-isi Badminton: ' + catatan.join(' | '));
   if (!pindah.length) return 0;
   const rowOf = {};
   table.rows.forEach(function (r) { rowOf[String(r.data.id).toUpperCase()] = r.rowIndex; });
@@ -2384,6 +2412,19 @@ function isiGelanggangKosongBm_() {
   try { CacheService.getScriptCache().remove(BM_CACHE_KEY); } catch (err) { /* abaikan */ }
   console.log('Auto-isi gelanggang Badminton: ' + pindah.map(function (p) { return p.id + ' -> ' + p.gel; }).join(', '));
   return pindah.length;
+}
+
+// v1.23.4: jalankan manual dari editor Apps Script - isi gelanggang Badminton yang kosong serta-merta.
+// Lihat log (Execution log) untuk perlawanan yang dipindahkan atau sebab gelanggang tidak diisi.
+function semakAutoIsiBadminton() {
+  const giliran = dapatKunciGiliran_(30000);
+  if (!giliran) throw new Error('Pelayan sibuk. Cuba lagi sebentar.');
+  try {
+    const n = isiGelanggangKosongBm_();
+    console.log(n ? n + ' perlawanan Badminton dipindahkan ke gelanggang kosong.' : 'Tiada perlawanan Badminton dipindahkan.');
+    if (n) { try { tandaPerubahan_('BADMINTON'); } catch (err) { /* abaikan */ } }
+    return n;
+  } finally { try { giliran.lock.releaseLock(); } catch (err) { /* abaikan */ } }
 }
 
 function normId_(v) {
@@ -4384,6 +4425,7 @@ function skorPengadilBadminton_(body) {
     }
   }
 
+  if (jenis === 'SEMASA' && bmBelumMula_(d)) BM_BARU_MULA_ = true;   // v1.23.4: perlawanan baru bermula -> auto-isi gelanggang kosong
   const now = new Date();
   const row = table.values[rec.rowIndex].slice();
   const set = function (f, v) { if (table.colOf[f] !== undefined) row[table.colOf[f]] = v; };
