@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwSb3Aj5_Y5DQWR-DIy6yiknnPONGo1bM6mGyADbv2kxBaWl7UOcuc_iNx-oOkocqG3/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -20659,8 +20659,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (!stage) return '';
         let n = 0;
         stage.querySelectorAll('[id]').forEach(el => { if (el.children) n = n * 31 + el.children.length & 0xffffff; });
-        return tabId + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + n;
+        // v2.3: termasuk kedudukan atas pentas -> bila bar/notis di atas berubah, kira semula
+        const top = Math.round(stage.getBoundingClientRect().top + window.scrollY);
+        return tabId + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + n + '|' + top;
       }
+      // v2.3: pengawal ruang kosong - jika bawah pentas tidak rapat ke bawah skrin, kira semula
+      setInterval(function() {
+        if (document.hidden || !autoFitActive || !isDesktopFitView()) return;
+        if (document.documentElement.classList.contains('autofit-scroll')) return;
+        const tabId = activeLiveTabId();
+        const stage = tabId ? document.getElementById(STAGES[tabId]) : null;
+        if (!stage || !stage.offsetParent) return;
+        const r = stage.getBoundingClientRect();
+        const gap = (window.innerHeight - 10) - r.bottom;
+        if (window.scrollY < 2 && Math.abs(gap) > 6) fitLiveStage();
+      }, 1000);
       let lastSig = '';
       let structTimer = null;
       function scheduleStructFit() {
