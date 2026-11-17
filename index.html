@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw7KTTURcTVoj02Q5birTpV14Fkr5QCCjo1YirTYyajWt0tQ2_g8uPz_-isGJ4bfa5pNA/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -3129,7 +3129,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               <div class="card-bar">
                 <div>
                   <h3 class="card-title" style="margin:0;">🏟️ Urus Gelanggang <span class="badge badge-fix">Master Admin Sahaja</span></h3>
-                  <p class="muted" style="font-size:.8rem;margin-top:4px;">Tambah gelanggang baharu, aktifkan atau tutup gelanggang. Bila gelanggang <strong>ditutup</strong>, baki perlawanan (Menunggu Giliran) disusun semula ke gelanggang yang <strong>aktif sahaja</strong>. Gelanggang <strong>SR + SM (Terbuka)</strong> menerima semua kategori.</p>
+                  <p class="muted" style="font-size:.8rem;margin-top:4px;">Tambah gelanggang baharu, aktifkan atau tutup gelanggang. Bila gelanggang <strong>ditutup</strong>, baki perlawanan (Menunggu Giliran) disusun semula ke gelanggang yang <strong>aktif sahaja</strong>. Pilih <strong>Kategori</strong> setiap gelanggang: <strong>SR + SM (Terbuka)</strong> menerima semua kategori, atau <strong>🔒 SR sahaja</strong> / <strong>🔒 SM sahaja</strong> untuk kunci gelanggang kepada satu kategori.</p>
                 </div>
                 <div class="court-mgr-actions">
                   <button type="button" class="btn btn-sm" data-court-rebalance="SM" title="Susun semula baki perlawanan Sekolah Menengah ke gelanggang aktif">⟳ Susun Semula Baki SM</button>
@@ -3138,7 +3138,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               </div>
               <!-- v1.18.0: Jana Susunan - buka semua gelanggang kepada semua kategori & agih sekata -->
               <div class="court-gen-box">
-                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum sepak mula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang LIVE / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
+                <p>⚡ <strong>Jana Susunan</strong>: <strong>kategori setiap gelanggang dikekalkan</strong> (Terbuka / SR sahaja / SM sahaja) dan baki perlawanan yang <strong>belum sepak mula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang LIVE / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
                 <button type="button" class="btn btn-primary" id="btnGenerateCourts">⚡ Jana Susunan Semua Gelanggang</button>
               </div>
               <div class="court-mgr-form">
@@ -3153,7 +3153,9 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 <div class="field" style="width:190px;">
                   <label for="newCourtKategori">Kategori</label>
                   <select class="select" id="newCourtKategori">
-                    <option value="SEMUA" selected>Semua Kategori (Terbuka)</option>
+                    <option value="SEMUA" selected>SR + SM (Terbuka)</option>
+                    <option value="SR">🔒 SR sahaja</option>
+                    <option value="SM">🔒 SM sahaja</option>
                   </select>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" id="btnAddCourt">＋ Tambah Gelanggang</button>
@@ -3185,7 +3187,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               <div class="card-bar">
                 <div>
                   <h3 class="card-title" style="margin:0;">🏸 Urus Gelanggang Badminton <span class="badge badge-fix">Master Admin Sahaja</span></h3>
-                  <p class="muted" style="font-size:.8rem;margin-top:4px;">Tambah gelanggang Badminton baharu, aktifkan atau tutup gelanggang. Bila gelanggang <strong>ditutup</strong>, baki perlawanan (Belum Bermula) disusun semula ke gelanggang yang <strong>aktif sahaja</strong>. Gelanggang <strong>SR + SM (Terbuka)</strong> menerima semua kategori.</p>
+                  <p class="muted" style="font-size:.8rem;margin-top:4px;">Tambah gelanggang Badminton baharu, aktifkan atau tutup gelanggang. Bila gelanggang <strong>ditutup</strong>, baki perlawanan (Belum Bermula) disusun semula ke gelanggang yang <strong>aktif sahaja</strong>. Pilih <strong>Kategori</strong> setiap gelanggang: <strong>SR + SM (Terbuka)</strong> menerima semua kategori, atau <strong>🔒 SR sahaja</strong> / <strong>🔒 SM sahaja</strong> untuk kunci gelanggang kepada satu kategori.</p>
                 </div>
                 <div class="court-mgr-actions">
                   <button type="button" class="btn btn-sm" data-bmc-reload="1" title="Baca semula jadual & gelanggang Badminton daripada Google Sheets">↻ Muat Semula</button>
@@ -3193,7 +3195,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 </div>
               </div>
               <div class="court-gen-box">
-                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang Badminton aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum bermula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang berlangsung / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
+                <p>⚡ <strong>Jana Susunan</strong>: <strong>kategori setiap gelanggang Badminton dikekalkan</strong> (Terbuka / SR sahaja / SM sahaja) dan baki perlawanan yang <strong>belum bermula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang berlangsung / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
                 <button type="button" class="btn btn-primary" id="btnBmGenerateCourts">⚡ Jana Susunan Semua Gelanggang</button>
               </div>
               <div class="court-mgr-form">
@@ -3208,7 +3210,9 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 <div class="field" style="width:190px;">
                   <label for="bmNewCourtKategori">Kategori</label>
                   <select class="select" id="bmNewCourtKategori">
-                    <option value="SEMUA" selected>Semua Kategori (Terbuka)</option>
+                    <option value="SEMUA" selected>SR + SM (Terbuka)</option>
+                    <option value="SR">🔒 SR sahaja</option>
+                    <option value="SM">🔒 SM sahaja</option>
                   </select>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" id="btnBmAddCourt">＋ Tambah Gelanggang</button>
@@ -8221,13 +8225,16 @@ void main() {
     const COURT_KAT_OPEN = 'SEMUA';   // v1.18.0: gelanggang terbuka kepada semua kategori
     // v1.38.0: true -> SEMUA gelanggang (Futsal & Badminton) sentiasa terbuka kepada SR & SM,
     // dan gelanggang kosong diisi automatik dengan baki perlawanan daripada gelanggang lain.
-    const SEMUA_GELANGGANG_TERBUKA = true;
+    // v1.43.0: false -> Master Admin memilih kategori setiap gelanggang: SR + SM (Terbuka) / SR sahaja / SM sahaja.
+    const SEMUA_GELANGGANG_TERBUKA = false;
+    // v1.43.0: auto-isi gelanggang kosong kekal aktif (hanya ambil perlawanan kategori yang diterima gelanggang)
+    const AUTO_ISI_GELANGGANG = true;
     const COURT_MAX = 12;
     const COURT_STAGE_RANK = { 'PERINGKAT KUMPULAN': 0, 'PUSINGAN KEDUA': 1, 'SUKU AKHIR': 1, 'SEPARUH AKHIR': 2, 'TEMPAT 3/4': 3, 'AKHIR': 3 };
     const courtCfgSync = { busy: false, error: '', lastOk: null, changedAt: 0, lastTry: 0 };
 
     function defaultCourtConfig() {
-      return INITIAL_COURTS.map(c => ({ id: c.id, nama: c.nama, kategori: c.kategori, aktif: true }));
+      return INITIAL_COURTS.map(c => ({ id: c.id, nama: c.nama, kategori: COURT_KAT_OPEN, aktif: true }));   // v1.43.0: lalai Terbuka
     }
 
     function cleanCourtConfig(list) {
@@ -8798,7 +8805,7 @@ void main() {
       const kunci = baki.filter(m => lockAktif(m));
       const kunciTak = baki.filter(m => (state.courtKunciAcara || {})[m.id] && !lockAktif(m));
       const lines = [
-        `${aktif.length} gelanggang aktif: ${aktif.map(g => g.id).join(', ')} → dibuka kepada SEMUA kategori (SR & SM).`,
+        `${aktif.length} gelanggang aktif: ${aktif.map(g => `${g.id} (${g.kategori === COURT_KAT_OPEN ? 'SR + SM' : g.kategori + ' sahaja'})`).join(', ')} → kategori setiap gelanggang dikekalkan.`,
         `${baki.length} baki perlawanan (belum sepak mula) akan diagih semula secara sekata.`,
         `🛌 Rehat pasukan: tiada perlawanan berturut-turut (sekurang-kurangnya ${REHAT_MIN_PUSINGAN} pusingan rehat, sasaran ${REHAT_IDEAL_PUSINGAN}).`,
         busy.length ? `${busy.length} gelanggang sedang digunakan (${busy.map(c => c.id).join(', ')}) - perlawanan semasa diteruskan.` : 'Tiada perlawanan sedang berlangsung.',
@@ -8807,8 +8814,8 @@ void main() {
       if (kunciTak.length) lines.push(`⚠ Kunci diabaikan (gelanggang ditutup): ${kunciTak.map(m => m.id).join(', ')}`);
       if (!await uiConfirm(`Jana susunan semua gelanggang?\n\n${lines.join('\n')}`)) return false;
       const before = snapshotCourtAssign();
-      state.courtConfig.forEach(g => { g.kategori = COURT_KAT_OPEN; });
-      await commitCourtChange([COURT_KAT_OPEN], before, 'Susunan dijana: semua gelanggang dibuka kepada semua kategori');
+      // v1.43.0: kategori gelanggang (Terbuka / SR / SM) TIDAK lagi ditukar - susunan ikut kategori setiap gelanggang
+      await commitCourtChange([COURT_KAT_OPEN], before, 'Susunan dijana ikut kategori setiap gelanggang');
       return true;
     }
 
@@ -8852,7 +8859,7 @@ void main() {
             state.courts.forEach(c => { if (c.matchSemasa === m.id && c.status === COURT_STATUS.SEDIA) c.matchSemasa = null; });
             m.gelanggang = courtId;
           }
-        } else msg += ` Gelanggang ${courtId} belum menerima ${courtKategoriLabel(m.kategori)} - tekan Jana Susunan.`;
+        } else msg += ` Gelanggang ${courtId} dikunci kategori lain - tukar Kategori gelanggang itu kepada SR + SM (Terbuka) atau ${m.kategori} sahaja.`;
       }
       autoAssignCourts(null, { silent: true });
       saveState();
@@ -8946,7 +8953,7 @@ void main() {
             <td class="mono">${escapeHtml(g.id)}</td>
             <td>${escapeHtml(g.nama)}</td>
             <td><select class="select" style="padding:4px 8px;font-size:.8rem;" data-court-kat="${escapeHtml(g.id)}" aria-label="Kategori Gelanggang ${escapeHtml(g.id)}">
-              ${(SEMUA_GELANGGANG_TERBUKA ? [COURT_KAT_OPEN] : ['SM', 'SR', COURT_KAT_OPEN]).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === COURT_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
+              ${(SEMUA_GELANGGANG_TERBUKA ? [COURT_KAT_OPEN] : [COURT_KAT_OPEN, 'SR', 'SM']).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === COURT_KAT_OPEN ? 'SR + SM (Terbuka)' : k === 'SR' ? '🔒 SR sahaja' : '🔒 SM sahaja'}</option>`).join('')}
             </select></td>
             <td>${statusHtml}</td>
             <td class="num">${baki}</td>
@@ -15078,7 +15085,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       };
       // v1.38.0: AUTO-ISI - gelanggang kosong mengambil baki perlawanan seterusnya daripada gelanggang lain
       const takeFromOthers = (court, exclude) => {
-        if (!SEMUA_GELANGGANG_TERBUKA || court.ditutup) return null;
+        if (!AUTO_ISI_GELANGGANG || court.ditutup) return null;
         const busy = teamsBusy(court);
         const cand = state.matches.filter(m => {
           if (m.status !== MATCH_STATUS.MENUNGGU || m.gelanggang === court.id || exclude.has(m.id)) return false;
@@ -19701,10 +19708,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const by = {};
       (model ? model.matches : []).forEach(m => { const g = bmUp(m.gel); if (BMC_ID_RE.test(g)) (by[g] = by[g] || new Set()).add(m.kat); });
       const ids = Object.keys(by).sort(bmcIdSort);
-      if (!ids.length) return BMC_LALAI.map(g => Object.assign({}, g, SEMUA_GELANGGANG_TERBUKA ? { kategori: BMC_KAT_OPEN } : {}));
+      if (!ids.length) return BMC_LALAI.map(g => Object.assign({}, g, { kategori: BMC_KAT_OPEN }));   // v1.43.0: lalai Terbuka
       return ids.map(id => {
         const k = Array.from(by[id]).filter(x => x === 'SR' || x === 'SM');
-        return { id, nama: `Gelanggang ${id}`, kategori: SEMUA_GELANGGANG_TERBUKA || k.length !== 1 ? BMC_KAT_OPEN : k[0], aktif: true };
+        return { id, nama: `Gelanggang ${id}`, kategori: BMC_KAT_OPEN, aktif: true };   // v1.43.0: lalai Terbuka
       });
     }
     function bmcSyncFromServer() {
@@ -19960,7 +19967,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const kunci = baki.filter(lockAktif);
       const kunciTak = baki.filter(m => bmc.kunci[m.id] && !lockAktif(m));
       const lines = [
-        `${aktif.length} gelanggang aktif: ${aktif.map(g => g.id).join(', ')} → dibuka kepada SEMUA kategori (SR & SM).`,
+        `${aktif.length} gelanggang aktif: ${aktif.map(g => `${g.id} (${g.kategori === BMC_KAT_OPEN ? 'SR + SM' : g.kategori + ' sahaja'})`).join(', ')} → kategori setiap gelanggang dikekalkan.`,
         `${baki.length} baki perlawanan (belum bermula) akan diagih semula secara sekata.`,
         `🛌 Rehat pasukan: tiada perlawanan berturut-turut (sekurang-kurangnya ${REHAT_MIN_PUSINGAN} pusingan rehat, sasaran ${REHAT_IDEAL_PUSINGAN}).`,
         busy.length ? `${busy.length} gelanggang sedang digunakan (${busy.map(g => g.id).join(', ')}) - perlawanan semasa diteruskan.` : 'Tiada perlawanan sedang berlangsung.',
@@ -19968,8 +19975,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       ];
       if (kunciTak.length) lines.push(`⚠ Kunci diabaikan (gelanggang ditutup): ${kunciTak.map(m => m.id).join(', ')}`);
       if (!await uiConfirm(`Jana susunan semua gelanggang Badminton?\n\n${lines.join('\n')}`)) return false;
-      bmc.cfg.forEach(g => { g.kategori = BMC_KAT_OPEN; });
-      return bmcCommit(model, 'Susunan Badminton dijana: semua gelanggang dibuka kepada semua kategori');
+      // v1.43.0: kategori gelanggang (Terbuka / SR / SM) dikekalkan
+      return bmcCommit(model, 'Susunan Badminton dijana ikut kategori setiap gelanggang');
     }
 
     // 🔒 Kunci Suku Akhir / Separuh Akhir / Tempat 3/4 / Akhir ke gelanggang tertentu
@@ -19985,7 +19992,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const c = courtId ? bmc.cfg.find(g => g.id === courtId) : null;
       if (courtId && bmIsPending(m)) {
         if (c && c.aktif && bmcAccepts(c, m.kat)) { if (bmUp(m.gel) !== courtId) matches.push({ id: m.id, gelanggang: courtId }); }
-        else msg += ` (Gelanggang ${courtId} belum menerima ${bmcKatNama(m.kat)} - tekan ⚡ Jana Susunan)`;
+        else msg += ` (Gelanggang ${courtId} dikunci kategori lain - tukar Kategori gelanggang itu kepada SR + SM (Terbuka) atau ${m.kat} sahaja)`;
       }
       return bmcPush(matches, msg);
     }
@@ -20067,7 +20074,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <td class="mono">${escapeHtml(g.id)}</td>
             <td>${escapeHtml(g.nama)}</td>
             <td><select class="select" style="padding:4px 8px;font-size:.8rem;" data-bmc-kat="${escapeHtml(g.id)}" aria-label="Kategori Gelanggang Badminton ${escapeHtml(g.id)}" ${sibuk ? 'disabled' : ''}>
-              ${(SEMUA_GELANGGANG_TERBUKA ? [BMC_KAT_OPEN] : ['SM', 'SR', BMC_KAT_OPEN]).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === BMC_KAT_OPEN ? 'SR + SM (Terbuka)' : k}</option>`).join('')}
+              ${(SEMUA_GELANGGANG_TERBUKA ? [BMC_KAT_OPEN] : [BMC_KAT_OPEN, 'SR', 'SM']).map(k => `<option value="${k}" ${k === g.kategori ? 'selected' : ''}>${k === BMC_KAT_OPEN ? 'SR + SM (Terbuka)' : k === 'SR' ? '🔒 SR sahaja' : '🔒 SM sahaja'}</option>`).join('')}
             </select></td>
             <td>${g.aktif ? '<span class="badge badge-ready badge-dot">Aktif</span>' : '<span class="badge badge-off">Ditutup</span>'}</td>
             <td class="num">${baki}</td>

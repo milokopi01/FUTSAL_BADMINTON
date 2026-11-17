@@ -134,6 +134,12 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
  *                  dikunci pengadil / Rehat Kecemasan tidak boleh ditutup.
  *                - Pengadil tidak boleh "Sepak Mula" di gelanggang yang ditutup.
  *
+ *              + v1.24.0 - KATEGORI GELANGGANG DIPILIH MASTER ADMIN:
+ *                - SEMUA_GELANGGANG_TERBUKA = false: setiap gelanggang (Futsal & Badminton) boleh
+ *                  ditetapkan 'SEMUA' (SR + SM Terbuka), 'SR' sahaja atau 'SM' sahaja.
+ *                - Auto-isi gelanggang kosong, Sepak Mula & pindahan baki perlawanan hanya
+ *                  menerima perlawanan kategori yang dibenarkan oleh gelanggang itu.
+ *                - Senarai lalai (tiada senarai disimpan / selepas reset) kekal Terbuka.
  *              + v1.23.0 - SEMUA GELANGGANG TERBUKA & AUTO-ISI GELANGGANG KOSONG:
  *                - SEMUA_GELANGGANG_TERBUKA = true: setiap gelanggang (Futsal & Badminton)
  *                  sentiasa berkategori 'SEMUA' -> menerima perlawanan Sekolah Rendah & Menengah.
@@ -257,7 +263,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
+const API_VERSI = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
+// const API_VERSI_1238 = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
 // const API_VERSI_LAMA = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
 // const API_VERSI_LAMA = '1.23.6';  // v1.23.6: pengadil DITOLAK hantar seri kalah mati tanpa penalti + baris rosak dikembalikan kepada pengadil (bukan Urusetia)
 // const API_VERSI_LAMA = '1.23.5';  // v1.23.5: Futsal kalah mati SERI tanpa pemenang penalti tidak boleh disahkan (SELESAI) - Akhir / Tempat 3/4 tidak tersekat
@@ -1861,7 +1868,8 @@ function sesiSubAdmin_(token) {
 /* ---------- v1.9.9: SENARAI GELANGGANG DINAMIK ---------- */
 let gelanggangCache_ = null;   // cache satu pelaksanaan sahaja
 // v1.23.0: true -> SEMUA gelanggang (Futsal & Badminton) dibuka kepada Sekolah Rendah & Menengah
-const SEMUA_GELANGGANG_TERBUKA = true;
+// v1.24.0: false -> kategori setiap gelanggang ikut pilihan Master Admin (SEMUA / SR / SM)
+const SEMUA_GELANGGANG_TERBUKA = false;
 // v1.23.0: true -> gelanggang kosong diisi automatik dengan baki perlawanan daripada gelanggang lain
 const AUTO_ISI_GELANGGANG = true;
 
@@ -2342,11 +2350,12 @@ function rancangIsiGelanggang_(o) {
   const pindah = [];
   const diambil = {};
   kosong.forEach(function (g) {
-    let nKunci = 0, nBertembung = 0, nRehat = 0, dapat = false;
+    let nKunci = 0, nBertembung = 0, nRehat = 0, nKat = 0, dapat = false;
     for (let i = 0; i < calon.length; i++) {
       const d = calon[i];
       const id = String(d.id).toUpperCase();
       if (diambil[id]) continue;
+      if (o.terima && !o.terima(g, d)) { nKat++; continue; }   // v1.24.0: kategori tidak diterima gelanggang ini
       const kunci = (o.kunciAcara || {})[id];
       if (kunci && kunci !== g && aktif[kunci]) { nKunci++; continue; }   // Separuh Akhir / Akhir dikunci ke gelanggang lain
       const keys = kunciPasukanAuto_(d, o.katOf(d));
@@ -2361,7 +2370,7 @@ function rancangIsiGelanggang_(o) {
     // v1.23.4: catat sebab gelanggang kosong tidak diisi (dipaparkan dalam log Executions)
     if (!dapat && Array.isArray(o.catatan)) {
       o.catatan.push('Gelanggang ' + g + ' kosong tetapi tidak diisi: ' + (calon.length
-        ? nBertembung + ' perlawanan pasukannya sedang bermain / akan bermain di gelanggang lain' + (nRehat ? ', ' + nRehat + ' pasukannya baru tamat bermain (rehat ' + AUTO_ISI_REHAT_MINIT + ' minit)' : '') + (nKunci ? ', ' + nKunci + ' dikunci penganjur ke gelanggang lain' : '')
+        ? nBertembung + ' perlawanan pasukannya sedang bermain / akan bermain di gelanggang lain' + (nRehat ? ', ' + nRehat + ' pasukannya baru tamat bermain (rehat ' + AUTO_ISI_REHAT_MINIT + ' minit)' : '') + (nKunci ? ', ' + nKunci + ' dikunci penganjur ke gelanggang lain' : '') + (nKat ? ', ' + nKat + ' kategori tidak dibenarkan di gelanggang ini' : '')
         : 'tiada baki perlawanan lain yang kedua-dua pasukannya sudah ditentukan'));
     }
   });
@@ -2393,6 +2402,10 @@ function isiGelanggangKosongFutsal_() {
       return !t || (nowMs - t) <= terbiarMs;
     },
     isPending: function (d) { return statusBaris_(d) === 'MENUNGGU GILIRAN'; },
+    terima: function (g, d) {   // v1.24.0: kategori gelanggang (SEMUA / SR / SM)
+      const c = cfg.senarai.filter(function (x) { return x.id === g; })[0];
+      return !c || gelanggangTerima_(c, String(d.kategori || String(d.id || '').slice(0, 2)).toUpperCase());
+    },
     dipegang: dipegang, pegangId: pegangId,
     kunciAcara: cfg.kunciAcara || {}, susunan: cfg.susunan || {}
   });
@@ -2436,6 +2449,11 @@ function isiGelanggangKosongBm_() {
     katOf: function (d) { return katBm_(d); },
     isLive: function (d) { return statusBaris_(d) === 'LIVE' && String(d.pengesahan || '').toUpperCase() !== 'DISAHKAN'; },
     isPending: function (d) { return bmBelumMula_(d); },
+    terima: function (g, d) {   // v1.24.0: kategori gelanggang Badminton (SEMUA / SR / SM)
+      const c = cfg.senarai.filter(function (x) { return x.id === g; })[0];
+      const k = katBm_(d);
+      return !c || !k || gelanggangTerima_(c, k);
+    },
     dipegang: {}, pegangId: {},
     kunciAcara: cfg.kunciAcara || {}, susunan: adaP ? turutanP : (cfg.susunan || {}),
     catatan: catatan
@@ -2756,8 +2774,11 @@ function kunciGelanggang_(body) {
       const x = db.map[o];
       return o !== g && x && x.matchId === matchId && (x.pengadilId || x.rehat);
     });
+    // v1.24.0: perlawanan gelanggang lain hanya boleh dimulakan di sini jika kategorinya diterima gelanggang ini
+    const cfgG = bacaGelanggang_().senarai.filter(function (x) { return x.id === g; })[0];
+    const katM = m ? String(m.kategori || String(m.id || '').slice(0, 2)).toUpperCase() : '';
     const gelSah = normGelanggang_(m && m.gelanggang) === g ||
-      (SEMUA_GELANGGANG_TERBUKA && !dipegangLain && isGelanggangAktif_(g));
+      (AUTO_ISI_GELANGGANG && !dipegangLain && isGelanggangAktif_(g) && (!cfgG || gelanggangTerima_(cfgG, katM)));
     if (m && String(m.status || '').toUpperCase() === 'MENUNGGU GILIRAN' &&
         gelSah && !isNamaPlaceholder_(m.namaP1) && !isNamaPlaceholder_(m.namaP2)) {
       upsertMatches_([{
@@ -4173,7 +4194,7 @@ function resetBadmintonAcara_(bmAsal, versiBaru) {
   const ids = Object.keys(gelKat).sort(function (a, b) { return String(a).localeCompare(String(b), 'ms', { numeric: true }); });
   const senarai = bersihSenaraiGelanggang_(ids.map(function (id) {
     const k = Object.keys(gelKat[id]).filter(function (x) { return x === 'SR' || x === 'SM'; });
-    return { id: id, nama: 'Gelanggang ' + id, kategori: k.length === 1 ? k[0] : 'SEMUA', aktif: true };
+    return { id: id, nama: 'Gelanggang ' + id, kategori: 'SEMUA', aktif: true };   // v1.24.0: lalai Terbuka (Master Admin boleh kunci kategori kemudian)
   }));
   let gelBm = null;
   if (senarai.length) {
