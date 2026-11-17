@@ -263,7 +263,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.24.1';  // v1.24.1: baiki gelung RALAT penalti (nama pasukan diterima sebagai pemenang penalti)
+const API_VERSI = '1.24.2';  // v1.24.2: markah RALAT yang dikemaskini pengadil wajib disahkan semula Urusetia
+// const API_VERSI_LAMA = '1.24.1';  // v1.24.1: baiki gelung RALAT penalti (nama pasukan diterima sebagai pemenang penalti)
 // const API_VERSI_LAMA = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
 // const API_VERSI_1238 = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
 // const API_VERSI_LAMA = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
@@ -2896,6 +2897,14 @@ function skorLive_(body) {
     if (seriTanpaPenalti_(mSemak.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti, mSemak.namaP1, mSemak.namaP2)) {
       return { ok: false, kod: 'PERLU_PENALTI', error: id + ': ' + RALAT_PENALTI_, kunci: statusKunci_(db) };
     }
+    // v1.24.2: markah RALAT yang dikemaskini pengadil WAJIB disahkan semula oleh Urusetia
+    // (kekal TAMAT - TUNGGU SAH / MENUNGGU dalam Peti Kelulusan; tidak sekali-kali auto DISAHKAN).
+    if (String(mSemak.catatan || '').indexOf('RALAT:') === 0) {
+      data.status = 'TAMAT - TUNGGU SAH';
+      data.pengesahan = 'MENUNGGU';
+      data.catatan = ('DIKEMASKINI SEMULA oleh ' + ref.nama + ' selepas RALAT penalti - Urusetia PERLU SAHKAN SEMULA. ' +
+        String(mSemak.catatan).replace(/^RALAT:\s*/, '')).slice(0, 300);
+    }
   }
   if (sahkan) {
     data.sahPengadil = ref.nama;
@@ -2966,6 +2975,10 @@ function keputusanLewat_(body, g, id, ref, db) {
   data.status = 'TAMAT - TUNGGU SAH';
   if (seriTanpaPenalti_(m.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti, m.namaP1, m.namaP2)) {
     return { ok: false, kod: 'PERLU_PENALTI', error: id + ': ' + RALAT_PENALTI_ };
+  }
+  if (String(m.catatan || '').indexOf('RALAT:') === 0) {   // v1.24.2: wajib sah semula Urusetia
+    data.pengesahan = 'MENUNGGU';
+    data.catatan = ('DIKEMASKINI SEMULA oleh ' + ref.nama + ' selepas RALAT penalti - Urusetia PERLU SAHKAN SEMULA.').slice(0, 300);
   }
   if (!data.masaTamat) data.masaTamat = new Date().toISOString();
   const sahkan = body.sahkan === true || body.sahkan === 'true';
