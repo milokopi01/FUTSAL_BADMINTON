@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbz-1ohRatZ-gRh61oXFGRS5zZhT81VaFjbV_oHwbggDX6Rzpwt4eMzqqB5mKja0UafLjA/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -8234,7 +8234,7 @@ void main() {
     const courtCfgSync = { busy: false, error: '', lastOk: null, changedAt: 0, lastTry: 0 };
 
     function defaultCourtConfig() {
-      return INITIAL_COURTS.map(c => ({ id: c.id, nama: c.nama, kategori: COURT_KAT_OPEN, aktif: true }));   // v1.43.0: lalai Terbuka
+      return INITIAL_COURTS.map(c => ({ id: c.id, nama: c.nama, kategori: 'SEMUA', aktif: true }));   // v1.43.1: lalai Terbuka (literal - fungsi ini dipanggil sebelum COURT_KAT_OPEN diisytiharkan)
     }
 
     function cleanCourtConfig(list) {

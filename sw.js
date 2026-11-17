@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.43.0';  // v1.43.0: Urus Gelanggang - pilih kategori setiap gelanggang: SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton)
+const VERSI_SW = '1.43.1';  // v1.43.1: baiki halaman kosong (ralat permulaan v1.43.0)
+// const VERSI_SW_1430 = '1.43.0';  // v1.43.0: Urus Gelanggang - pilih kategori setiap gelanggang: SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton)
 // const VERSI_SW_1420 = '1.42.0';  // v1.42.0: Jana Susunan profesional - rehat pasukan dijamin, tiada perlawanan berturut-turut (back-to-back), Futsal & Badminton
 // const VERSI_SW_1410 = '1.41.0';  // v1.41.0: enjin giliran seragam - P1, P2 ... ikut pusingan gelanggang (terbuka / dikunci kategori), Futsal & Badminton
 // const VERSI_SW_1406 = '1.40.6';  // v1.40.6: markah RALAT hanya pengadil asal / Master Admin
