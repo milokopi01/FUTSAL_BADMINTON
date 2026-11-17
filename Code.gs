@@ -257,7 +257,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.4';  // v1.23.4: auto-isi gelanggang Badminton juga berjalan bila perlawanan BARU BERMULA + log sebab gelanggang tidak diisi
+const API_VERSI = '1.23.5';  // v1.23.5: Futsal kalah mati SERI tanpa pemenang penalti tidak boleh disahkan (SELESAI) - Akhir / Tempat 3/4 tidak tersekat
+// const API_VERSI_LAMA = '1.23.4';  // v1.23.4: auto-isi gelanggang Badminton juga berjalan bila perlawanan BARU BERMULA + log sebab gelanggang tidak diisi
 // const API_VERSI_LAMA = '1.23.3';  // v1.23.3: bacaan pengadil menyertakan No. Perlawanan Keseluruhan (P1, P2 ...) supaya Paparan Pengadil tulis giliran
 // const API_VERSI_LAMA = '1.23.1';  // v1.23.1: KUNCI PENGANJUR (Separuh Akhir / Akhir) sentiasa dipatuhi oleh auto-isi & Sepak Mula
 // const API_VERSI_LAMA = '1.23.0';  // v1.23.0: SEMUA gelanggang TERBUKA (SR + SM) + AUTO-ISI gelanggang kosong dengan baki perlawanan
@@ -970,6 +971,7 @@ function upsertMatches_(list, opts) {
   const now = new Date();
   let updated = 0, inserted = 0, skipped = 0, protectedRows = 0, finalRows = 0, staleRows = 0;
   const idDilindungi = [];   // v1.9.6: ID perlawanan yang tidak ditulis kerana dikunci pengadil
+  const seriTanpaPenalti = [];   // v1.23.5: kalah mati seri tanpa pemenang penalti (pengesahan ditolak)
   const barisBerubah = {};   // v1.9.3: indeks baris yang disentuh
 
   list.forEach(function (m) {
@@ -999,6 +1001,7 @@ function upsertMatches_(list, opts) {
     const versiBaris = colOf.versiPembetulan !== undefined ? String(row[colOf.versiPembetulan] || '') : '';
     const versiSepadan = !versiBaris || String(m.versiPembetulan || '') === versiBaris;
     let ditolakMuktamad = false, ditolakLapuk = false;
+    const asalBaris = row.slice();   // v1.23.5: salinan sebelum tulisan (untuk pengesahan seri kalah mati)
 
     UPDATABLE.forEach(function (field) {
       if (!(field in m) || m[field] === undefined) return;
@@ -1025,6 +1028,18 @@ function upsertMatches_(list, opts) {
     if (admin && m.versiPembetulan !== undefined && colOf.versiPembetulan !== undefined) {
       row[colOf.versiPembetulan] = String(m.versiPembetulan || '').slice(0, 60);
     }
+    // v1.23.5: Futsal kalah mati SERI tanpa pemenang penalti tidak boleh menjadi SELESAI / DISAHKAN.
+    // Baris dikembalikan seperti sebelum tulisan (kekal dalam Peti Kelulusan) supaya Urusetia menolak
+    // & pengadil memilih pemenang penalti. Dahulu SM-38 0-0 disahkan tanpa pemenang -> Akhir tersekat.
+    if (sukan === 'FUTSAL' && !muktamad && isRowFinal_(row, colOf)) {
+      const peringkatBaris = colOf.peringkat !== undefined ? row[colOf.peringkat] : m.peringkat;
+      const a = skorInt_(row[colOf.skorP1]), b = skorInt_(row[colOf.skorP2]);
+      const pen = colOf.pemenangPenalti !== undefined ? String(row[colOf.pemenangPenalti] || '').trim() : '';
+      if (isKnockoutStage_(peringkatBaris) && a !== null && a === b && !pen) {
+        for (let i = 0; i < width; i++) row[i] = asalBaris[i];
+        seriTanpaPenalti.push(id);
+      }
+    }
     if (dilindungi) { protectedRows++; idDilindungi.push(id); }
     if (ditolakMuktamad) finalRows++;
     if (ditolakLapuk) staleRows++;
@@ -1042,14 +1057,14 @@ function upsertMatches_(list, opts) {
       }
       sheet.getRange(i + 1, 1, 1, width).setValues([values[i]]);
     });
-    return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi };
+    return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti };
   }
   if (colOf.versiPembetulan !== undefined) {
     sheet.getRange(1, colOf.versiPembetulan + 1, values.length, 1).setNumberFormat('@');
   }
   sheet.getRange(1, 1, values.length, width).setValues(values);
   formatDateColumns_(sheet, colOf, values.length);
-  return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi };
+  return { updated: updated, inserted: inserted, skipped: skipped, protectedRows: protectedRows, finalRows: finalRows, staleRows: staleRows, idDilindungi: idDilindungi, seriTanpaPenalti: seriTanpaPenalti };
 }
 
 // Baris perlawanan telah DISAHKAN (SELESAI) -> keputusan muktamad

@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyKH5HNiFHYwDVWRUJki63L7YvNR5vkWOb-WWRfpbnjMMGEgVHanIhRIxfZ-Mrao9vDCQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -10771,6 +10771,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (!options.silent) showToast(`${match.id} tidak menunggu pengesahan (status: ${match.status}).`, 'warn');
         return false;
       }
+      // v1.40.4: kalah mati SERI tanpa pemenang penalti tidak boleh disahkan melalui MANA-MANA laluan
+      // (termasuk "Sahkan Semua"). Dahulu SM-38 (0-0) disahkan tanpa pemenang -> Akhir & Tempat 3/4 tersekat.
+      if (isKnockoutSeriTanpaPenalti(match)) {
+        if (!options.silent) showToast(`${match.id}: keputusan seri kalah mati tanpa pemenang penalti. Tekan "Tolak" supaya pengadil memilih pemenang penalti.`, 'warn', 6500);
+        return false;
+      }
 
       const session = getSession();
       const now = nowIso();
@@ -10802,6 +10808,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         showToast(msg, 'success', 4200);
       }
       return true;
+    }
+
+    function isKnockoutSeriTanpaPenalti(m) {
+      if (!m || !isKnockout(m)) return false;
+      const s1 = Number(m.skorP1) || 0, s2 = Number(m.skorP2) || 0;
+      return s1 === s2 && m.pemenangPenalti !== 'P1' && m.pemenangPenalti !== 'P2';
     }
 
     // v1.14.6: butang "Sahkan" Peti Kelulusan - semakan tambahan untuk keputusan dipulihkan
@@ -10858,7 +10870,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!await uiConfirm(`Sahkan ${pending.length + bmPending.length} keputusan sekaligus? (${pecahan})`)) return 0;
       let count = 0;
       const done = [];
+      const seri = pending.filter(isKnockoutSeriTanpaPenalti).map(m => m.id);   // v1.40.4
       pending.forEach(m => { if (approveMatch(m.id, { silent: true })) { count += 1; done.push(m.id); } });
+      if (seri.length) showToast(`${seri.join(', ')} TIDAK disahkan: seri kalah mati tanpa pemenang penalti. Tekan "Tolak" supaya pengadil memilih pemenang penalti.`, 'warn', 8000);
       if (done.length) pushDecisions(done);
       saveState();
       refreshAllViews();
@@ -10989,6 +11003,24 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       else el.textContent = '';
     }
 
+    // v1.40.4: keputusan DISAHKAN di Google Sheets berbeza dengan salinan peranti ini?
+    // - Pengadil / Urusetia: Google Sheets SENTIASA sumber rasmi (Pembetulan Markah hanya oleh Master Admin).
+    // - Master Admin: ikut Google Sheets hanya bila cop "Versi Pembetulan" pelayan berbeza, supaya
+    //   pembetulan luar talian yang belum di-Sync pada peranti ini tidak ditulis ganti.
+    function perluIkutBetulSheet(match, row, s1, s2, penalti) {
+      if (!match || match.status !== MATCH_STATUS.SELESAI) return false;
+      const beza = (s1 !== null && Number(match.skorP1) !== s1) ||
+        (s2 !== null && Number(match.skorP2) !== s2) ||
+        (match.pemenangPenalti || null) !== (penalti || null) ||
+        match.pengesahan !== 'DISAHKAN';
+      if (!beza) return false;
+      const versiSrv = String(row.versiPembetulan || '');
+      let admin = false;
+      try { admin = canManageSystem(); } catch (e) { admin = false; }
+      if (!admin) return true;
+      return !!versiSrv && versiSrv !== String(match.versiPembetulan || '');
+    }
+
     // Gabungkan satu baris Jadual_Perlawanan ke dalam state tempatan. Pulangkan jenis perubahan.
     function mergeServerMatch(row) {
       const match = getMatch(String(row.id || '').toUpperCase());
@@ -11028,6 +11060,24 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       // (b) Telah DISAHKAN di peranti Urusetia / Master Admin lain
       if (st === MATCH_STATUS.SELESAI && sah === 'DISAHKAN') {
         if (match.status === MATCH_STATUS.SELESAI) {
+          // v1.40.4: keputusan rasmi DIBETULKAN di peranti lain (Pembetulan Markah Master Admin).
+          // Dahulu peranti yang sudah menyimpan keputusan lama TIDAK PERNAH mengambil skor baharu ->
+          // kalah mati dikira semula dengan skor lama (cth. SM-37 kekal "MENANG PERLAWANAN 33")
+          // dan Mod Pengadil memaparkan "Tiada perlawanan sedia untuk diadili".
+          if (perluIkutBetulSheet(match, row, s1, s2, penalti)) {
+            Object.assign(match, {
+              skorP1: s1 === null ? (Number(match.skorP1) || 0) : s1,
+              skorP2: s2 === null ? (Number(match.skorP2) || 0) : s2,
+              pengesahan: 'DISAHKAN',
+              pemenangPenalti: penalti,
+              disahkanOleh: row.disahkanOleh || match.disahkanOleh || 'Urusetia',
+              disahkanPada: row.disahkanPada || match.disahkanPada || null,
+              versiPembetulan: String(row.versiPembetulan || match.versiPembetulan || '')
+            });
+            addApprovalLog(match, 'DIKEMAS KINI IKUT PEMBETULAN GOOGLE SHEETS');
+            if (typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+            return 'disahkan';
+          }
           const c0 = findCourt();
           if (c0 && c0.status === COURT_STATUS.TAMAT) { resetCourt(c0); autoAssignCourts(c0.id, { silent: true }); return 'disahkan'; }
           return null;
@@ -15227,7 +15277,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return `<div class="ko-team ${cls}"><span class="nm" title="${escapeHtml(nama)}">${escapeHtml(nama)}</span><span class="sc">${has ? (Number(sk) || 0) : '–'}${pen}</span></div>`;
       };
       const cls = (m.status === MATCH_STATUS.LIVE ? ' live' : '') + (m.peringkat === 'AKHIR' ? ' final' : '');
-      return `<div class="ko-card${cls}"><div class="ko-meta"><span>${escapeHtml(m.id)}</span>${statusBadge(m)}</div>${side('P1')}${side('P2')}</div>`;
+      // v1.40.4: keputusan disahkan tetapi tiada pemenang (seri tanpa penalti) -> perlawanan seterusnya tersekat
+      const tiadaPemenang = isApproved(m) && !win
+        ? `<div class="ko-team"><span class="badge badge-reject" title="Master Admin: Pembetulan Markah -> pilih pemenang penalti">⚠ Tiada pemenang · perlu pemenang penalti</span></div>` : '';
+      return `<div class="ko-card${cls}"><div class="ko-meta"><span>${escapeHtml(m.id)}</span>${statusBadge(m)}</div>${side('P1')}${side('P2')}${tiadaPemenang}</div>`;
     }
 
     function renderKoBlock(kat) {
