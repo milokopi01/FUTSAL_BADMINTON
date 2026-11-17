@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyKH5HNiFHYwDVWRUJki63L7YvNR5vkWOb-WWRfpbnjMMGEgVHanIhRIxfZ-Mrao9vDCQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -3079,12 +3079,14 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               <div class="hint-box" id="refereeSyncInfo" style="margin:12px 18px 16px;">Senarai disimpan dalam peranti ini.</div>
             </div>
 
-            <!-- Pengurusan Admin & Urusetia -->
-            <div class="card glass" style="padding: 0; overflow: hidden;">
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--glass-border);">
+            <!-- Pengurusan Admin & Urusetia (v1.40.3: lebar penuh supaya jadual tidak sempit) -->
+            <div class="card glass" style="grid-column: 1 / -1; padding: 0; overflow: hidden;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 18px;border-bottom:1px solid var(--glass-border);">
                 <h3 class="card-title" style="margin:0;">👥 Admin &amp; Urusetia</h3>
-                <button type="button" class="btn btn-sm" id="btnAdminAddUser">＋ Tambah Urusetia</button>
-                <button type="button" class="btn btn-sm" id="btnAdminPullUsers" title="Muat senarai urusetia daripada tab Senarai_Urusetia">☁ Muat dari Sheets</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-sm" id="btnAdminAddUser">＋ Tambah Urusetia</button>
+                  <button type="button" class="btn btn-sm" id="btnAdminPullUsers" title="Muat senarai urusetia daripada tab Senarai_Urusetia">☁ Muat dari Sheets</button>
+                </div>
               </div>
               <div class="table-wrap">
                 <table class="data-table" id="usersTable">
@@ -3106,8 +3108,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               </div>
             </div>
 
-            <!-- Undian Kumpulan X & Y -->
-            <div class="card glass">
+            <!-- Undian Kumpulan X & Y (v1.40.3: lebar penuh) -->
+            <div class="card glass" style="grid-column: 1 / -1;">
               <h3 class="card-title">🎲 Undian Kumpulan X &amp; Y (Sekolah Rendah)</h3>
               <p class="muted" style="font-size:.84rem;margin-bottom:14px;">Johan &amp; Naib Johan Kumpulan A, B, C diundi ke Kumpulan X dan Y (liga 3 pasukan).</p>
               <div class="draw-slots" id="drawSlots">
