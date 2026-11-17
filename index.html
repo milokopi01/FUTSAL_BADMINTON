@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyMQrrFJhD3hY3fzA--kA8-QQ_uiYZt85QOfK7h8yYNo7HqNqFbeZ7tUCa2RsS9pM70JQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -11246,11 +11246,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (url !== getGasUrl()) return false;
         const count = { baharu: 0, disahkan: 0, ditolak: 0 };
         const baru = [];
-        // v1.43.2: senarai perlawanan bermarkah RALAT (seri kalah mati tanpa penalti) untuk semua pengadil
-        window.__ralatMarkah = data.matches.filter(r => String(r.catatan || '').indexOf('RALAT:') === 0 &&
-          String(r.status || '').toUpperCase().indexOf('SELESAI') < 0).map(r => ({
-          id: String(r.id || '').toUpperCase(), namaP1: r.namaP1 || '', namaP2: r.namaP2 || '',
-          pengadil: r.pengadil || '', gelanggang: r.gelanggang || '', catatan: String(r.catatan || '') }));
         data.matches.forEach(row => {
           const kind = mergeServerMatch(row);
           if (kind) { count[kind] += 1; if (kind === 'baharu') baru.push(String(row.id).toUpperCase()); }
@@ -13400,23 +13395,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       };
     }
 
-    // v1.43.2: arahan kepada SEMUA pengadil - perlawanan yang markahnya perlu ditetapkan semula
-    function ralatMarkahBanner(s) {
-      const list = Array.isArray(window.__ralatMarkah) ? window.__ralatMarkah : [];
-      if (!list.length || refSukanOf(s) === 'BADMINTON') return '';
-      const saya = String((s && s.nama) || '').trim().toUpperCase();
-      const items = list.map(r => {
-        const milik = r.pengadil && String(r.pengadil).trim().toUpperCase() === saya;
-        return `<li style="margin:6px 0;"><strong>${escapeHtml(r.id)}</strong> · ${escapeHtml(r.namaP1)} lawan ${escapeHtml(r.namaP2)}` +
-          (r.gelanggang ? ` · Gelanggang ${escapeHtml(r.gelanggang)}` : '') +
-          `<br><small>${milik ? '👉 <strong>Anda</strong> pengadil asal - sila ambil semula perlawanan ini, masukkan skor betul &amp; PILIH pemenang penalti jika seri.'
-            : 'Pengadil asal: <strong>' + escapeHtml(r.pengadil || '-') + '</strong> perlu menetapkan semula markah.'}</small></li>`;
-      }).join('');
-      return `<div class="rm-note danger" style="margin:10px 0;">⚠ <strong>MARKAH PERLU DIKEMASKINI SEMULA</strong><br>` +
-        `<small>Keputusan seri kalah mati tanpa pemenang penalti TIDAK dihantar kepada Urusetia. Perlawanan seterusnya tidak dapat diproses selagi markah ini belum dikemaskini.</small>` +
-        `<ul style="margin:6px 0 0 16px;padding:0;">${items}</ul></div>`;
-    }
-
     function renderRefMobile() {
       const el = document.getElementById('refMobile');
       if (!el) return;
@@ -13447,7 +13425,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       // Kekalkan keadaan "Tindakan lain" (terbuka/tertutup) selepas paparan dijana semula
       const moreOpen = !!el.querySelector('details.rm-more[open]');
       const othersOpen = !!el.querySelector('details.rm-others[open]');
-      el.innerHTML = ralatMarkahBanner(s) + view.html;
+      el.innerHTML = view.html;
       if (moreOpen) { const d = el.querySelector('details.rm-more'); if (d) d.open = true; }
       if (othersOpen) { const d = el.querySelector('details.rm-others'); if (d) d.open = true; }
       if (view.key !== refViewKey) {
