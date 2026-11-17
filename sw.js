@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.44.1';  // v1.44.1: Peti Kelulusan Urusetia kini menerima jaringan penalti yang dibetulkan pengadil walaupun peranti masih menyimpan keputusan lama SELESAI tanpa pemenang (cth. SM-38 0-0)
+const VERSI_SW = '1.44.2';  // v1.44.2: Mod Pengadil sentiasa memaparkan perlawanan yang sedia (gelanggang kosong diisi automatik pada telefon pengadil selepas keputusan disahkan) - Code.gs 1.25.1
+// const VERSI_SW_1441 = '1.44.1';  // v1.44.1: Peti Kelulusan Urusetia kini menerima jaringan penalti yang dibetulkan pengadil walaupun peranti masih menyimpan keputusan lama SELESAI tanpa pemenang (cth. SM-38 0-0)
 // const VERSI_SW_1440 = '1.44.0';  // v1.44.0: markah RALAT (seri kalah mati tanpa penalti) dipaparkan kepada pengadil bertanggungjawab - masukkan jaringan penalti; Master Admin boleh kemas kini (Code.gs 1.25.0)
 // const VERSI_SW_1431 = '1.43.1';  // v1.43.1: baiki halaman kosong (ralat permulaan v1.43.0)
 // const VERSI_SW_1430 = '1.43.0';  // v1.43.0: Urus Gelanggang - pilih kategori setiap gelanggang: SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton)

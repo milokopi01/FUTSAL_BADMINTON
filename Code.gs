@@ -263,7 +263,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.25.0';  // v1.25.0: RALAT PENALTI - seri kalah mati tanpa penalti dipaparkan kepada pengadil bertanggungjawab; pengadil masukkan JARINGAN penalti (cth. 4-3) tanpa main semula; Master Admin boleh kemas kini terus; lajur Penalti P1 / Penalti P2; pepijat nama pemenang penalti dianggap 'tiada penalti' dibaiki
+const API_VERSI = '1.25.1';  // v1.25.1: keputusan kalah mati DISAHKAN Urusetia / Sub Admin (Peti Kelulusan) kini TERUS mengisi slot Menang / Kalah perlawanan seterusnya di Google Sheets (dahulu hanya Master Admin) - Mod Pengadil tidak lagi kosong (cth. SM-39 / SM-40 selepas SM-38 menang penalti); pemenang penalti dibaca tanpa beza huruf besar / ruang
+// const API_VERSI_1250 = '1.25.0';  // v1.25.0: RALAT PENALTI - seri kalah mati tanpa penalti dipaparkan kepada pengadil bertanggungjawab; pengadil masukkan JARINGAN penalti (cth. 4-3) tanpa main semula; Master Admin boleh kemas kini terus; lajur Penalti P1 / Penalti P2; pepijat nama pemenang penalti dianggap 'tiada penalti' dibaiki
 // const API_VERSI_1240 = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
 // const API_VERSI_1238 = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
 // const API_VERSI_LAMA = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
@@ -510,7 +511,22 @@ function doGet(e) {
     }
 
     const sheet = getJadualSheet_(sukan);
-    const table = readTable_(sheet);
+    let table = readTable_(sheet);
+    // v1.25.1: JARING KESELAMATAN Futsal - slot MENANG-nn / KALAH-nn yang sepatutnya sudah diisi
+    // (perlawanan sumber telah DISAHKAN) tetapi masih nama placeholder -> isi sekarang & baca semula.
+    if (sukan === 'FUTSAL' && fsRombakPerlu_(table)) {
+      const kunciR = LockService.getScriptLock();
+      if (kunciR.tryLock(300)) {
+        let dirombak = false;
+        try { dirombak = (rombakJadualPelayan_().perubahan || []).length > 0; }
+        catch (errR) { console.warn('rombakJadualPelayan_ (baca)', errR); }
+        finally { kunciR.releaseLock(); }
+        if (dirombak) {
+          try { SpreadsheetApp.flush(); bustPapanCache_(); tandaPerubahan_('FUTSAL'); } catch (errB) { console.warn('bust rombak', errB); }
+          table = readTable_(sheet);
+        }
+      }
+    }
     // v1.20.2: isi slot kalah mati Badminton yang sudah layak (pengadil terus nampak butang Adili)
     // v1.21.0 PRESTASI: sebelum ini SETIAP bacaan (pengadil setiap 20 s, Peti Kelulusan, Admin)
     // mengambil kunci skrip sehingga 4 s & membaca tab pasukan -> beratur dengan Sahkan (doPost).
@@ -940,7 +956,13 @@ function prosesPost_(body, ctx) {
   const adaSah = list.some(function (x) {
     return x && String(x.pengesahan || '').toUpperCase() === 'DISAHKAN';
   });
-  if (adaSah && sukan === 'FUTSAL') { try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); } }
+  if (adaSah && sukan === 'FUTSAL') {
+    // v1.25.1: isi slot MENANG-nn / KALAH-nn perlawanan seterusnya serta-merta di Google Sheets.
+    // Dahulu hanya dibuat bagi Master Admin -> selepas Urusetia mengesahkan (cth. SM-38 menang penalti),
+    // SM-39 / SM-40 kekal "MENANG PERLAWANAN 38" di pelayan: Sepak Mula pengadil ditolak & auto-isi gelanggang tidak berlaku.
+    try { rombakJadualPelayan_(); } catch (errR) { console.warn('rombakJadualPelayan_', errR); }
+    try { lepasKunciMuktamad_(); } catch (errK) { console.warn('lepasKunciMuktamad_', errK); }
+  }
 
   // Carta Liga dikira semula DI PELAYAN daripada Jadual_Perlawanan (bukan dipercayai
   // bulat-bulat daripada peranti) supaya peranti dengan data lama tidak merosakkan carta.
@@ -3858,9 +3880,31 @@ function pemenangBaris_(d) {
   if (s2 > s1) return 'P2';
   const pen = String(d.pemenangPenalti || '').trim();
   if (!pen) return null;
-  if (pen === 'P1' || pen === String(d.namaP1)) return 'P1';
-  if (pen === 'P2' || pen === String(d.namaP2)) return 'P2';
+  // v1.25.1: banding tanpa beza huruf besar / ruang berganda (sama seperti penaltiSisi_)
+  const sisi = penaltiSisi_(pen, d.namaP1, d.namaP2);
+  if (sisi === 'P1' || sisi === 'P2') return sisi;
+  // Nama tidak sepadan -> guna jaringan penalti jika direkod
+  const g1 = skorInt_(d.penaltiP1), g2 = skorInt_(d.penaltiP2);
+  if (g1 !== null && g2 !== null && g1 !== g2) return g1 > g2 ? 'P1' : 'P2';
   return null;
+}
+
+// v1.25.1: semakan dalam memori (pantas) - ada perlawanan MENUNGGU GILIRAN dengan slot MENANG-nn / KALAH-nn
+// yang masih placeholder walaupun perlawanan sumber telah DISAHKAN dengan pemenang?
+function fsRombakPerlu_(table) {
+  if (!table || !table.rows) return false;
+  const byKatNo = {};
+  table.rows.forEach(function (r) { byKatNo[String(r.data.kategori).toUpperCase() + '|' + Number(r.data.no)] = r.data; });
+  return table.rows.some(function (r) {
+    const d = r.data;
+    if (String(d.status || '').toUpperCase() !== 'MENUNGGU GILIRAN') return false;
+    return [1, 2].some(function (side) {
+      const m = /^(MENANG|KALAH)-(\d+)$/.exec(String(d['kodP' + side] || '').toUpperCase());
+      if (!m || !isNamaPlaceholder_(d['namaP' + side])) return false;
+      const src = byKatNo[String(d.kategori).toUpperCase() + '|' + Number(m[2])];
+      return !!src && !!pemenangBaris_(src) && !isNamaPlaceholder_(src.namaP1) && !isNamaPlaceholder_(src.namaP2);
+    });
+  });
 }
 
 function isNamaPlaceholder_(nama) {

@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyL8nsHfMdGoM3rFZyTVJ9tJ9-k1xy3ZUWfVvDRqo9nnHkFx5U2TOmYi3Z9KIttTXXjjw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -9303,9 +9303,29 @@ void main() {
       if (state.approvalLog.length > 300) state.approvalLog.length = 300;
     }
 
+    // v1.44.2: JARING KESELAMATAN - gelanggang SEDIA yang kosong (tiada perlawanan / perlawanan sudah SELESAI)
+    // sedangkan ada perlawanan MENUNGGU GILIRAN yang pasukannya sudah ditentukan -> isi semula secara automatik.
+    // Mengelak "Simulasi Gelanggang ada perlawanan tetapi Mod Pengadil tiada perlawanan untuk diadili".
+    function pulihGelanggangKosong() {
+      if (typeof autoAssignCourts !== 'function' || !Array.isArray(state.courts) || !Array.isArray(state.matches)) return false;
+      const kosong = state.courts.some(c => {
+        if (!c || c.ditutup || c.pengadilId || c.status !== COURT_STATUS.SEDIA || isCourtPaused(c)) return false;
+        const cur = getMatch(c.matchSemasa);
+        return !cur || cur.status === MATCH_STATUS.SELESAI;
+      });
+      if (!kosong) return false;
+      const occupied = new Set(state.courts.map(c => c.matchSemasa).filter(Boolean));
+      const ada = state.matches.some(m => m.status === MATCH_STATUS.MENUNGGU && !occupied.has(m.id) && isMatchReady(m));
+      if (!ada) return false;
+      const sebelum = state.courts.map(c => c.matchSemasa || '').join('|');
+      autoAssignCourts(null, { silent: true });
+      return state.courts.map(c => c.matchSemasa || '').join('|') !== sebelum;
+    }
+
     // Panggil semua fungsi paparan yang wujud (sebahagiannya akan ditulis dalam Bahagian 4).
     function refreshAllViews() {
       try { if (reconcileTamatCourts()) saveState(); } catch (err) { console.error('[reconcileTamatCourts]', err); }
+      try { if (pulihGelanggangKosong()) saveState(); } catch (err) { console.error('[pulihGelanggangKosong]', err); }   // v1.44.2
       const renderers = [
         'resolveKnockoutTeams',
         'renderLiveBoard',
@@ -15960,6 +15980,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       generateSRSemiFinals(changes);
       autoUpdateBracketWinners(changes);
       if (changes.length) {
+        // v1.44.2: pasukan baru ditentukan (cth. SM-39 / SM-40 selepas SM-38 disahkan) -> isi gelanggang kosong
+        // serta-merta pada SEMUA peranti (termasuk telefon pengadil). Dahulu hanya peranti Urusetia yang
+        // mengisi gelanggang, jadi Simulasi Gelanggang ada perlawanan tetapi Mod Pengadil kosong.
+        try { autoAssignCourts(null, { silent: true }); } catch (err) { console.warn('[autoAssignCourts]', err); }
         saveState();
         if (bracketToastReady) {
           const preview = changes.slice(0, 3).join(' · ');
