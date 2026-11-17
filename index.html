@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1624,6 +1624,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     .sport-switch button[data-sukan="SEMUA"].active { background: linear-gradient(135deg, #ffd27a, #ffb547); box-shadow: 0 0 16px rgba(255,181,71,.45); }
     .sport-switch button[data-sukan="FUTSAL"].active { background: linear-gradient(135deg, var(--fs), var(--fs-2)); box-shadow: 0 0 16px rgba(46,230,166,.45); }
     .sport-switch button[data-sukan="BADMINTON"].active { background: linear-gradient(135deg, var(--bm), var(--bm-2)); box-shadow: 0 0 16px rgba(192,132,252,.5); }
+    /* v1.47.0: telefon -> tiada paparan 'Semua'; pengguna pilih Futsal ATAU Badminton sahaja */
+    @media (max-width: 640px) { .sport-switch button[data-sukan="SEMUA"] { display: none !important; } }
     .sport-hint { font-size: .74rem; font-weight: 700; color: var(--text-2); }
     .tab-group { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 5px; margin: 0 2px 0 8px; padding: 4px 9px;
       border-radius: 999px; font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -19696,8 +19698,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return 'tab-dashboard';
     }
 
+    // v1.47.0: telefon (lebar <= 640px) tidak memaparkan 'Semua' - sukan diasingkan (Futsal / Badminton)
+    const MQ_TELEFON = window.matchMedia ? window.matchMedia('(max-width: 640px)') : null;
+    function modTelefonAsing() {
+      try { return !!(MQ_TELEFON && MQ_TELEFON.matches) && !(typeof isTeamView === 'function' && isTeamView()) && !document.body.classList.contains('projection-on'); }
+      catch (e) { return false; }
+    }
     function applySukan(s, opts = {}) {
-      const k = SUKAN_LIST.includes(s) ? s : 'SEMUA';
+      let k = SUKAN_LIST.includes(s) ? s : 'SEMUA';
+      if (k === 'SEMUA' && modTelefonAsing()) k = (dash.sukan === 'BADMINTON') ? 'BADMINTON' : 'FUTSAL';
       dash.sukan = k;
       try { localStorage.setItem(SUKAN_KEY, k); } catch (e) { /* abaikan */ }
       document.body.dataset.sukan = k;
@@ -21704,6 +21713,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       });
       papanInit();
       applySukan(dash.sukan, { silent: true });
+      if (MQ_TELEFON) {
+        const semakTelefon = () => { if (dash.sukan === 'SEMUA' && modTelefonAsing()) { applySukan('FUTSAL'); setTimeout(() => dashRefresh(true), 0); } };
+        if (MQ_TELEFON.addEventListener) MQ_TELEFON.addEventListener('change', semakTelefon); else if (MQ_TELEFON.addListener) MQ_TELEFON.addListener(semakTelefon);
+      }
       dashRefresh(true);
       // Bahagian 5: dengan isyarat masa nyata, bacaan penuh hanya setiap 60 s (suntingan luar / jaminan)
       setInterval(() => { if (rt.sokong && Date.now() - (dash.penuhAt || 0) < RT_FULL_MS) return; dashRefresh(false); }, DASH_POLL_MS);

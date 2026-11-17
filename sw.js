@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.46.0';  // v1.46.0: Paparan Lancar - kemas kini automatik tanpa kelipan (hanya bahagian berubah dikemas kini)
+const VERSI_SW = '1.47.0';  // v1.47.0: telefon - pilihan sukan 'Semua' disorok, paparan diasingkan Futsal / Badminton
+// const VERSI_SW_1460 = '1.46.0';  // v1.46.0: Paparan Lancar - kemas kini automatik tanpa kelipan (hanya bahagian berubah dikemas kini)
 // const VERSI_SW_1450 = '1.45.0';  // v1.45.0: Paparan Pengurus Pasukan (?view=pasukan) - ringkas, telefon & komputer, tanpa Simulasi Gelanggang
 // const VERSI_SW_1444 = '1.44.4';  // v1.44.4: Sahkan / Tolak di Peti Kelulusan meminta PIN Master Admin semula jika hilang (bukan lagi ditolak Google Sheets)
 // const VERSI_SW_1443 = '1.44.3';  // v1.44.3: keputusan yang dipaparkan Selesai tetapi masih Tunggu Sah di Google Sheets (cth. SM-37) kini dihantar semula / dikembalikan ke Peti Kelulusan secara automatik - Code.gs 1.25.2
