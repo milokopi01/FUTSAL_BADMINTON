@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.40.0';  // v1.40.0: Jana Susunan beri rehat satu pusingan + amaran rehat pasukan (masa tamat tepat) sebelum wisel / servis mula
+const VERSI_SW = '1.40.1';  // v1.40.1: amaran rehat dipaparkan awal (kad gelanggang & senarai pengadil), tiada pop-up selepas tekan mula
+// const VERSI_SW_1400 = '1.40.0';  // v1.40.0: Jana Susunan beri rehat satu pusingan + amaran rehat pasukan (masa tamat tepat) sebelum wisel / servis mula
 // const VERSI_SW_1391 = '1.39.1';  // v1.39.1: cip giliran semasa di sebelah nama gelanggang Futsal
 // const VERSI_SW_1383 = '1.38.3';  // v1.38.3: Paparan Pengadil memaparkan nombor giliran perlawanan (P1, P2 ...) setiap gelanggang
 // const VERSI_SW_1382 = '1.38.2';  // v1.38.2: giliran Badminton ikut turutan P + diserlahkan dalam Simulasi Gelanggang

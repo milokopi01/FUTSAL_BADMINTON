@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycby8nPaNCJsPDoNWpL6cdZSrJVcIf1Hyo4HHbiF7YgX02WWgPW6PLEPo5Sehr-zRuYAzaw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1230,6 +1230,8 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .rm-note { padding: 12px 14px; border-radius: 14px; font-size: .84rem; line-height: 1.45; border: 1px solid var(--glass-border); background: rgba(0,0,0,.22); color: var(--text-1); }
     .rm-note.warn { border-color: rgba(250,204,21,.5); background: rgba(250,204,21,.08); }
     .rm-note.rehat-note { display: grid; gap: 6px; margin: 8px 0; text-align: left; }   /* v1.40.0 */
+    .rehat-note .rehat-row { display: block; font-weight: 500; white-space: normal; }   /* v1.40.1 */
+    span.rehat-note { display: grid; font-size: .78rem; }
     .rm-note.danger { border-color: rgba(244,63,94,.5); background: rgba(244,63,94,.10); color: #fecdd3; }
     .rm-note.ok { border-color: rgba(46,230,166,.45); background: rgba(46,230,166,.08); }
     .rm-foot { font-size: .74rem; color: var(--text-2); text-align: center; line-height: 1.45; }
@@ -9048,24 +9050,15 @@ void main() {
     function rehatTeks(list) {
       return list.map(rehatBaris).join('\n\n');
     }
-    function rehatHtml(list) {
+    // v1.40.1: amaran dipaparkan AWAL (kad gelanggang, senarai pilihan pengadil, skrin sebelum mula)
+    // - tiada lagi pop-up selepas butang Sepak Mula / Servis Mula ditekan.
+    function rehatHtml(list, inline = false) {
       if (!list || !list.length) return '';
+      const t = inline ? 'span' : 'div';
       const rows = list.map(r => r.live
-        ? `<div>⛔ <strong>${escapeHtml(r.nama)}</strong> masih bermain <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' di Gelanggang ' + escapeHtml(r.gel) : ''}.</div>`
-        : `<div>⏱ <strong>${escapeHtml(r.nama)}</strong> baru tamat <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' (Gelanggang ' + escapeHtml(r.gel) + ')' : ''} pada <strong>${escapeHtml(formatTime(r.masaTamat))}</strong> · rehat ${r.minit < 1 ? 'kurang 1 minit' : r.minit + ' minit'}. Cadangan mula selepas <strong>${escapeHtml(formatTime(r.sedia))}</strong>.</div>`).join('');
-      return `<div class="rm-note warn rehat-note" role="status">⚠ <strong>Amaran Rehat Pasukan</strong>${rows}</div>`;
-    }
-    // Pop-up sebelum wisel / servis mula. Pulang true jika tiada amaran atau pengadil memilih teruskan.
-    async function rehatSahkan(list, aksi, matchLabel) {
-      if (!list || !list.length) return true;
-      const adaLive = list.some(r => r.live);
-      return uxOpen(
-        `${adaLive ? '⛔ Pasukan masih bermain' : '⏱ Amaran Rehat Pasukan'}\n\n` +
-        `${rehatTeks(list)}\n\n` +
-        `${matchLabel}\n\n` +
-        `Teruskan ${aksi} sekarang? Tekan Batal untuk beri pasukan berehat dahulu.`,
-        { tone: { ic: '⏱️', c: '#ffb547', c2: '#f59e0b', yes: `Ya, ${aksi}` } }
-      );
+        ? `<${t} class="rehat-row">⛔ <strong>${escapeHtml(r.nama)}</strong> masih bermain <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' di Gelanggang ' + escapeHtml(r.gel) : ''}.</${t}>`
+        : `<${t} class="rehat-row">⏱ <strong>${escapeHtml(r.nama)}</strong> baru tamat <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' (Gelanggang ' + escapeHtml(r.gel) + ')' : ''} pada <strong>${escapeHtml(formatTime(r.masaTamat))}</strong> · rehat ${r.minit < 1 ? 'kurang 1 minit' : r.minit + ' minit'}. Cadangan mula selepas <strong>${escapeHtml(formatTime(r.sedia))}</strong>.</${t}>`).join('');
+      return `<${t} class="rm-note warn rehat-note" role="status"><${t} class="rehat-row">⚠ <strong>Amaran Rehat Pasukan</strong></${t}>${rows}</${t}>`;
     }
     function rehatSemakFutsal(match) {
       return rehatSemak(match, state.matches, { isLive: m => m.status === MATCH_STATUS.LIVE });
@@ -10096,6 +10089,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         return parts.length ? `<div class="court-controls">${parts.join('')}</div>` : '';
       }
 
+      // v1.40.1: amaran rehat pasukan dipaparkan AWAL pada kad gelanggang (sebelum sesiapa menekan mula)
+      if (court.status === COURT_STATUS.SEDIA && isMatchReady(match)) {
+        const rh = rehatHtml(rehatSemakFutsal(match));
+        if (rh) parts.push(`<div style="flex-basis:100%;">${rh}</div>`);
+      }
+
       // Urusetia / Master Admin: Mula Perlawanan (tanpa kunci pengadil)
       if (court.status === COURT_STATUS.SEDIA && canStartMatch()) {
         const ready = isMatchReady(match);
@@ -10512,33 +10511,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // Urusetia / Master Admin memulakan perlawanan di gelanggang
-    async function startMatch(courtId) {
+    function startMatch(courtId) {
       if (!canStartMatch()) {
         showToast('Hanya Urusetia atau Master Admin boleh memulakan perlawanan.', 'error');
         return false;
       }
-      let court = getCourt(courtId);
+      const court = getCourt(courtId);
       if (!court) {
         showToast('Gelanggang tidak dijumpai.', 'error');
         return false;
       }
-      let check = checkCourtStartable(court);
+      const check = checkCourtStartable(court);
       if (check.error) {
         showToast(check.error, check.level || 'warn');
         if (check.save) { saveState(); renderCourts(); }
         return false;
-      }
-      // v1.40.0: amaran rehat pasukan (masa tamat tepat) sebelum wisel mula
-      const rehat = rehatSemakFutsal(check.match);
-      if (rehat.length) {
-        const m0 = check.match;
-        if (!await rehatSahkan(rehat, 'mula perlawanan', `${m0.id} · ${m0.namaP1} lwn ${m0.namaP2} · Gelanggang ${courtId}`)) return false;
-        court = getCourt(courtId);
-        check = court ? checkCourtStartable(court) : { error: 'Gelanggang tidak dijumpai.' };
-        if (check.error || check.match.id !== m0.id) {
-          showToast(check.error || 'Perlawanan di gelanggang ini telah berubah. Sila cuba lagi.', 'warn');
-          return false;
-        }
       }
       const match = check.match;
       applyMatchStart(court, match);
@@ -11612,11 +11599,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
       const resume = court.status === COURT_STATUS.LIVE;
       const takeover = court.pengadilId && court.kunciBasi ? `\n\n⚠ Kunci tidak aktif milik ${court.pengadil} akan diambil alih.` : '';
-      // v1.40.0: AMARAN REHAT - sebelum wisel sepak mula, maklumkan sekolah yang baru tamat bermain (masa tepat)
-      const rehat = resume ? [] : rehatSemakFutsal(match);
-      if (rehat.length && !await rehatSahkan(rehat, 'Sepak Mula', `${match.id} · ${match.namaP1} lwn ${match.namaP2} · ${court.nama}`)) return false;
       // FASA 6: perlawanan telah dipilih & dikunci di paparan telefon -> terus Sepak Mula
-      const ok = (opts.terus && opt.mine && court.status === COURT_STATUS.SEDIA) || rehat.length > 0 || await uiConfirm(
+      const ok = (opts.terus && opt.mine && court.status === COURT_STATUS.SEDIA) || await uiConfirm(
         `⚽ ${resume ? 'Sepak Mula · Sambung Kawalan' : 'Sepak Mula'} di ${court.nama}?\n\n` +
         `${match.id} · ${match.namaP1} lwn ${match.namaP2}\n\n` +
         `Gelanggang akan DIKUNCI untuk anda. Pengadil lain tidak boleh memberi markah di gelanggang ini sehingga anda menekan "Tamat & Hantar Keputusan" atau melepaskannya.${takeover}`
@@ -12001,6 +11985,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
                 <strong>Gelanggang ${escapeHtml(x.gel)}${x.ov ? ' · ' + escapeHtml(x.ov) : ''} · ${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
                 <small>${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}${x.reason ? ' · ' + escapeHtml(x.reason) : ''}${x.next ? ' · Seterusnya: ' + escapeHtml((x.nextOv ? x.nextOv + ' · ' : '') + x.next.id) : ''}</small>
                 ${bmRefGiliran(x)}
+                ${st === 'BELUM' ? rehatHtml(bmRefRehat(m)) : ''}
               </div>
               <div class="sk">${sk}</div>
               ${bmRefBadge(st)}
@@ -12338,6 +12323,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
             <span class="rm-pick-meta">${x.ov ? escapeHtml(x.ov) + ' · ' : ''}${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
             ${nx}
+            ${st === 'BELUM' ? rehatHtml(bmRefRehat(m), true) : ''}
             ${bmRefGiliran(x, 'span')}
             <span class="rm-pick-cta">${cta}</span>
           </button>`;
@@ -12577,13 +12563,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!bmRef.sel || bmRef.busy) return;
       const s = getSession();
       if (!s || !s.token) { bmRefSetMsg('Log masuk semula dengan internet untuk mula mengadili.', true); bmMobileRender(); return; }
-      // v1.40.0: AMARAN REHAT - sebelum servis mula, maklumkan sekolah yang baru tamat bermain (masa tepat)
-      const mSel = (bmRef.list || []).find(x => x.id === bmRef.sel.id);
-      if (mSel && bmRefStatus(mSel) === 'BELUM') {
-        const rehat = bmRefRehat(mSel);
-        if (rehat.length && !await rehatSahkan(rehat, 'Servis Mula', `${mSel.id}${mSel.gelanggang ? ' · Gelanggang ' + mSel.gelanggang : ''} · ${mSel.namaP1} lwn ${mSel.namaP2}`)) return;
-        if (!bmRef.sel || bmRef.busy) return;
-      }
       bmRef.busy = true; bmRefSetMsg(''); bmMobileRender();
       try {
         await bmRefPush('SEMASA');
@@ -12728,6 +12707,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
                 : `<span class="muted">Tiada perlawanan</span><small>${escapeHtml(o.court.kategoriNama || '')}</small>`}</span>
               <span class="lock-chip ${o.lock.cls}">${escapeHtml(o.lock.text)}</span>
               ${!o.can && o.reason ? `<span class="court-pick-reason">${escapeHtml(o.reason)}</span>` : ''}
+              ${m && o.can && !o.resume && o.court.status === COURT_STATUS.SEDIA && isMatchReady(m) ? rehatHtml(rehatSemakFutsal(m), true) : ''}
             </button>`;
         }).join('');
         const sel = opts.find(o => o.court.id === refSelectedCourt && o.can && o.match);
@@ -13050,6 +13030,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             </span>
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
             <span class="rm-pick-meta">${escapeHtml(m.id)} · ${escapeHtml(stageLabel(m))}</span>
+            ${c.status === COURT_STATUS.SEDIA && !o.rehat && isMatchReady(m) ? rehatHtml(rehatSemakFutsal(m), true) : ''}
             ${refFsGiliran(c, 'span')}
             <span class="rm-pick-cta">${kickoffBusy ? '⏳ Mengunci...' : cta}</span>
           </button>`;
