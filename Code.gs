@@ -263,7 +263,9 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
+const API_VERSI = '1.24.2';  // v1.24.2: markah RALAT yang dikemaskini pengadil wajib disahkan semula Urusetia
+// const API_VERSI_LAMA = '1.24.1';  // v1.24.1: baiki gelung RALAT penalti (nama pasukan diterima sebagai pemenang penalti)
+// const API_VERSI_LAMA = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
 // const API_VERSI_1238 = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
 // const API_VERSI_LAMA = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
 // const API_VERSI_LAMA = '1.23.6';  // v1.23.6: pengadil DITOLAK hantar seri kalah mati tanpa penalti + baris rosak dikembalikan kepada pengadil (bukan Urusetia)
@@ -1053,7 +1055,8 @@ function upsertMatches_(list, opts) {
       const peringkatBaris = colOf.peringkat !== undefined ? row[colOf.peringkat] : m.peringkat;
       const a = skorInt_(row[colOf.skorP1]), b = skorInt_(row[colOf.skorP2]);
       const pen = colOf.pemenangPenalti !== undefined ? String(row[colOf.pemenangPenalti] || '').trim() : '';
-      if (isKnockoutStage_(peringkatBaris) && a !== null && a === b && !pen) {
+      if (isKnockoutStage_(peringkatBaris) && a !== null && a === b &&
+          !penaltiSah_(pen, colOf.namaP1 !== undefined ? row[colOf.namaP1] : m.namaP1, colOf.namaP2 !== undefined ? row[colOf.namaP2] : m.namaP2)) {
         for (let i = 0; i < width; i++) row[i] = asalBaris[i];
         seriTanpaPenalti.push(id);
       }
@@ -2891,8 +2894,16 @@ function skorLive_(body) {
   const sahPada = new Date();
   if (!tangguh && cleanValue_('status', data.status || '') === 'TAMAT - TUNGGU SAH') {
     const mSemak = cariPerlawanan_(id) || {};
-    if (seriTanpaPenalti_(mSemak.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti)) {
+    if (seriTanpaPenalti_(mSemak.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti, mSemak.namaP1, mSemak.namaP2)) {
       return { ok: false, kod: 'PERLU_PENALTI', error: id + ': ' + RALAT_PENALTI_, kunci: statusKunci_(db) };
+    }
+    // v1.24.2: markah RALAT yang dikemaskini pengadil WAJIB disahkan semula oleh Urusetia
+    // (kekal TAMAT - TUNGGU SAH / MENUNGGU dalam Peti Kelulusan; tidak sekali-kali auto DISAHKAN).
+    if (String(mSemak.catatan || '').indexOf('RALAT:') === 0) {
+      data.status = 'TAMAT - TUNGGU SAH';
+      data.pengesahan = 'MENUNGGU';
+      data.catatan = ('DIKEMASKINI SEMULA oleh ' + ref.nama + ' selepas RALAT penalti - Urusetia PERLU SAHKAN SEMULA. ' +
+        String(mSemak.catatan).replace(/^RALAT:\s*/, '')).slice(0, 300);
     }
   }
   if (sahkan) {
@@ -2962,8 +2973,12 @@ function keputusanLewat_(body, g, id, ref, db) {
     if (f in body && body[f] !== undefined) data[f] = body[f];
   });
   data.status = 'TAMAT - TUNGGU SAH';
-  if (seriTanpaPenalti_(m.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti)) {
+  if (seriTanpaPenalti_(m.peringkat, data.skorP1, data.skorP2, data.pemenangPenalti, m.namaP1, m.namaP2)) {
     return { ok: false, kod: 'PERLU_PENALTI', error: id + ': ' + RALAT_PENALTI_ };
+  }
+  if (String(m.catatan || '').indexOf('RALAT:') === 0) {   // v1.24.2: wajib sah semula Urusetia
+    data.pengesahan = 'MENUNGGU';
+    data.catatan = ('DIKEMASKINI SEMULA oleh ' + ref.nama + ' selepas RALAT penalti - Urusetia PERLU SAHKAN SEMULA.').slice(0, 300);
   }
   if (!data.masaTamat) data.masaTamat = new Date().toISOString();
   const sahkan = body.sahkan === true || body.sahkan === 'true';
@@ -3553,10 +3568,19 @@ function skorInt_(v) {
 }
 
 // v1.23.6: Futsal kalah mati seri tanpa pemenang penalti = markah bermasalah
-function seriTanpaPenalti_(peringkat, s1, s2, pen) {
+// v1.24.1: pemenang penalti boleh dihantar sebagai 'P1'/'P2' ATAU nama pasukan (telefon pengadil
+// menghantar nama). Dahulu nama pasukan dianggap "tiada penalti" -> pengadil tersekat (gelung RALAT).
+function seriTanpaPenalti_(peringkat, s1, s2, pen, n1, n2) {
   const a = skorInt_(s1), b = skorInt_(s2);
+  if (!isKnockoutStage_(peringkat) || a === null || a !== b) return false;
+  return !penaltiSah_(pen, n1, n2);
+}
+function penaltiSah_(pen, n1, n2) {
   const p = String(pen || '').trim().toUpperCase();
-  return isKnockoutStage_(peringkat) && a !== null && a === b && p !== 'P1' && p !== 'P2';
+  if (!p) return false;
+  if (p === 'P1' || p === 'P2') return true;
+  const x1 = String(n1 || '').trim().toUpperCase(), x2 = String(n2 || '').trim().toUpperCase();
+  return (!!x1 && p === x1) || (!!x2 && p === x2);
 }
 const RALAT_PENALTI_ = 'RALAT: Keputusan seri dalam perlawanan kalah mati tanpa pemenang penalti. Pengadil mesti tetapkan semula markah & pilih pemenang penalti.';
 
@@ -3567,7 +3591,7 @@ function baikiSeriTanpaPenalti_(sheet, table) {
   table.rows.forEach(function (r) {
     const d = r.data, st = statusBaris_(d);
     if (st !== 'SELESAI' && st !== 'TAMAT - TUNGGU SAH') return;
-    if (!seriTanpaPenalti_(d.peringkat, d.skorP1, d.skorP2, d.pemenangPenalti)) return;
+    if (!seriTanpaPenalti_(d.peringkat, d.skorP1, d.skorP2, d.pemenangPenalti, d.namaP1, d.namaP2)) return;
     const lama = (skorInt_(d.skorP1) || 0) + '-' + (skorInt_(d.skorP2) || 0);
     const set = { status: 'MENUNGGU GILIRAN', pengesahan: 'MENUNGGU', fasaMasa: 'PERLU TETAP SEMULA', skorP1: '', skorP2: '',
       masaMula: '', masaTamat: '', fasaMulaPada: '', pemenangPenalti: '', sahPengadil: '', sahPengadilPada: '',
