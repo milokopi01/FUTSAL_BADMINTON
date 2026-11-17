@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.44.3';  // v1.44.3: keputusan yang dipaparkan Selesai tetapi masih Tunggu Sah di Google Sheets (cth. SM-37) kini dihantar semula / dikembalikan ke Peti Kelulusan secara automatik - Code.gs 1.25.2
+const VERSI_SW = '1.44.4';  // v1.44.4: Sahkan / Tolak di Peti Kelulusan meminta PIN Master Admin semula jika hilang (bukan lagi ditolak Google Sheets)
+// const VERSI_SW_1443 = '1.44.3';  // v1.44.3: keputusan yang dipaparkan Selesai tetapi masih Tunggu Sah di Google Sheets (cth. SM-37) kini dihantar semula / dikembalikan ke Peti Kelulusan secara automatik - Code.gs 1.25.2
 // const VERSI_SW_1442 = '1.44.2';  // v1.44.2: Mod Pengadil sentiasa memaparkan perlawanan yang sedia (gelanggang kosong diisi automatik pada telefon pengadil selepas keputusan disahkan) - Code.gs 1.25.1
 // const VERSI_SW_1441 = '1.44.1';  // v1.44.1: Peti Kelulusan Urusetia kini menerima jaringan penalti yang dibetulkan pengadil walaupun peranti masih menyimpan keputusan lama SELESAI tanpa pemenang (cth. SM-38 0-0)
 // const VERSI_SW_1440 = '1.44.0';  // v1.44.0: markah RALAT (seri kalah mati tanpa penalti) dipaparkan kepada pengadil bertanggungjawab - masukkan jaringan penalti; Master Admin boleh kemas kini (Code.gs 1.25.0)

@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -11424,7 +11424,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       ids.forEach(id => { sahSemula.at[id] = now; });
       sahSemula.busy = true;
       try {
-        const res = await pushDecisions(ids);
+        const res = await pushDecisions(ids, { tanpaPrompt: true });   // v1.44.4: cuba semula latar - tiada pop-up PIN
         if (res && res.ok) {
           const gagal = new Set([].concat(res.idLapuk || [], res.idSeriTanpaPenalti || [], res.dibatalkan || []).map(x => String(x).toUpperCase()));
           const ok = ids.filter(id => !gagal.has(id));
@@ -11434,20 +11434,42 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // Hantar keputusan Sahkan / Tolak terus ke Google Sheets
-    async function pushDecisions(ids) {
+    async function pushDecisions(ids, opts = {}) {
       if (!getGasUrl() || !ids || !ids.length) return null;
       const matches = ids.map(id => getMatch(id)).filter(Boolean);
       if (!matches.length) return null;
+      // v1.44.4: PIN Master Admin disimpan dalam sessionStorage dan HILANG bila pelayar / aplikasi ditutup,
+      // sedangkan sesi log masuk kekal. Dahulu adminKey kosong dihantar -> Google Sheets menolak
+      // "Hanya Master Admin atau Sub Admin...". Kini PIN diminta semula (kunciPengesahan) sebelum dihantar.
+      let kunci = null;
+      if (opts.tanpaPrompt) {
+        const s = getSession() || {};
+        if (canManageSystem()) kunci = getAdminKey() ? { adminKey: getAdminKey() } : null;
+        else if (s.tokenUrusetia) kunci = { tokenUrusetia: s.tokenUrusetia };
+      } else {
+        kunci = await kunciPengesahan();
+      }
+      if (!kunci) {
+        const msgK = canManageSystem()
+          ? 'PIN Master Admin diperlukan untuk menghantar keputusan ke Google Sheets.'
+          : 'Sesi Sub Admin belum disahkan oleh Google Sheets. Log keluar & log masuk semula dengan internet.';
+        if (!opts.tanpaPrompt) showToast(`Keputusan disimpan dalam peranti ini tetapi BELUM dihantar ke Google Sheets. ${msgK}`, 'warn', 7500);
+        return { ok: false, tiadaKunci: true, error: msgK };
+      }
       const logIds = new Set(ids);
       const logBaharu = state.approvalLog.filter(l => logIds.has(l.matchId)).slice(0, ids.length * 2);
-      const res = await callGas({
+      const res = await callGas(Object.assign({
         action: 'updateMatches',
         sumber: 'PETI-KELULUSAN',
-        adminKey: canManageSystem() ? (getAdminKey() || undefined) : undefined,
-        tokenUrusetia: !canManageSystem() ? ((getSession() || {}).tokenUrusetia || undefined) : undefined,   // v1.19.0: Sub Admin
         matches: matches.map(syncMatchRow),
         logBaharu
-      });
+      }, kunci));
+      // v1.44.4: adminKey dihantar tetapi ditolak -> PIN dalam peranti tidak sepadan dengan PIN di Google Sheets
+      if (res && !res.ok && kunci.adminKey && (res.kod === 'BUKAN_SUB_ADMIN' || res.kod === 'BUKAN_ADMIN')) {
+        setAdminKey('');
+        if (!opts.tanpaPrompt) showToast('PIN Master Admin tidak sepadan dengan PIN di Google Sheets. Tekan Sahkan / Tolak semula dan masukkan PIN Master Admin yang betul.', 'error', 8000);
+        return Object.assign({}, res, { pinSalah: true });
+      }
       if (res && res.ok) {
         ids.forEach(id => { recentDecisions[id] = Date.now() - DECISION_HOLD_MS + 20000; });
         if (res.dimuktamad) showToast('Sebahagian keputusan telah pun disahkan di Google Sheets sebelum ini.', 'info');
@@ -11475,6 +11497,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         }
         return res;
       }
+      if (res && res.tiadaKunci) return res;
       showToast(res && res.networkError
         ? 'Keputusan disimpan dalam peranti ini tetapi GAGAL dihantar ke Google Sheets. Semak internet & tekan "Semak Keputusan Baharu".'
         : `Google Sheets menolak keputusan: ${(res && res.error) || 'ralat tidak diketahui'}`, 'error', 6500);
@@ -13585,6 +13608,61 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function refFsTurutan() {
       try { const h = gqTurutanHtml(fsTurutanItems(state.courts), 10); return h ? `<div class="rm-turutan">${h}</div>` : ''; } catch (e) { return ''; }
     }
+    // v1.44.4: SELARAS DENGAN SIMULASI GELANGGANG. Simulasi Gelanggang memaparkan perlawanan seterusnya
+    // menurut Google Sheets (giliran pelayan), tetapi Mod Pengadil hanya membaca salinan dalam telefon.
+    // Bila salinan telefon lapuk (gelanggang masih menunjuk perlawanan SELESAI / TAMAT, atau nama pasukan
+    // kalah mati seperti SM-39 / SM-40 belum dikira), Mod Pengadil kosong walaupun Simulasi ada perlawanan.
+    // Di sini gelanggang yang KOSONG & TIADA PENGADIL menurut Google Sheets diselaraskan dengan pelayan.
+    function refSelarasDariPelayan() {
+      if (!publicLive.data || !Array.isArray(state.courts)) return false;
+      let changed = false;
+      state.courts.forEach(court => {
+        try {
+          if (!court || court.ditutup || isCourtPaused(court) || court.status === COURT_STATUS.LIVE) return;
+          if (court.pengadilId && !court.kunciBasi) return;
+          const d = courtDisplay(court);
+          if (!d || d.source !== 'server' || !d.match || !d.match.id) return;
+          if (d.v.status !== COURT_STATUS.SEDIA || d.v.pengadil) return;
+          const opt = refCourtOption(court);
+          if (opt.can && opt.match && opt.match.id === d.match.id) return;
+          const lm = getMatch(d.match.id);
+          if (!lm || lm.status !== MATCH_STATUS.MENUNGGU) return;
+          // Nama pasukan daripada Google Sheets (cth. KALAH-37 / MENANG-37 sudah ditentukan di pelayan)
+          if (!isMatchReady(lm) && !isPlaceholderName(d.match.namaP1) && !isPlaceholderName(d.match.namaP2)) {
+            Object.assign(lm, {
+              namaP1: d.match.namaP1, namaP2: d.match.namaP2,
+              kodP1: d.match.kodP1 || lm.kodP1, kodP2: d.match.kodP2 || lm.kodP2,
+              namaDariPelayan: true
+            });
+            changed = true;
+          }
+          if (!isMatchReady(lm)) return;
+          // Gelanggang tempatan lapuk (TAMAT tanpa keputusan menunggu pengesahan) -> kosongkan
+          if (court.status !== COURT_STATUS.SEDIA) {
+            const cur = getMatch(court.matchSemasa);
+            if (court.status === COURT_STATUS.TAMAT && cur && cur.status === MATCH_STATUS.TUNGGU_SAH) return;
+            resetCourt(court);
+          }
+          if (court.pengadilId && court.kunciBasi) clearCourtLock(court);
+          // Perlawanan yang sama tersangkut di gelanggang lain (bukan LIVE) dalam telefon ini -> alihkan
+          let bertindih = false;
+          state.courts.forEach(c => {
+            if (c === court || c.matchSemasa !== lm.id) return;
+            if (c.status === COURT_STATUS.LIVE || isCourtPaused(c) || c.pengadilId) { bertindih = true; return; }
+            c.matchSemasa = null;
+          });
+          if (bertindih) return;
+          if (court.matchSemasa !== lm.id) {
+            court.matchSemasa = lm.id;
+            court.kemaskiniTerakhir = nowIso();
+          }
+          changed = true;
+        } catch (err) { console.warn('[refSelarasDariPelayan]', err); }
+      });
+      if (changed) saveState();
+      return changed;
+    }
+
     function refPickView(s) {
       const opts = state.courts.map(refCourtOption);
       const rank = o => (o.rehat ? 0 : (o.court.status === COURT_STATUS.LIVE ? 1 : 2));
@@ -13804,7 +13882,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         else if (held) view = refFocusView(s, held);
         else if (refRalat && (view = refRalatView(s))) { /* v1.44.0: masukkan jaringan penalti (markah RALAT) */ }
         else if (state.ui && state.ui.refResit) view = refReceiptView(s, state.ui.refResit);
-        else view = refPickView(s);
+        else { try { refSelarasDariPelayan(); } catch (e) { /* abaikan */ } view = refPickView(s); }   // v1.44.4
       }
       // Kekalkan keadaan "Tindakan lain" (terbuka/tertutup) selepas paparan dijana semula
       const moreOpen = !!el.querySelector('details.rm-more[open]');
@@ -15881,6 +15959,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (!match) return false;
       const key = side === 1 ? 'namaP1' : 'namaP2';
       if (!name || match[key] === name) return false;
+      // v1.44.4: nama pasukan yang diterima daripada Google Sheets tidak dikembalikan kepada placeholder
+      // (cth. KALAH-37) hanya kerana keputusan sumber belum ada dalam telefon ini.
+      if (!reshuffleCtx && match.namaDariPelayan && isPlaceholderName(name) && !isPlaceholderName(match[key])) return false;
       if (match.status !== MATCH_STATUS.MENUNGGU) {
         // FASA 4: hanya enjin rombakan pembetulan (Master Admin) boleh menyentuh
         // perlawanan yang telah bermula / selesai.
