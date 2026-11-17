@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycby8nPaNCJsPDoNWpL6cdZSrJVcIf1Hyo4HHbiF7YgX02WWgPW6PLEPo5Sehr-zRuYAzaw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1017,6 +1017,14 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .bm-turutan-item.is-tbd { opacity: .55; border-style: dashed; }
     @keyframes bm-first-glow { 0%, 100% { box-shadow: 0 0 6px rgba(56,189,248,.25); } 50% { box-shadow: 0 0 16px rgba(56,189,248,.55); } }
     @media (prefers-reduced-motion: reduce) { .bm-turutan-item.is-first { animation: none; } }
+    /* v1.39.0: turutan & giliran diselaraskan (Futsal, Badminton, Mod Pengadil) */
+    .gq-board { margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: rgba(15,23,42,.45); }
+    .gq-board .bm-turutan { margin-top: 0; padding-top: 0; border-top: 0; }
+    .court-card .bm-giliran + .court-next { padding-top: 6px; }
+    .rm-pick .bm-giliran, .rm-other-row .bm-giliran { padding: 6px 0 0; }
+    .rm-turutan { margin: 6px 0 12px; }
+    .rm-turutan .bm-turutan { margin-top: 0; padding-top: 0; border-top: 0; }
+    .bmref-row .bm-giliran { padding: 4px 0 0; }
     @media (max-width: 1100px) { .courts-grid.bm-courts, .sb-grid.bm-sb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 860px) { .courts-grid.bm-courts { grid-template-columns: 1fr; } }
     @media (max-width: 600px) { .sb-grid.bm-sb-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -10229,10 +10237,59 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           ${rehatNote}
           ${penaltiNote}
           ${rejectNote}
+          ${fsGiliranHtml(court, match, view.queue)}
           <div class="court-next">${nextText}</div>
           ${renderDashboardApproval(court, match)}
           ${renderCourtControls(realCourt, realMatch)}
         </article>`;
+    }
+
+    // v1.39.0: giliran Futsal (paparan sama seperti Badminton)
+    function fsChipCls(court) {
+      if (!court) return 'is-next';
+      if (court.status === COURT_STATUS.LIVE) return 'is-live';
+      if (court.status === COURT_STATUS.TAMAT) return 'is-done';
+      return 'is-next';
+    }
+    function fsQueueItems(queue) {
+      return (queue || []).map(q => ({ label: q.id, title: `${q.id} · ${q.namaP1} lwn ${q.namaP2}`, tbd: !isMatchReady(q) }));
+    }
+    function fsGiliranHtml(court, match, queue, tag) {
+      return gqGiliranHtml(court.id, match ? { label: match.id, cls: fsChipCls(court) } : null, fsQueueItems(queue), tag);
+    }
+    // Turutan keseluruhan Futsal: LIVE dahulu, kemudian ikut kedudukan giliran setiap gelanggang
+    function fsTurutanItems(courts) {
+      const rows = [];
+      courts.forEach(c => {
+        let d;
+        try { d = courtDisplay(c); } catch (e) { return; }
+        const v = d.v;
+        if (d.match && v.status !== COURT_STATUS.TAMAT) rows.push({ m: d.match, gel: c.id, pos: v.status === COURT_STATUS.LIVE ? -1 : 0, live: v.status === COURT_STATUS.LIVE });
+        (d.queue || []).forEach((m, i) => rows.push({ m, gel: c.id, pos: i + 1, live: false }));
+      });
+      const seen = {};
+      const uniq = rows.filter(r => { const k = String(r.m.id).toUpperCase(); if (seen[k]) return false; seen[k] = 1; return true; });
+      uniq.sort((a, b) => a.pos - b.pos || String(a.gel).localeCompare(String(b.gel), 'ms', { numeric: true }));
+      const first = uniq.find(r => !r.live && isMatchReady(r.m));
+      return uniq.map(r => {
+        const tbd = !isMatchReady(r.m);
+        const cls = r.live ? 'is-live' : (r === first ? 'is-first' : (tbd ? 'is-tbd' : 'is-queue'));
+        const st = r.live ? 'Sedang berlangsung' : (r === first ? 'Giliran seterusnya' : (tbd ? 'Menunggu penetapan pasukan' : 'Menunggu giliran'));
+        return { label: r.m.id, sub: 'Gel. ' + r.gel, cls, title: `${r.m.id} · ${r.m.namaP1} lwn ${r.m.namaP2} · ${st}` };
+      });
+    }
+    function renderFsTurutan(grid, courts) {
+      let box = document.getElementById('courtsTurutan');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'courtsTurutan';
+        box.className = 'gq-board';
+        grid.parentNode.insertBefore(box, grid);
+      }
+      let html = '';
+      try { html = gqTurutanHtml(fsTurutanItems(courts)); } catch (e) { console.error('[fsTurutan]', e); }
+      box.innerHTML = html;
+      box.classList.toggle('hidden', !html);
     }
 
     function renderCourts() {
@@ -10244,6 +10301,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       grid.style.setProperty('--court-cols', String(Math.max(2, courtGridCols(courts.length))));
 
       if (!courts.length) {
+        renderFsTurutan(grid, []);
         grid.innerHTML = `
           <div class="card glass empty-state" style="grid-column:1/-1;">
             <div class="icon">🏟️</div>
@@ -10255,6 +10313,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
 
       grid.innerHTML = courts.map(renderCourtCard).join('');
+      renderFsTurutan(grid, courts);
       updateCourtTimers();
       updateApprovalBadge();
       renderStandby();
@@ -11727,9 +11786,41 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         }
         else reason = tunggu.length ? '✅ Semua perlawanan dimainkan · menunggu pengesahan' : '✅ Semua perlawanan gelanggang ini selesai';
         const next = belum.find(x => x !== m) || null;
-        return { gel, m, can, reason, next, baki: belum.filter(x => x !== m).length, kat: ms[0] ? (ms[0].kategori || '') : '',
-          ov: bmRefOv(m, ovMap), nextOv: bmRefOv(next, ovMap) };
+        const queue = belum.filter(x => x !== m);
+        return { gel, m, can, reason, next, baki: queue.length, kat: ms[0] ? (ms[0].kategori || '') : '',
+          ov: bmRefOv(m, ovMap), nextOv: bmRefOv(next, ovMap),
+          // v1.39.0: giliran gelanggang ini (paparan sama seperti Papan Live)
+          queue: queue.map(q => ({ label: bmRefOv(q, ovMap) || q.id, title: `${q.id} · ${q.namaP1} lwn ${q.namaP2}`, tbd: !(bmRefNamaSah(q.namaP1) && bmRefNamaSah(q.namaP2)) })) };
       });
+    }
+    // v1.39.0: giliran & turutan Badminton dalam Mod Pengadil (sama seperti Papan Live)
+    function bmRefGiliran(x, tag) {
+      if (!x) return '';
+      const st = x.m ? bmRefStatus(x.m) : '';
+      const cur = x.m ? { label: x.ov || x.m.id, cls: st === 'LIVE' ? 'is-live' : st === 'TUNGGU' ? 'is-done' : 'is-next' } : null;
+      return gqGiliranHtml(x.gel, cur, x.queue, tag);
+    }
+    function bmRefTurutan(slots) {
+      try {
+        const rows = [];
+        slots.forEach(x => {
+          if (x.m && ['LIVE', 'BELUM', 'DITOLAK'].includes(bmRefStatus(x.m))) rows.push({ m: x.m, gel: x.gel, label: x.ov || x.m.id });
+          (x.queue || []).forEach(q => rows.push({ q, gel: x.gel, label: q.label, tbd: q.tbd }));
+        });
+        const rank = lbl => { const p = /^P(\d+)$/i.exec(lbl || ''); return p ? Number(p[1]) : 100000; };
+        const isLive = r => r.m && bmRefStatus(r.m) === 'LIVE';
+        rows.sort((a, b) => (isLive(b) - isLive(a)) || rank(a.label) - rank(b.label) || String(a.gel).localeCompare(String(b.gel), 'ms', { numeric: true }));
+        const tbdOf = r => r.m ? !(bmRefNamaSah(r.m.namaP1) && bmRefNamaSah(r.m.namaP2)) : !!r.tbd;
+        const first = rows.find(r => !isLive(r) && !tbdOf(r));
+        const items = rows.map(r => {
+          const live = isLive(r), tbd = tbdOf(r);
+          const cls = live ? 'is-live' : (r === first ? 'is-first' : (tbd ? 'is-tbd' : 'is-queue'));
+          const st = live ? 'Sedang berlangsung' : (r === first ? 'Giliran seterusnya' : (tbd ? 'Menunggu penetapan pasukan' : 'Menunggu giliran'));
+          const t = r.m ? `${r.m.id} · ${r.m.namaP1} lwn ${r.m.namaP2}` : r.q.title;
+          return { label: r.label, sub: 'Gel. ' + r.gel, cls, title: `${t} · ${st}` };
+        });
+        return gqTurutanHtml(items, 10);
+      } catch (e) { return ''; }
     }
     function bmRefKat(k) { const u = String(k || '').toUpperCase(); return u === 'SR' ? 'Sekolah Rendah' : u === 'SM' ? 'Sekolah Menengah' : String(k || ''); }
     function bmRefMyLive(s) { return bmRef.list.find(m => bmRefMine(m, s) && bmRefStatus(m) === 'LIVE') || null; }
@@ -11806,6 +11897,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="info">
                 <strong>Gelanggang ${escapeHtml(x.gel)}${x.ov ? ' · ' + escapeHtml(x.ov) : ''} · ${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
                 <small>${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}${x.reason ? ' · ' + escapeHtml(x.reason) : ''}${x.next ? ' · Seterusnya: ' + escapeHtml((x.nextOv ? x.nextOv + ' · ' : '') + x.next.id) : ''}</small>
+                ${bmRefGiliran(x)}
               </div>
               <div class="sk">${sk}</div>
               ${bmRefBadge(st)}
@@ -11848,6 +11940,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <span class="badge">${list.length} gelanggang · 1 perlawanan setiap gelanggang</span>
           </div>
           ${form}
+          ${(() => { const h = bmRefTurutan(slots); return h ? `<div class="rm-turutan" style="margin-top:12px;">${h}</div>` : ''; })()}
           <div class="bmref-list" style="margin-top:12px;">${rows || `<div class="form-msg">${bmRef.loading ? 'Membaca jadual Badminton…' : bmRef.loaded ? 'Tiada perlawanan Badminton untuk diadili.' : ''}</div>`}</div>`;
       }
       el.innerHTML = `${head}<div class="ref-desk-body"><div class="form-msg ${bmRef.err ? 'error' : bmRef.msg ? 'success' : ''}" id="bmRefMsg" role="status">${escapeHtml(bmRef.msg)}</div>${body}</div>`;
@@ -12142,6 +12235,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
             <span class="rm-pick-meta">${x.ov ? escapeHtml(x.ov) + ' · ' : ''}${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
             ${nx}
+            ${bmRefGiliran(x, 'span')}
             <span class="rm-pick-cta">${cta}</span>
           </button>`;
       }).join('');
@@ -12149,7 +12243,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <div class="rm-other-row">
             <span class="court-letter">${escapeHtml(x.gel)}</span>
             <div><strong>Gelanggang ${escapeHtml(x.gel)}${x.ov ? ' · ' + escapeHtml(x.ov) : ''}${x.m ? ' · ' + escapeHtml(x.m.id) + ' · ' + escapeHtml(x.m.namaP1) + ' lwn ' + escapeHtml(x.m.namaP2) : ''}</strong>
-              <small>${escapeHtml(x.reason)}${x.m && bmRefStatus(x.m) === 'LIVE' ? ' · Skor ' + (x.m.skorP1 ?? 0) + ' - ' + (x.m.skorP2 ?? 0) : ''}</small></div>
+              <small>${escapeHtml(x.reason)}${x.m && bmRefStatus(x.m) === 'LIVE' ? ' · Skor ' + (x.m.skorP1 ?? 0) + ' - ' + (x.m.skorP2 ?? 0) : ''}</small>
+              ${bmRefGiliran(x)}</div>
           </div>`).join('');
       const chips = gels.length > 1 ? `
           <div class="rm-chips" role="group" aria-label="Pilih gelanggang">
@@ -12176,6 +12271,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <p class="rm-sync">${escapeHtml(bmMobileSyncText(s))}</p>
           <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
           <p class="rm-sub">Satu perlawanan bagi setiap gelanggang (${slots.length} gelanggang), ikut giliran jadual (P1, P2 ...). Ketik perlawanan di gelanggang anda.</p>
+          ${(() => { const h = bmRefTurutan(slots); return h ? `<div class="rm-turutan">${h}</div>` : ''; })()}
           ${chips}
           <div class="rm-list">${cards || `<div class="rm-empty"><div class="icon">🏸</div>${empty}</div>`}</div>
           ${others.length ? `<details class="rm-others" open><summary>Gelanggang lain (${others.length})</summary>${otherRows}</details>` : ''}
@@ -12812,6 +12908,13 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       renderRefMobile();
     }
 
+    // v1.39.0: giliran & turutan dalam Mod Pengadil Futsal
+    function refFsGiliran(c, tag) {
+      try { const d = courtDisplay(c); return fsGiliranHtml(d.v, d.match, d.queue, tag); } catch (e) { return ''; }
+    }
+    function refFsTurutan() {
+      try { const h = gqTurutanHtml(fsTurutanItems(state.courts), 10); return h ? `<div class="rm-turutan">${h}</div>` : ''; } catch (e) { return ''; }
+    }
     function refPickView(s) {
       const opts = state.courts.map(refCourtOption);
       const rank = o => (o.rehat ? 0 : (o.court.status === COURT_STATUS.LIVE ? 1 : 2));
@@ -12832,6 +12935,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             </span>
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
             <span class="rm-pick-meta">${escapeHtml(m.id)} · ${escapeHtml(stageLabel(m))}</span>
+            ${refFsGiliran(c, 'span')}
             <span class="rm-pick-cta">${kickoffBusy ? '⏳ Mengunci...' : cta}</span>
           </button>`;
       }).join('');
@@ -12839,7 +12943,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <div class="rm-other-row">
             <span class="court-letter">${escapeHtml(o.court.id)}</span>
             <div><strong>${o.match ? `${escapeHtml(o.match.id)} · ${escapeHtml(o.match.namaP1)} lwn ${escapeHtml(o.match.namaP2)}` : escapeHtml(o.court.nama)}</strong>
-              <small>${escapeHtml(o.lock.text)}${o.reason ? ' · ' + escapeHtml(o.reason) : ''}</small></div>
+              <small>${escapeHtml(o.lock.text)}${o.reason ? ' · ' + escapeHtml(o.reason) : ''}</small>
+              ${refFsGiliran(o.court)}</div>
           </div>`).join('');
       const desktopExit = !isPhoneDevice()
         ? `<button type="button" class="rm-btn rm-btn-ghost" onclick="refSetMode(null)">🖥 Kembali ke Paparan Penuh</button>` : '';
@@ -12856,6 +12961,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <p class="rm-sync">${escapeHtml(refSyncText(s))}</p>
           <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
           <p class="rm-sub">Ketik satu perlawanan. Paparan akan dikunci pada perlawanan itu sahaja.</p>
+          ${refFsTurutan()}
           <div class="rm-list">${cards || `
             <div class="rm-empty"><div class="icon">⏳</div>
               Tiada perlawanan sedia untuk diadili sekarang.<br>Tekan 🔄 untuk semak semula.</div>`}
@@ -19683,6 +19789,30 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
       const m = bmRef.list.find(x => String(x.id || '').toUpperCase() === String(id).toUpperCase());
       if (m) bmRefPick(m.id); else showToast(`Perlawanan ${id} tidak dijumpai dalam jadual Badminton.`, 'warn');
+    }
+
+    // v1.39.0: PEMBINA GILIRAN SERAGAM - digunakan oleh Futsal, Badminton & Mod Pengadil.
+    // items: [{ label, sub, cls: 'is-live'|'is-first'|'is-queue'|'is-tbd', title }]
+    function gqTurutanHtml(items, max) {
+      const lim = max || 12;
+      if (!items || !items.length) return '';
+      const e = typeof dashEsc === 'function' ? dashEsc : escapeHtml;
+      const list = items.slice(0, lim).map(x => `<span class="bm-turutan-item ${x.cls}" title="${e(x.title || x.label)}"><b>${e(x.label)}</b><small>${e(x.sub || '')}</small></span>`).join('');
+      const baki = items.length > lim ? `<span class="bm-giliran-more">+${items.length - lim} lagi</span>` : '';
+      return `<div class="bm-turutan"><span class="bm-turutan-lbl">🔢 Turutan Giliran</span>${list}${baki}</div>`;
+    }
+    // cur: { label, cls } atau null ; queue: [{ label, title, tbd }]
+    function gqGiliranHtml(gel, cur, queue, tag) {
+      const t = tag || 'div';
+      const q = queue || [];
+      if (!cur && !q.length) return '';
+      const e = typeof dashEsc === 'function' ? dashEsc : escapeHtml;
+      return `<${t} class="bm-giliran" aria-label="Giliran perlawanan Gelanggang ${e(gel)}">
+            <span class="bm-giliran-lbl">Giliran</span>
+            ${cur ? `<span class="bm-p-chip ${cur.cls || 'is-next'}">${e(cur.label)}</span>` : ''}
+            ${q.slice(0, 5).map((x, i) => `${cur || i ? '<span class="bm-giliran-arrow" aria-hidden="true">›</span>' : ''}<span class="bm-p-chip ${i === 0 ? 'is-standby' : 'is-queue'}${x.tbd ? ' is-tbd' : ''}" title="${e(x.title || x.label)}">${e(x.label)}</span>`).join('')}
+            ${q.length > 5 ? `<span class="bm-giliran-more">+${q.length - 5}</span>` : ''}
+          </${t}>`;
     }
 
     // v1.38.2: Turutan giliran keseluruhan (P1, P2, P3 ...) - LIVE & baki perlawanan, giliran terendah diserlahkan
