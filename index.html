@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxgxuFkkfgTV47T7SkqJnkkQ9XTPYDIekf6AETZbpGoUc1mp3apIdlaw9eW_0sn3mRQpQ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1133,6 +1133,14 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .rm-pick-top .court-letter { width: 40px; height: 40px; font-size: 1.15rem; border-radius: 12px; flex: none; }
     .rm-pick-court { flex: 1; min-width: 0; font-weight: 800; font-size: .92rem; }
     .rm-pick-court small { display: block; font-size: .7rem; font-weight: 700; color: var(--text-2); letter-spacing: .04em; }
+    /* v1.23.3: nombor giliran perlawanan (P1, P2 ...) pada Paparan Pengadil */
+    .rm-p-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 3px 11px; border-radius: 999px;
+      font-family: var(--font-mono); font-weight: 800; font-size: .95rem; letter-spacing: .02em; flex: none;
+      color: #e0f2fe; background: rgba(56,189,248,.18); border: 1px solid rgba(56,189,248,.6); }
+    .rm-p-chip.is-live { color: #fecaca; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.6); }
+    .rm-p-chip.is-done { color: #fde68a; background: rgba(250,204,21,.16); border-color: rgba(250,204,21,.55); }
+    .rm-p-chip.is-tbd { opacity: .6; border-style: dashed; }
+    .rm-p-chip-sm { min-width: 32px; padding: 1px 8px; font-size: .74rem; }
     .rm-pick-teams { display: grid; gap: 2px; font-family: var(--font-display); font-weight: 800; font-size: 1.08rem; line-height: 1.25; overflow-wrap: anywhere; }
     .rm-pick-teams em { font-style: normal; font-family: var(--font-body); font-size: .72rem; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: .1em; }
     .rm-pick-meta { font-family: var(--font-mono); font-size: .72rem; color: var(--text-2); }
@@ -11615,7 +11623,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
        - Skor dihantar dengan token sesi; Code.gs menolak pengadil Futsal.
        - Keputusan "Tamat & Hantar" menunggu pengesahan Master Admin (panel skor).
        ========================================================= */
-    const bmRef = { owner: null, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0 };
+    const bmRef = { owner: null, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0, ovMap: null };
     const BMREF_VERSI = '1.18.0';
 
     function bukaMejaBadminton() {
@@ -11645,6 +11653,44 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
        - Susunan giliran ikut No. Perlawanan Keseluruhan (P1, P2, ...) — sama dengan Papan Live / projektor.
        - Status diambil daripada jadual Google Sheets yang dibaca oleh pengadil (bmRef.list). */
     const BM_REF_TERBIAR_MS = 30 * 60000;   // sepadan dengan BM_PENGADIL_TERBIAR_MINIT dalam Code.gs
+    /* v1.23.3: NOMBOR GILIRAN PERLAWANAN (P1, P2, P3 ...) pada Paparan Pengadil
+       - Utama : medan `noPerkeseluruhan` daripada Google Sheets (Code.gs v1.23.3+).
+       - Sandaran: peta id -> P daripada tab Badminton (jika Code.gs masih versi lama). */
+    function bmRefOvOf(m) {
+      const t = String((m && (m.noPerkeseluruhan || m.ov)) || '').trim().toUpperCase();
+      return /^P\d+$/.test(t) ? t : '';
+    }
+    function bmRefOvMap() {
+      if (bmRef.ovMap && Date.now() - bmRef.ovMap.at < 60000) return bmRef.ovMap.map;
+      const map = {};
+      try {
+        ((dash.bm && dash.bm.data && dash.bm.data.matches) || []).forEach(m => {
+          const p = bmRefOvOf(m); if (p && m.id) map[String(m.id).toUpperCase()] = p;
+        });
+      } catch (e) { /* abaikan */ }
+      bmRef.ovMap = { at: Date.now(), map };
+      return map;
+    }
+    function bmRefOv(m, ovMap) {
+      const p = bmRefOvOf(m);
+      if (p) return p;
+      const map = ovMap || bmRefOvMap();
+      return map[String((m && m.id) || '').toUpperCase()] || '';
+    }
+    // Code.gs lama tidak menghantar nombor P -> ambil sekali daripada tab Badminton (disimpan 60 s)
+    async function bmRefOvPasti(list) {
+      if (!Array.isArray(list) || !list.length) return;
+      if (list.some(m => bmRefOvOf(m))) return;
+      if (bmRef.ovMap && Object.keys(bmRef.ovMap.map).length && Date.now() - bmRef.ovMap.at < 60000) return;
+      try {
+        const d = await dashFetch('badminton');
+        if (d && d.ok && Array.isArray(d.jadual) && d.jadual.length) {
+          const map = {};
+          normBmServer(d).matches.forEach(m => { const p = bmRefOvOf(m); if (p && m.id) map[String(m.id).toUpperCase()] = p; });
+          if (Object.keys(map).length) bmRef.ovMap = { at: Date.now(), map };
+        }
+      } catch (e) { /* abaikan: paparan tetap berfungsi tanpa nombor P */ }
+    }
     function bmRefRankMap() {
       const map = {};
       try {
@@ -11655,6 +11701,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
     function bmRefSlots(s) {
       const rank = bmRefRankMap();
+      const ovMap = bmRefOvMap();   // v1.23.3: nombor giliran (P1, P2 ...)
       const key = m => { const r = rank[String(m.id).toUpperCase()]; return r === undefined ? 10000 + (Number(m.no) || 0) : r; };
       const byGel = {};
       bmRef.list.forEach(m => { const g = String(m.gelanggang || '').trim(); if (g) (byGel[g] = byGel[g] || []).push(m); });
@@ -11680,7 +11727,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         }
         else reason = tunggu.length ? '✅ Semua perlawanan dimainkan · menunggu pengesahan' : '✅ Semua perlawanan gelanggang ini selesai';
         const next = belum.find(x => x !== m) || null;
-        return { gel, m, can, reason, next, baki: belum.filter(x => x !== m).length, kat: ms[0] ? (ms[0].kategori || '') : '' };
+        return { gel, m, can, reason, next, baki: belum.filter(x => x !== m).length, kat: ms[0] ? (ms[0].kategori || '') : '',
+          ov: bmRefOv(m, ovMap), nextOv: bmRefOv(next, ovMap) };
       });
     }
     function bmRefKat(k) { const u = String(k || '').toUpperCase(); return u === 'SR' ? 'Sekolah Rendah' : u === 'SM' ? 'Sekolah Menengah' : String(k || ''); }
@@ -11709,7 +11757,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const owner = s.userId + '|' + (s.token || '');
       if (bmRef.owner !== owner) {
         clearTimeout(bmSave.timer); Object.assign(bmSave, { timer: null, busy: false, pending: false, state: '', err: '', lastAt: 0 });   // v1.34.1: elak autosimpan sesi lama
-        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0 });
+        Object.assign(bmRef, { owner, list: [], loaded: false, loading: false, busy: false, sel: null, gel: 'SEMUA', msg: '', err: false, fin: null, resit: null, loadedAt: 0, lastTry: 0, ovMap: null });
       }
       // Dibina sekali sahaja -> input skor tidak hilang bila paparan lain dikemas kini
       if (el.dataset.owner === owner) return;
@@ -11756,8 +11804,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           return `
             <div class="bmref-row${sel ? ' sel' : ''}">
               <div class="info">
-                <strong>Gelanggang ${escapeHtml(x.gel)} · ${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
-                <small>${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}${x.reason ? ' · ' + escapeHtml(x.reason) : ''}${x.next ? ' · Seterusnya: ' + escapeHtml(x.next.id) : ''}</small>
+                <strong>Gelanggang ${escapeHtml(x.gel)}${x.ov ? ' · ' + escapeHtml(x.ov) : ''} · ${escapeHtml(m.id)}</strong> · ${escapeHtml(m.namaP1)} <span style="color:var(--text-2)">lwn</span> ${escapeHtml(m.namaP2)}
+                <small>${escapeHtml(m.peringkat || m.kategori || '')}${m.pengadil ? ' · Pengadil: ' + escapeHtml(m.pengadil) : ''}${x.reason ? ' · ' + escapeHtml(x.reason) : ''}${x.next ? ' · Seterusnya: ' + escapeHtml((x.nextOv ? x.nextOv + ' · ' : '') + x.next.id) : ''}</small>
               </div>
               <div class="sk">${sk}</div>
               ${bmRefBadge(st)}
@@ -11905,6 +11953,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       bmRef.loading = true; bmRef.lastTry = Date.now(); bmRefSetMsg('Membaca jadual Badminton…'); bmRefPaint(); bmMobileRender();
       try {
         bmRef.list = await bmRefRead();
+        try { await bmRefOvPasti(bmRef.list); } catch (e) { /* abaikan */ }   // v1.23.3: nombor giliran (P1, P2 ...)
         bmRef.loaded = true;
         bmRef.loadedAt = Date.now();
         bmRefSetMsg('');
@@ -12080,16 +12129,18 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const tag = st === 'DITOLAK' ? '⚠ Ditolak · hantar semula' : st === 'LIVE' ? (mine ? '🔴 LIVE · anda' : '🔴 LIVE · tiada pengadil') : '🟢 Sedia';
         const cta = sibuk ? '🔒 Tamatkan perlawanan anda dahulu' : st === 'DITOLAK' ? '✎ Betulkan &amp; Hantar Semula' : st === 'LIVE' ? (mine ? '▶ Sambung Mengadili' : '🤝 Ambil Alih Perlawanan') : '🏸 Adili Perlawanan Ini';
         const sk = st !== 'BELUM' ? ` · Skor ${m.skorP1 ?? 0} - ${m.skorP2 ?? 0}` : '';
-        const nx = x.next ? `<span class="rm-pick-meta">Seterusnya: ${escapeHtml(x.next.id)} · ${escapeHtml(x.next.namaP1)} lwn ${escapeHtml(x.next.namaP2)}</span>` : '';
+        const nx = x.next ? `<span class="rm-pick-meta">Seterusnya: ${escapeHtml((x.nextOv ? x.nextOv + ' · ' : '') + x.next.id)} · ${escapeHtml(x.next.namaP1)} lwn ${escapeHtml(x.next.namaP2)}</span>` : '';
+        const pChip = x.ov ? `<span class="rm-p-chip ${st === 'LIVE' ? 'is-live' : st === 'DISAHKAN' ? 'is-done' : ''}">${escapeHtml(x.ov)}</span>` : '';
         return `
           <button type="button" class="rm-pick ${cls}" onclick="bmRefPick('${escapeHtml(m.id)}')" ${bmRef.busy || sibuk ? 'disabled' : ''}>
             <span class="rm-pick-top">
               <span class="court-letter">${escapeHtml(x.gel)}</span>
               <span class="rm-pick-court">Gelanggang ${escapeHtml(x.gel)}<small>${escapeHtml(bmRefKat(m.kategori))}${m.masaJadual ? ' · ' + escapeHtml(m.masaJadual) : ''}</small></span>
+              ${pChip}
               <span class="lock-chip ${st === 'DITOLAK' ? 'stale' : 'free'}">${escapeHtml(tag)}</span>
             </span>
             <span class="rm-pick-teams"><span>${escapeHtml(m.namaP1)}</span><em>lwn</em><span>${escapeHtml(m.namaP2)}</span></span>
-            <span class="rm-pick-meta">${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
+            <span class="rm-pick-meta">${x.ov ? escapeHtml(x.ov) + ' · ' : ''}${escapeHtml(m.id)}${m.peringkat ? ' · ' + escapeHtml(m.peringkat) : ''}${sk}</span>
             ${nx}
             <span class="rm-pick-cta">${cta}</span>
           </button>`;
@@ -12097,7 +12148,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const otherRows = others.map(x => `
           <div class="rm-other-row">
             <span class="court-letter">${escapeHtml(x.gel)}</span>
-            <div><strong>Gelanggang ${escapeHtml(x.gel)}${x.m ? ' · ' + escapeHtml(x.m.id) + ' · ' + escapeHtml(x.m.namaP1) + ' lwn ' + escapeHtml(x.m.namaP2) : ''}</strong>
+            <div><strong>Gelanggang ${escapeHtml(x.gel)}${x.ov ? ' · ' + escapeHtml(x.ov) : ''}${x.m ? ' · ' + escapeHtml(x.m.id) + ' · ' + escapeHtml(x.m.namaP1) + ' lwn ' + escapeHtml(x.m.namaP2) : ''}</strong>
               <small>${escapeHtml(x.reason)}${x.m && bmRefStatus(x.m) === 'LIVE' ? ' · Skor ' + (x.m.skorP1 ?? 0) + ' - ' + (x.m.skorP2 ?? 0) : ''}</small></div>
           </div>`).join('');
       const chips = gels.length > 1 ? `
@@ -12124,7 +12175,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           </div>
           <p class="rm-sync">${escapeHtml(bmMobileSyncText(s))}</p>
           <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
-          <p class="rm-sub">Satu perlawanan bagi setiap gelanggang (${slots.length} gelanggang), ikut giliran jadual. Ketik perlawanan di gelanggang anda.</p>
+          <p class="rm-sub">Satu perlawanan bagi setiap gelanggang (${slots.length} gelanggang), ikut giliran jadual (P1, P2 ...). Ketik perlawanan di gelanggang anda.</p>
           ${chips}
           <div class="rm-list">${cards || `<div class="rm-empty"><div class="icon">🏸</div>${empty}</div>`}</div>
           ${others.length ? `<details class="rm-others" open><summary>Gelanggang lain (${others.length})</summary>${otherRows}</details>` : ''}
@@ -12136,6 +12187,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const sel = bmRef.sel;
       const st = bmRefStatus(m);
       const started = !!sel.started;
+      const ovP = bmRefOv(m);   // v1.23.3: nombor giliran (P1, P2 ...)
       const s1 = parseInt(sel.s1, 10) || 0, s2 = parseInt(sel.s2, 10) || 0;
       const status = started
         ? `<span class="live">🔴 LIVE · Sedang berlangsung</span>`
@@ -12176,11 +12228,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return {
         key: `bm-focus-${m.id}`,
         html: `
-          <div class="rm-lockbar">${started ? '🔒 Paparan dikunci' : '🏸 Perlawanan dipilih'} · ${escapeHtml(s.nama)}</div>
+          <div class="rm-lockbar">${started ? '🔒 Paparan dikunci' : '🏸 Perlawanan dipilih'} · ${ovP ? escapeHtml(ovP) + ' · ' : ''}${escapeHtml(s.nama)}</div>
           <div class="rm-head">
             <span class="court-letter">${escapeHtml(m.gelanggang || '🏸')}</span>
             <div class="rm-head-info">
-              <strong>${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.id)}</strong>
+              <strong>${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${ovP ? escapeHtml(ovP) + ' · ' : ''}${escapeHtml(m.id)}</strong>
               <small>${escapeHtml(m.peringkat || '')}${m.kategori ? ' · ' + escapeHtml(m.kategori) : ''}</small>
             </div>
           </div>
@@ -12193,6 +12245,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function bmMobileFinishView(s, m) {
+      const ovP = bmRefOv(m);   // v1.23.3: nombor giliran (P1, P2 ...)
       const s1 = parseInt(bmRef.sel.s1, 10) || 0, s2 = parseInt(bmRef.sel.s2, 10) || 0;
       const seri = s1 === s2;
       const f = bmRef.fin;
@@ -12201,7 +12254,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return {
         key: `bm-finish-${m.id}`,
         html: `
-          <div class="rm-lockbar">🔒 ${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${escapeHtml(m.id)}</div>
+          <div class="rm-lockbar">🔒 ${m.gelanggang ? 'Gelanggang ' + escapeHtml(m.gelanggang) + ' · ' : ''}${ovP ? escapeHtml(ovP) + ' · ' : ''}${escapeHtml(m.id)}</div>
           <h2 class="rm-title">Semak &amp; sahkan keputusan</h2>
           <p class="rm-sub">Pastikan skor betul. Nama anda direkod sebagai pengadil yang mengesahkan keputusan ini.</p>
           <div class="rm-final">
@@ -12230,7 +12283,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           <div class="rm-receipt">
             <div class="big">✅</div>
             <h2>Keputusan disahkan &amp; dihantar</h2>
-            <p><strong>${escapeHtml(r.id)}</strong>${r.gelanggang ? ' · Gelanggang ' + escapeHtml(r.gelanggang) : ''}</p>
+            <p><strong>${escapeHtml(r.id)}</strong>${r.gelanggang ? ' · Gelanggang ' + escapeHtml(r.gelanggang) : ''}${r.ov ? ' · ' + escapeHtml(r.ov) : ''}</p>
             <div class="rm-final" style="margin:8px 0;">
               <div class="t">${escapeHtml(r.namaP1)}</div><div class="n">${r.s1} - ${r.s2}</div><div class="t">${escapeHtml(r.namaP2)}</div>
             </div>
@@ -12363,7 +12416,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       try {
         await bmRefFlushSave();
         await bmRefPush('TAMAT');   // v1.34.0: skor disahkan melalui respons Google Sheets (tiada bacaan semula yang menyekat)
-        bmRef.resit = { id: m.id, gelanggang: m.gelanggang || '', namaP1: m.namaP1, namaP2: m.namaP2, s1, s2, menang: s1 > s2 ? m.namaP1 : m.namaP2, nama: s.nama, pada: nowIso() };
+        bmRef.resit = { id: m.id, gelanggang: m.gelanggang || '', ov: bmRefOv(m), namaP1: m.namaP1, namaP2: m.namaP2, s1, s2, menang: s1 > s2 ? m.namaP1 : m.namaP2, nama: s.nama, pada: nowIso() };
         bmRef.sel = null; bmRef.fin = null;
         Object.assign(bmSave, { state: '', err: '', pending: false });
         refBuzz(60);

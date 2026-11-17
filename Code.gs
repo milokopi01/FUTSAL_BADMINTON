@@ -245,7 +245,7 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.2';  // v1.23.2: auto-isi Badminton ikut turutan No. Perlawanan Keseluruhan (P1, P2, P3 ...)
+const API_VERSI = '1.23.3';  // v1.23.3: bacaan pengadil menyertakan No. Perlawanan Keseluruhan (P1, P2 ...) supaya Paparan Pengadil tulis giliran
 // const API_VERSI_LAMA = '1.23.1';  // v1.23.1: KUNCI PENGANJUR (Separuh Akhir / Akhir) sentiasa dipatuhi oleh auto-isi & Sepak Mula
 // const API_VERSI_LAMA = '1.23.0';  // v1.23.0: SEMUA gelanggang TERBUKA (SR + SM) + AUTO-ISI gelanggang kosong dengan baki perlawanan
 // const API_VERSI_LAMA = '1.22.1';  // v1.22.1: anti-bertindih reqId disimpan 6 jam (peti keluar telefon pengadil, index.html v1.36.0)
@@ -493,7 +493,17 @@ function doGet(e) {
         finally { kunciBaca.releaseLock(); }
       }
     }
-    let rows = table.rows.map(function (r) { return Object.assign({}, r.data, { sukan: sukan }); });
+    // v1.23.3: No. Perlawanan Keseluruhan (P1, P2, P3 ...) disertakan dalam bacaan supaya
+    // Paparan Pengadil boleh memaparkan "perlawanan ke berapa" bagi setiap gelanggang.
+    // Lajur ini hanya dibaca (bukan medan FIELDS -> tidak pernah ditulis / ditambah lajur).
+    const colP = sukan === 'BADMINTON' ? (table.values[0] || []).map(normalizeKey_).findIndex(function (k) {
+      return k === 'noperkeseluruhan' || (k.indexOf('no') === 0 && k.indexOf('keseluruhan') >= 0);
+    }) : -1;
+    let rows = table.rows.map(function (r) {
+      const d = Object.assign({}, r.data, { sukan: sukan });
+      if (colP >= 0) d.noPerkeseluruhan = String(table.values[r.rowIndex][colP] || '').trim();
+      return d;
+    });
 
     if (p.id) rows = rows.filter(function (r) { return String(r.id).toUpperCase() === String(p.id).toUpperCase(); });
     if (p.kategori) rows = rows.filter(function (r) { return String(r.kategori).toUpperCase() === String(p.kategori).toUpperCase(); });
@@ -2338,7 +2348,9 @@ function isiGelanggangKosongBm_() {
   }
   if (courts.length < 2) return 0;
   // v1.23.2: giliran Badminton ikut No. Perlawanan Keseluruhan (P1, P2, P3 ...) seperti Jadual Badminton
-  const colP = (table.values[0] || []).map(normalizeKey_).indexOf('noperkeseluruhan');
+  const colP = (table.values[0] || []).map(normalizeKey_).findIndex(function (k) {
+    return k === 'noperkeseluruhan' || (k.indexOf('no') === 0 && k.indexOf('keseluruhan') >= 0);
+  });
   const turutanP = {};
   if (colP >= 0) {
     table.rows.forEach(function (r) {
