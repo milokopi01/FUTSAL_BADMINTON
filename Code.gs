@@ -257,7 +257,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
+const API_VERSI = '1.23.8';  // v1.23.8: auto-isi gelanggang kosong MEMATUHI REHAT PASUKAN - pasukan yang baru tamat (< 20 minit / menunggu pengesahan) tidak diambil (tiada back-to-back)
+// const API_VERSI_LAMA = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini pengadil asal / Master Admin
 // const API_VERSI_LAMA = '1.23.6';  // v1.23.6: pengadil DITOLAK hantar seri kalah mati tanpa penalti + baris rosak dikembalikan kepada pengadil (bukan Urusetia)
 // const API_VERSI_LAMA = '1.23.5';  // v1.23.5: Futsal kalah mati SERI tanpa pemenang penalti tidak boleh disahkan (SELESAI) - Akhir / Tempat 3/4 tidak tersekat
 // const API_VERSI_LAMA = '1.23.4';  // v1.23.4: auto-isi gelanggang Badminton juga berjalan bila perlawanan BARU BERMULA + log sebab gelanggang tidak diisi
@@ -280,7 +281,7 @@ const API_VERSI = '1.23.7';  // v1.23.7: markah RALAT hanya boleh dikemas kini p
 // const API_VERSI_B4 = '1.14.0';  // Bahagian 4: skor dan keputusan mengikut sukan
 // const API_VERSI_LAMA = '1.10.0';  // v1.10.0: Jana Susunan (gelanggang terbuka semua kategori + kunci Separuh Akhir / Akhir)
 const GILIRAN_MAX = 6;                     // bil. perlawanan seterusnya dipaparkan per gelanggang
-const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan', 'bmSahPantas', 'giliranSerentak', 'antiBertindih', 'petiKeluar', 'gelanggangTerbuka', 'autoIsiGelanggang'];
+const API_CIRI = ['pengadil', 'kunciGelanggang', 'tangguh', 'pembetulan', 'rehatKecemasan', 'sahPengadil', 'petiKelulusan', 'giliranStandby', 'papanCache', 'sepakMulaTerus', 'papanPintar', 'keputusanLewat', 'papanSegera', 'sandaran', 'urusGelanggang', 'janaSusunan', 'badminton', 'duaSukan', 'tulisBadminton', 'pasukanSukan', 'isyaratPerubahan', 'pengadilSukan', 'skorPengadilBadminton', 'urusetiaSubAdmin', 'urusGelanggangBadminton', 'resetDuaSukan', 'bmSahPantas', 'giliranSerentak', 'antiBertindih', 'petiKeluar', 'gelanggangTerbuka', 'autoIsiGelanggang', 'rehatPasukan'];
 // v1.9.0: Papan live disimpan dalam CacheService supaya ?action=live sangat pantas
 // (paparan dashboard boleh disegerak setiap beberapa saat). Cache dibuang serta-merta
 // setiap kali ada penulisan (doPost), jadi data tidak pernah ketinggalan lebih ~1 tinjauan.
@@ -2259,6 +2260,18 @@ function kunciPasukanAuto_(d, kat) {
   return out;
 }
 
+// v1.23.8: REHAT PASUKAN - pasukan yang tamat bermain kurang daripada tempoh ini (atau masih
+// menunggu pengesahan keputusan) TIDAK diambil oleh auto-isi gelanggang kosong (tiada back-to-back).
+const AUTO_ISI_REHAT_MINIT = 20;
+
+function baruTamatMain_(d, nowMs) {
+  const st = statusBaris_(d);
+  if (st.indexOf('TUNGGU SAH') >= 0) return true;
+  const iso = toIso_(d && d.masaTamat) || toIso_(d && d.sahPengadilPada);
+  const t = iso ? new Date(iso).getTime() : NaN;
+  return !isNaN(t) && t <= nowMs + 60000 && (nowMs - t) < AUTO_ISI_REHAT_MINIT * 60000;
+}
+
 // Perancang umum (Futsal & Badminton). Pulangkan [{ id, gel, d }]
 // o = { courts:[id], rows:[d], gelOf(d), katOf(d), isLive(d), isPending(d), dipegang:{gel:true},
 //       pegangId:{matchId:true}, kunciAcara:{matchId:gel}, susunan:{matchId:n} }
@@ -2267,11 +2280,16 @@ function rancangIsiGelanggang_(o) {
   o.courts.forEach(function (g) { aktif[g] = { live: false, pending: [] }; });
   const sibuk = {};
   const tandaSibuk = function (d) { kunciPasukanAuto_(d, o.katOf(d)).forEach(function (k) { sibuk[k] = true; }); };
+  const rehat = {};   // v1.23.8: pasukan sedang berehat (baru tamat bermain)
+  const nowRehat = Date.now();
   let lain = [];   // baki perlawanan di gelanggang ditutup / tanpa gelanggang
   o.rows.forEach(function (d) {
     const g = o.gelOf(d);
     if (o.isLive(d)) { if (aktif[g]) aktif[g].live = true; tandaSibuk(d); return; }
-    if (!o.isPending(d)) return;
+    if (!o.isPending(d)) {
+      if (baruTamatMain_(d, nowRehat)) kunciPasukanAuto_(d, o.katOf(d)).forEach(function (k) { rehat[k] = true; });
+      return;
+    }
     if (o.pegangId[String(d.id).toUpperCase()]) { tandaSibuk(d); return; }   // dikunci pengadil -> akan bermula
     if (aktif[g]) aktif[g].pending.push(d); else lain.push(d);
   });
@@ -2324,7 +2342,7 @@ function rancangIsiGelanggang_(o) {
   const pindah = [];
   const diambil = {};
   kosong.forEach(function (g) {
-    let nKunci = 0, nBertembung = 0, dapat = false;
+    let nKunci = 0, nBertembung = 0, nRehat = 0, dapat = false;
     for (let i = 0; i < calon.length; i++) {
       const d = calon[i];
       const id = String(d.id).toUpperCase();
@@ -2333,6 +2351,7 @@ function rancangIsiGelanggang_(o) {
       if (kunci && kunci !== g && aktif[kunci]) { nKunci++; continue; }   // Separuh Akhir / Akhir dikunci ke gelanggang lain
       const keys = kunciPasukanAuto_(d, o.katOf(d));
       if (keys.some(function (k) { return sibuk[k]; })) { nBertembung++; continue; }
+      if (keys.some(function (k) { return rehat[k]; })) { nRehat++; continue; }   // v1.23.8: pasukan perlu rehat
       diambil[id] = true;
       keys.forEach(function (k) { sibuk[k] = true; });
       pindah.push({ id: id, gel: g, d: d });
@@ -2342,7 +2361,7 @@ function rancangIsiGelanggang_(o) {
     // v1.23.4: catat sebab gelanggang kosong tidak diisi (dipaparkan dalam log Executions)
     if (!dapat && Array.isArray(o.catatan)) {
       o.catatan.push('Gelanggang ' + g + ' kosong tetapi tidak diisi: ' + (calon.length
-        ? nBertembung + ' perlawanan pasukannya sedang bermain / akan bermain di gelanggang lain' + (nKunci ? ', ' + nKunci + ' dikunci penganjur ke gelanggang lain' : '')
+        ? nBertembung + ' perlawanan pasukannya sedang bermain / akan bermain di gelanggang lain' + (nRehat ? ', ' + nRehat + ' pasukannya baru tamat bermain (rehat ' + AUTO_ISI_REHAT_MINIT + ' minit)' : '') + (nKunci ? ', ' + nKunci + ' dikunci penganjur ke gelanggang lain' : '')
         : 'tiada baki perlawanan lain yang kedua-dua pasukannya sudah ditentukan'));
     }
   });

@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyRuKnqMlmII7kYXQOu_K3LASr-8NZ2I3xwTLpRsDdVYFaF_FApIt2pQhw8rD4E0sp_Qw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -3138,7 +3138,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               </div>
               <!-- v1.18.0: Jana Susunan - buka semua gelanggang kepada semua kategori & agih sekata -->
               <div class="court-gen-box">
-                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum sepak mula</strong> diagih semula secara sekata. Perlawanan yang sedang LIVE / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
+                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum sepak mula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang LIVE / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
                 <button type="button" class="btn btn-primary" id="btnGenerateCourts">⚡ Jana Susunan Semua Gelanggang</button>
               </div>
               <div class="court-mgr-form">
@@ -3193,7 +3193,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                 </div>
               </div>
               <div class="court-gen-box">
-                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang Badminton aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum bermula</strong> diagih semula secara sekata. Perlawanan yang sedang berlangsung / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
+                <p>⚡ <strong>Jana Susunan</strong>: semua gelanggang Badminton aktif dibuka kepada <strong>semua kategori</strong> (SR &amp; SM) dan baki perlawanan yang <strong>belum bermula</strong> diagih semula secara sekata. <strong>Rehat pasukan dijamin</strong>: tiada pasukan bermain berturut-turut (back-to-back) - pasukan yang berehat paling lama didahulukan. Perlawanan yang sedang berlangsung / menunggu pengesahan diteruskan seperti biasa. Kunci dahulu gelanggang Separuh Akhir &amp; Akhir di bawah sebelum menjana.</p>
                 <button type="button" class="btn btn-primary" id="btnBmGenerateCourts">⚡ Jana Susunan Semua Gelanggang</button>
               </div>
               <div class="court-mgr-form">
@@ -8361,6 +8361,137 @@ void main() {
       return typeof r === 'number' ? r : 0;
     }
 
+    /* =========================================================
+       v1.42.0: ENJIN JANA SUSUNAN PROFESIONAL - REHAT PASUKAN (Futsal & Badminton)
+       Bertindak seperti pengurus kejohanan: setiap pasukan mendapat rehat yang cukup dan
+       TIDAK bermain perlawanan berturut-turut (back-to-back).
+       - Jadual dibina pusingan demi pusingan (satu perlawanan setiap gelanggang, serentak).
+       - WAJIB: pasukan yang bermain dalam pusingan sebelumnya (atau baru tamat / menunggu
+         pengesahan / sedang LIVE) TIDAK dimasukkan ke pusingan seterusnya.
+       - DIUTAMAKAN: perlawanan yang kedua-dua pasukannya sudah berehat paling lama
+         (sasaran REHAT_IDEAL_PUSINGAN pusingan), kemudian turutan asal (kategori & No.).
+       - Gelanggang dibiarkan MENUNGGU satu pusingan (bukan diisi perlawanan back-to-back)
+         jika tiada perlawanan lain yang memberi rehat cukup.
+       - Hanya jika benar-benar tiada pilihan (cth. Akhir selepas Separuh Akhir dalam kategori
+         yang tinggal seorang diri) perlawanan berturut-turut dibenarkan - dan dilaporkan.
+       - Syarat lama dikekalkan: tiada pasukan sama dalam satu pusingan, peringkat tidak dicampur
+         dalam satu kategori, kunci Separuh Akhir / Akhir dipatuhi.
+       ========================================================= */
+    const REHAT_MIN_PUSINGAN = 1;     // rehat minimum (pusingan) antara dua perlawanan pasukan yang sama
+    const REHAT_IDEAL_PUSINGAN = 2;   // rehat yang diutamakan bila jadual membenarkan
+    // o = { queue, courts:[id], accepts(id, m), lockOf(m), keys(m), rank(m), kat(m),
+    //       liveTeams:[key], liveRanks:{kat:[rank]}, prevTeams:Set<key> }
+    function janaSusunanRehat(o) {
+      const queue = (o.queue || []).slice();
+      const order = (o.courts || []).slice();
+      const orderIdx = {}, load = {};
+      order.forEach((id, i) => { orderIdx[id] = i; load[id] = 0; });
+      const akhir = new Map();                     // kunci pasukan -> pusingan terakhir bermain
+      (o.prevTeams || []).forEach(k => akhir.set(k, -1));
+      const liveSet = new Set(o.liveTeams || []);
+      liveSet.forEach(k => akhir.set(k, -1));
+      const jurang = (keys, r) => {
+        let g = Infinity;
+        keys.forEach(k => { if (akhir.has(k)) g = Math.min(g, r - akhir.get(k)); });
+        return g;                                  // rehat = jurang - 1 pusingan
+      };
+      const pick = (m, used) => {
+        const cand = order.filter(id => !used.has(id) && o.accepts(id, m));
+        if (!cand.length) return null;
+        cand.sort((a, b) => load[a] - load[b] || orderIdx[a] - orderIdx[b]);
+        return cand[0];
+      };
+      const plan = [];
+      const st = { perlawanan: 0, pusingan: 0, pusinganRehat: 0, b2b: 0, b2bSenarai: [], rehatMin: Infinity, rehatJumlah: 0, rehatBil: 0 };
+      let r = 0, rehatLepas = 0, guard = 0;
+      while (queue.length && guard++ < 3000) {
+        const minRank = {};
+        queue.forEach(m => { const x = o.rank(m), k = o.kat(m); if (minRank[k] === undefined || x < minRank[k]) minRank[k] = x; });
+        const layak = [];
+        queue.forEach((m, qi) => {
+          const x = o.rank(m);
+          if (x !== minRank[o.kat(m)]) return;
+          if (r === 0 && ((o.liveRanks || {})[o.kat(m)] || []).some(y => y < x)) return;
+          const keys = o.keys(m);
+          if (r === 0 && keys.some(k => liveSet.has(k))) return;   // masih bermain di gelanggang lain
+          const g = jurang(keys, r);
+          const tier = g - 1 >= REHAT_IDEAL_PUSINGAN ? 0 : (g - 1 >= REHAT_MIN_PUSINGAN ? 1 : 2);
+          layak.push({ m, qi, keys, g, tier });
+        });
+        // Rehat paling lama didahulukan, kemudian turutan asal
+        layak.sort((a, b) => a.tier - b.tier || a.qi - b.qi);
+        const used = new Set(), teams = new Set(), round = [];
+        const isi = maxTier => {
+          for (const c of layak) {
+            if (used.size >= order.length) break;
+            if (c.ambil || c.tier > maxTier) continue;
+            if (c.keys.some(k => teams.has(k))) continue;
+            const lock = o.lockOf(c.m);
+            const court = lock ? (used.has(lock) || orderIdx[lock] === undefined ? null : lock) : pick(c.m, used);
+            if (!court) continue;
+            c.ambil = true;
+            round.push({ c, court });
+            used.add(court);
+            c.keys.forEach(k => teams.add(k));
+          }
+        };
+        isi(1);                                    // hanya perlawanan yang memberi rehat cukup
+        if (!round.length) {
+          // Tiada perlawanan dengan rehat cukup -> gelanggang menunggu satu pusingan (pusingan rehat)
+          if (rehatLepas < REHAT_MIN_PUSINGAN) {
+            if (r > 0 || !layak.length) st.pusinganRehat += r > 0 ? 1 : 0;
+            rehatLepas++; r++;
+            continue;
+          }
+          isi(2);                                  // tiada pilihan langsung -> dibenarkan & dilaporkan
+          if (!round.length) {
+            const m = queue[0];
+            const court = o.lockOf(m) || pick(m, new Set());
+            if (!court) { queue.shift(); continue; }
+            const keys = o.keys(m);
+            round.push({ c: { m, keys, g: jurang(keys, r) }, court });
+          }
+        }
+        round.forEach(({ c, court }) => {
+          load[court] += 1;
+          plan.push({ id: c.m.id, gelanggang: court, pusingan: r + 1 });
+          queue.splice(queue.indexOf(c.m), 1);
+          st.perlawanan++;
+          if (Number.isFinite(c.g)) {
+            const rehat = Math.max(0, c.g - 1);
+            if (rehat < REHAT_MIN_PUSINGAN) { st.b2b++; st.b2bSenarai.push(c.m.id); }
+            st.rehatMin = Math.min(st.rehatMin, rehat);
+            st.rehatJumlah += rehat; st.rehatBil++;
+          }
+          c.keys.forEach(k => akhir.set(k, r));
+        });
+        rehatLepas = 0;
+        r++;
+      }
+      st.pusingan = r;
+      return { plan, statistik: st };
+    }
+    // Ringkasan untuk mesej admin selepas Jana Susunan
+    function janaRehatRingkas(st) {
+      if (!st || !st.perlawanan) return '';
+      let t = st.b2b
+        ? `⚠ Rehat pasukan: ${st.b2b} perlawanan terpaksa berturut-turut kerana tiada pilihan lain (${st.b2bSenarai.slice(0, 6).join(', ')}${st.b2bSenarai.length > 6 ? '…' : ''}).`
+        : '✓ Rehat pasukan: tiada pasukan bermain berturut-turut (back-to-back).';
+      if (st.rehatBil) t += ` Rehat minimum ${Math.max(0, st.rehatMin)} pusingan · purata ${(st.rehatJumlah / st.rehatBil).toFixed(1)} pusingan.`;
+      if (st.pusinganRehat) t += ` ${st.pusinganRehat} pusingan gelanggang menunggu supaya pasukan sempat berehat.`;
+      return t;
+    }
+    function janaRehatGabung(list) {
+      const g = { perlawanan: 0, pusingan: 0, pusinganRehat: 0, b2b: 0, b2bSenarai: [], rehatMin: Infinity, rehatJumlah: 0, rehatBil: 0 };
+      (list || []).forEach(st => {
+        if (!st) return;
+        ['perlawanan', 'pusinganRehat', 'b2b', 'rehatJumlah', 'rehatBil'].forEach(k => { g[k] += st[k] || 0; });
+        g.b2bSenarai.push(...(st.b2bSenarai || []));
+        g.rehatMin = Math.min(g.rehatMin, st.rehatMin);
+      });
+      return g;
+    }
+
     // v1.18.0: Rancang susunan baki perlawanan (satu atau semua kategori) ke gelanggang AKTIF.
     // - Perlawanan diagih "pusingan demi pusingan" (satu perlawanan setiap gelanggang).
     // - Kategori berlainan diselang-seli secara sekata (ikut kedudukan relatif dalam kategori).
@@ -8392,25 +8523,12 @@ void main() {
       });
       // Gelanggang kosong dahulu, kemudian gelanggang yang masih sibuk
       const order = courts.slice().sort((a, b) => (isCourtBusy(a) ? 1 : 0) - (isCourtBusy(b) ? 1 : 0));
-      const orderIdx = {};
-      const load = {};
-      order.forEach((c, i) => { load[c.id] = 0; orderIdx[c.id] = i; });
-      const lockOf = m => {
-        const g = validEventLock(m);
-        return g && orderIdx[g] !== undefined ? g : null;
-      };
-      const pickCourt = (m, used) => {
-        const cand = order.filter(c => !used.has(c.id) && courtAccepts(c, m.kategori));
-        if (!cand.length) return null;
-        cand.sort((a, b) => load[a.id] - load[b.id] || orderIdx[a.id] - orderIdx[b.id]);
-        return cand[0].id;
-      };
-
-      // v1.40.0: REHAT SATU PUSINGAN - pasukan yang bermain dalam pusingan sebelumnya (atau baru
-      // tamat / menunggu pengesahan) TIDAK diletakkan dalam pusingan seterusnya jika ada pilihan lain.
-      // Hanya jika tiada perlawanan lain yang sesuai, gelanggang diisi juga (pengadil diberi amaran rehat).
+      const byId = {};
+      order.forEach(c => { byId[c.id] = c; });
+      // v1.42.0: pasukan yang baru tamat (< REHAT_AMARAN_MINIT) / menunggu pengesahan dikira
+      // "baru bermain" - enjin Jana Susunan memberi mereka rehat sebelum perlawanan seterusnya.
       const nowMs = Date.now();
-      let prevTeams = new Set();
+      const prevTeams = new Set();
       state.matches.forEach(m => {
         if (!kats.includes(m.kategori) || m.status === MATCH_STATUS.LIVE) return;
         const t = m.masaTamat ? new Date(m.masaTamat).getTime() : NaN;
@@ -8418,57 +8536,14 @@ void main() {
         const tungguSah = m.status === MATCH_STATUS.TUNGGU_SAH;
         if (baru || tungguSah) matchTeamKeys(m).forEach(k => prevTeams.add(k));
       });
-      const plan = [];
-      let first = true;
-      let guard = 0;
-      while (queue.length && guard++ < 1000) {
-        const round = [];
-        const used = new Set();
-        const picked = new Set();
-        const teams = new Set(first ? liveTeams : []);
-        // Peringkat terendah yang masih berbaki bagi setiap kategori
-        const minRank = {};
-        queue.forEach(m => {
-          const r = matchStageRank(m);
-          if (minRank[m.kategori] === undefined || r < minRank[m.kategori]) minRank[m.kategori] = r;
-        });
-        // Laluan 0: wajib rehat satu pusingan · Laluan 1: isi gelanggang yang masih kosong
-        for (let pass = 0; pass < 2 && used.size < order.length; pass++) {
-          for (let i = 0; i < queue.length && used.size < order.length; i++) {
-            const m = queue[i];
-            if (picked.has(m)) continue;
-            const r = matchStageRank(m);
-            if (r !== minRank[m.kategori]) continue;
-            if (first && (liveRanks[m.kategori] || []).some(x => x < r)) continue;
-            const keys = matchTeamKeys(m);
-            if (keys.some(k => teams.has(k))) continue;
-            if (pass === 0 && keys.some(k => prevTeams.has(k))) continue;
-            const lock = lockOf(m);
-            const court = lock ? (used.has(lock) ? null : lock) : pickCourt(m, used);
-            if (!court) continue;
-            round.push({ m, court });
-            picked.add(m);
-            used.add(court);
-            keys.forEach(k => teams.add(k));
-          }
-        }
-        if (!round.length) {
-          if (first) { first = false; continue; }
-          const m = queue[0];
-          const court = lockOf(m) || pickCourt(m, new Set());
-          if (!court) { queue.shift(); continue; }
-          round.push({ m, court });
-        }
-        prevTeams = new Set();
-        round.forEach(({ m, court }) => {
-          load[court] += 1;
-          plan.push({ id: m.id, gelanggang: court });
-          queue.splice(queue.indexOf(m), 1);
-          matchTeamKeys(m).forEach(k => prevTeams.add(k));
-        });
-        first = false;
-      }
-      return { plan, courts: courts.map(c => c.id) };
+      const hasil = janaSusunanRehat({
+        queue, courts: order.map(c => c.id),
+        accepts: (id, m) => courtAccepts(byId[id], m.kategori),
+        lockOf: m => { const g = validEventLock(m); return g && byId[g] ? g : null; },
+        keys: matchTeamKeys, rank: matchStageRank, kat: m => m.kategori,
+        liveTeams, liveRanks, prevTeams
+      });
+      return { plan: hasil.plan, courts: courts.map(c => c.id), statistik: hasil.statistik };
     }
 
     // Serasi dengan panggilan lama (satu kategori)
@@ -8609,6 +8684,7 @@ void main() {
       syncCourtsWithConfig();
       let moved = 0;
       const ralat = [];
+      const statRehat = [];   // v1.42.0
       // v1.18.0: ada gelanggang TERBUKA -> susun semua kategori bersama (agihan sekata)
       const terbuka = state.courtConfig.some(g => g.aktif && g.kategori === COURT_KAT_OPEN);
       const runs = terbuka ? [['SR', 'SM']]
@@ -8617,6 +8693,7 @@ void main() {
       runs.forEach(kats => {
         const r = planCourtSchedule(kats);
         if (r.error) { ralat.push(r.error); return; }
+        statRehat.push(r.statistik);
         const susunan = state.courtSusunan || (state.courtSusunan = {});
         if (!terbuka) Object.keys(susunan).forEach(id => { const mm = getMatch(id); if (!mm || kats.includes(mm.kategori)) delete susunan[id]; });
         r.plan.forEach((p, i) => {
@@ -8629,8 +8706,9 @@ void main() {
       autoAssignCourts(null, { silent: true });
       saveState();
       refreshAllViews();
-      showToast(`${label}. ${moved} baki perlawanan disusun semula ke gelanggang aktif.${ralat.length ? ' ' + ralat.join(' ') : ''}`,
-        ralat.length ? 'warn' : 'success', 5500);
+      const rehatMsg = janaRehatRingkas(janaRehatGabung(statRehat));   // v1.42.0
+      showToast(`${label}. ${moved} baki perlawanan disusun semula ke gelanggang aktif.${rehatMsg ? ' ' + rehatMsg : ''}${ralat.length ? ' ' + ralat.join(' ') : ''}`,
+        ralat.length ? 'warn' : 'success', rehatMsg ? 9000 : 5500);
       if (getGasUrl()) await pushCourtConfig(before);
       updateCourtCfgInfo();
       return moved;
@@ -8722,6 +8800,7 @@ void main() {
       const lines = [
         `${aktif.length} gelanggang aktif: ${aktif.map(g => g.id).join(', ')} → dibuka kepada SEMUA kategori (SR & SM).`,
         `${baki.length} baki perlawanan (belum sepak mula) akan diagih semula secara sekata.`,
+        `🛌 Rehat pasukan: tiada perlawanan berturut-turut (sekurang-kurangnya ${REHAT_MIN_PUSINGAN} pusingan rehat, sasaran ${REHAT_IDEAL_PUSINGAN}).`,
         busy.length ? `${busy.length} gelanggang sedang digunakan (${busy.map(c => c.id).join(', ')}) - perlawanan semasa diteruskan.` : 'Tiada perlawanan sedang berlangsung.',
         kunci.length ? `🔒 Dikunci: ${kunci.map(m => `${m.id} → ${lockAktif(m)}`).join(', ')}` : '🔒 Tiada Separuh Akhir / Akhir dikunci (akan diagih bebas).'
       ];
@@ -9016,7 +9095,7 @@ void main() {
     /* v1.40.0: AMARAN REHAT PASUKAN (Futsal & Badminton)
        Sebelum pengadil menekan wisel / servis mula, semak sama ada mana-mana sekolah
        baru tamat perlawanan (dengan MASA TAMAT TEPAT) atau masih bermain di gelanggang lain.
-       Jana Susunan turut cuba memberi rehat sekurang-kurangnya SATU pusingan perlawanan. */
+       v1.42.0: Jana Susunan MENJAMIN rehat sekurang-kurangnya SATU pusingan (tiada back-to-back) - lihat janaSusunanRehat(). */
     const REHAT_AMARAN_MINIT = 20;   // amaran dipaparkan jika rehat kurang daripada tempoh ini
     function rehatKey(n) { return String(n == null ? '' : n).trim().toUpperCase(); }
     function rehatSemak(match, list, opt = {}) {
@@ -19012,24 +19091,32 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           });
         };
         let left = courts.reduce((t, g) => t + seq[g].length, 0), r = 0, guard = 0;
+        const mainR = {};       // v1.42.0: pusingan terakhir setiap pasukan bermain
+        let rehatLepas = false;
         while (left > 0 && guard++ < 10000) {
           r++;
-          let round = [];
-          // tahap 0 = semua syarat · 1 = abaikan syarat peringkat · 2 = paksa (elak tersekat)
-          for (let tahap = ikutSyarat ? 0 : 2; tahap <= 2 && !round.length; tahap++) {
+          let round = [], tahanRehat = 0;
+          // tahap 0 = semua syarat + REHAT PASUKAN (v1.42.0: tiada back-to-back, gelanggang menunggu)
+          // 1 = abaikan rehat · 2 = abaikan syarat peringkat · 3 = paksa (elak tersekat)
+          for (let tahap = ikutSyarat ? 0 : 3; tahap <= 3 && !round.length; tahap++) {
             const teams = new Set(), pilih = [];
             const ambil = x => { pilih.push(x); (x.teams || []).forEach(t => teams.add(t)); };
             // Perlawanan sedang berlangsung didahulukan (pasukannya sudah berada di gelanggang)
-            courts.forEach(g => { const x = seq[g][ptr[g]]; if (x && (!ikutSyarat || x.fasa === 1 || tahap >= 2)) ambil(x); });
+            courts.forEach(g => { const x = seq[g][ptr[g]]; if (x && (!ikutSyarat || x.fasa === 1 || tahap >= 3)) ambil(x); });
             courts.forEach(g => {
               const x = seq[g][ptr[g]];
               if (!x || pilih.includes(x)) return;
-              if (tahap === 0 && !peringkatOk(x, r)) return;
+              if (tahap <= 1 && !peringkatOk(x, r)) return;
+              if (tahap === 0 && x.fasa === 2 && (x.teams || []).some(t => mainR[t] === r - 1)) { tahanRehat++; return; }
               if ((x.teams || []).some(t => teams.has(t))) return;
               ambil(x);
             });
             round = pilih;
+            if (!round.length && tahap === 0 && tahanRehat && !rehatLepas) break;   // pusingan rehat
           }
+          if (!round.length) { rehatLepas = true; pusingan++; continue; }   // nombor pusingan dilangkau = pusingan rehat
+          rehatLepas = false;
+          round.forEach(x => { (x.teams || []).forEach(t => { mainR[t] = r; }); });
           round.forEach(x => { ptr[x._g]++; left--; baki[sk(x)]--; akhir[sk(x)] = r; });
           round.sort((a, b) => gelIdx[a._g] - gelIdx[b._g]);
           pusingan++;
@@ -19716,51 +19803,26 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const liveTeams = [], liveRanks = {};
       ms.filter(bmIsLive).forEach(m => { liveTeams.push(...bmcTeamKeys(m)); (liveRanks[m.kat] = liveRanks[m.kat] || []).push(bmcStageRank(m)); });
       const order = courts.slice().sort((a, b) => (busyGel.has(a.id) ? 1 : 0) - (busyGel.has(b.id) ? 1 : 0));
-      const orderIdx = {}, load = {};
-      order.forEach((c, i) => { orderIdx[c.id] = i; load[c.id] = 0; });
-      const pick = (m, used) => {
-        const cand = order.filter(c => !used.has(c.id) && bmcAccepts(c, m.kat));
-        if (!cand.length) return null;
-        cand.sort((a, b) => load[a.id] - load[b.id] || orderIdx[a.id] - orderIdx[b.id]);
-        return cand[0].id;
-      };
-      // v1.40.0: REHAT SATU PUSINGAN (sama seperti Futsal) - pasukan pusingan sebelumnya / baru tamat
-      // (menunggu pengesahan) tidak dimasukkan ke pusingan seterusnya jika ada perlawanan lain.
-      let prevTeams = new Set();
-      ms.filter(bmIsWaitSah).forEach(m => bmcTeamKeys(m).forEach(k => prevTeams.add(k)));
-      const plan = [];
-      let first = true, guard = 0;
-      while (queue.length && guard++ < 1000) {
-        const round = [], used = new Set(), picked = new Set(), teams = new Set(first ? liveTeams : []);
-        const minRank = {};
-        queue.forEach(m => { const r = bmcStageRank(m); if (minRank[m.kat] === undefined || r < minRank[m.kat]) minRank[m.kat] = r; });
-        for (let pass = 0; pass < 2 && used.size < order.length; pass++) {
-          for (let i = 0; i < queue.length && used.size < order.length; i++) {
-            const m = queue[i], r = bmcStageRank(m);
-            if (picked.has(m)) continue;
-            if (r !== minRank[m.kat]) continue;
-            if (first && (liveRanks[m.kat] || []).some(x => x < r)) continue;
-            const keys = bmcTeamKeys(m);
-            if (keys.some(k => teams.has(k))) continue;
-            if (pass === 0 && keys.some(k => prevTeams.has(k))) continue;
-            const lock = bmcLockOf(m, cfg);
-            const court = lock ? (used.has(lock) ? null : lock) : pick(m, used);
-            if (!court) continue;
-            round.push({ m, court }); picked.add(m); used.add(court); keys.forEach(k => teams.add(k));
-          }
-        }
-        if (!round.length) {
-          if (first) { first = false; continue; }
-          const m = queue[0];
-          const court = bmcLockOf(m, cfg) || pick(m, new Set());
-          if (!court) { queue.shift(); continue; }
-          round.push({ m, court });
-        }
-        prevTeams = new Set();
-        round.forEach(({ m, court }) => { load[court] += 1; plan.push({ id: m.id, gelanggang: court }); queue.splice(queue.indexOf(m), 1); bmcTeamKeys(m).forEach(k => prevTeams.add(k)); });
-        first = false;
-      }
-      return { plan };
+      const byId = {};
+      order.forEach(c => { byId[c.id] = c; });
+      // v1.42.0: pasukan yang baru tamat (menunggu pengesahan / tamat < REHAT_AMARAN_MINIT) diberi rehat
+      const nowMs = Date.now();
+      const prevTeams = new Set();
+      ms.forEach(m => {
+        if (bmIsLive(m)) return;
+        const iso = m.masaTamat || m.sahPengadilPada || null;
+        const t = iso ? new Date(iso).getTime() : NaN;
+        const baru = Number.isFinite(t) && nowMs - t >= -60000 && nowMs - t < REHAT_AMARAN_MINIT * 60000;
+        if (bmIsWaitSah(m) || baru) bmcTeamKeys(m).forEach(k => prevTeams.add(k));
+      });
+      const hasil = janaSusunanRehat({
+        queue, courts: order.map(c => c.id),
+        accepts: (id, m) => bmcAccepts(byId[id], m.kat),
+        lockOf: m => { const g = bmcLockOf(m, cfg); return g && byId[g] ? g : null; },
+        keys: bmcTeamKeys, rank: bmcStageRank, kat: m => m.kat,
+        liveTeams, liveRanks, prevTeams
+      });
+      return { plan: hasil.plan, statistik: hasil.statistik };
     }
 
     // Hantar senarai gelanggang + susunan baki perlawanan ke Google Sheets
@@ -19804,7 +19866,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       if (r.error) { showToast(r.error, 'warn', 6500); bmcSyncFromServer(); renderBmCourtManager(); return false; }
       bmc.susunan = {};
       r.plan.forEach((p, i) => { bmc.susunan[p.id] = i; });
-      return bmcPush(r.plan, label);
+      const rehatMsg = janaRehatRingkas(r.statistik);   // v1.42.0
+      return bmcPush(r.plan.map(p => ({ id: p.id, gelanggang: p.gelanggang })), rehatMsg ? `${label}. ${rehatMsg.replace(/\.$/, '')}` : label);
     }
 
     function bmcBaki(model, id) { return model.matches.filter(m => bmUp(m.gel) === id && bmIsPending(m)).length; }
@@ -19899,6 +19962,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const lines = [
         `${aktif.length} gelanggang aktif: ${aktif.map(g => g.id).join(', ')} → dibuka kepada SEMUA kategori (SR & SM).`,
         `${baki.length} baki perlawanan (belum bermula) akan diagih semula secara sekata.`,
+        `🛌 Rehat pasukan: tiada perlawanan berturut-turut (sekurang-kurangnya ${REHAT_MIN_PUSINGAN} pusingan rehat, sasaran ${REHAT_IDEAL_PUSINGAN}).`,
         busy.length ? `${busy.length} gelanggang sedang digunakan (${busy.map(g => g.id).join(', ')}) - perlawanan semasa diteruskan.` : 'Tiada perlawanan sedang berlangsung.',
         kunci.length ? `🔒 Dikunci: ${kunci.map(m => `${m.id} → ${lockAktif(m)}`).join(', ')}` : '🔒 Tiada Separuh Akhir / Akhir dikunci (akan diagih bebas).'
       ];
