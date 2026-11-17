@@ -1626,6 +1626,13 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     .sport-switch button[data-sukan="BADMINTON"].active { background: linear-gradient(135deg, var(--bm), var(--bm-2)); box-shadow: 0 0 16px rgba(192,132,252,.5); }
     /* v1.47.0: telefon -> tiada paparan 'Semua'; pengguna pilih Futsal ATAU Badminton sahaja */
     @media (max-width: 640px) { .sport-switch button[data-sukan="SEMUA"] { display: none !important; } }
+    /* Tetapan Master Admin: paparan sukan mod telefon */
+    @media (max-width: 640px) {
+      body[data-paparan-telefon="FUTSAL"] .sport-switch button[data-sukan="BADMINTON"],
+      body[data-paparan-telefon="BADMINTON"] .sport-switch button[data-sukan="FUTSAL"] { display: none !important; }
+      body[data-paparan-telefon="FUTSAL"] #tabNav [data-sukan="BADMINTON"],
+      body[data-paparan-telefon="BADMINTON"] #tabNav [data-sukan="FUTSAL"] { display: none !important; }
+    }
     .sport-hint { font-size: .74rem; font-weight: 700; color: var(--text-2); }
     .tab-group { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 5px; margin: 0 2px 0 8px; padding: 4px 9px;
       border-radius: 999px; font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -3154,6 +3161,16 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
             <div class="stat glass"><div class="stat-val" id="statUsers">2</div><div class="stat-lbl">Admin &amp; Urusetia Aktif</div></div>
             <div class="stat glass"><div class="stat-val" id="statReferees">0</div><div class="stat-lbl">Pengadil Aktif</div></div>
           </div>
+
+          <section class="admin-team-section" aria-labelledby="adminPhoneViewTitle">
+            <div class="card-bar"><h3 class="card-title" id="adminPhoneViewTitle">📱 Paparan Sukan (Mod Telefon)</h3></div>
+            <p class="muted">Pilih sukan yang dipaparkan kepada penonton di telefon. Mod komputer sentiasa memaparkan semua sukan.</p>
+            <div class="admin-team-form">
+              <div class="field"><label for="adminPhoneView">Paparan di telefon</label><select class="select" id="adminPhoneView"><option value="SEMUA">Futsal &amp; Badminton (boleh pilih)</option><option value="FUTSAL">Futsal sahaja (sembunyi Badminton)</option><option value="BADMINTON">Badminton sahaja (sembunyi Futsal)</option></select></div>
+              <div class="team-wide"><button class="btn btn-primary" type="button" id="adminPhoneViewSave">💾 Simpan Paparan</button></div>
+            </div>
+            <p class="admin-team-status muted" id="adminPhoneViewStatus" role="status" aria-live="polite"></p>
+          </section>
 
           <section class="admin-team-section" aria-labelledby="adminTeamTitle">
             <div class="card-bar">
@@ -19644,6 +19661,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
        ========================================================= */
     const SUKAN_KEY = 'KARNIVAL_PK_KBB_SUKAN';
     const SUKAN_LIST = ['SEMUA', 'FUTSAL', 'BADMINTON'];
+    let PAPARAN_TELEFON = 'SEMUA';
     const SUKAN_INFO = {
       SEMUA: { ikon: '🏆', hint: 'Paparan: Futsal + Badminton' },
       FUTSAL: { ikon: '⚽', hint: 'Paparan: Futsal sahaja' },
@@ -19713,6 +19731,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     function applySukan(s, opts = {}) {
       let k = SUKAN_LIST.includes(s) ? s : 'SEMUA';
       if (k === 'SEMUA' && modTelefonAsing()) k = (dash.sukan === 'BADMINTON') ? 'BADMINTON' : 'FUTSAL';
+      if (modTelefonAsing() && (PAPARAN_TELEFON === 'FUTSAL' || PAPARAN_TELEFON === 'BADMINTON')) k = PAPARAN_TELEFON;
       dash.sukan = k;
       try { localStorage.setItem(SUKAN_KEY, k); } catch (e) { /* abaikan */ }
       document.body.dataset.sukan = k;
@@ -21703,8 +21722,54 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     /* ---------------- Permulaan ---------------- */
+    /* ---------------- Paparan sukan mod telefon (Tetapan Master Admin) ---------------- */
+    function setPaparanTelefon(v, simpan) {
+      v = ['SEMUA', 'FUTSAL', 'BADMINTON'].includes(v) ? v : 'SEMUA';
+      const ubah = v !== PAPARAN_TELEFON;
+      PAPARAN_TELEFON = v;
+      document.body.dataset.paparanTelefon = v;
+      try { localStorage.setItem('PK_KBB_PAPARAN_TELEFON', v); } catch (e) { /* abaikan */ }
+      const sel = document.getElementById('adminPhoneView');
+      if (sel && document.activeElement !== sel) sel.value = v;
+      if ((ubah || simpan) && modTelefonAsing() && v !== 'SEMUA' && dash.sukan !== v) applySukan(v);
+    }
+    async function muatPaparanTelefon() {
+      const url = getGasUrl(); if (!url) return;
+      try {
+        const sep = url.includes('?') ? '&' : '?';
+        const res = await fetch(`${url}${sep}action=paparantelefon&_=${Date.now()}`, { method: 'GET', redirect: 'follow', cache: 'no-store' });
+        const d = JSON.parse(await res.text());
+        if (d && d.ok && d.paparanTelefon) setPaparanTelefon(d.paparanTelefon);
+      } catch (e) { /* abaikan */ }
+    }
+    function paparanTelefonInit() {
+      let awal = 'SEMUA';
+      try { awal = localStorage.getItem('PK_KBB_PAPARAN_TELEFON') || 'SEMUA'; } catch (e) { /* abaikan */ }
+      setPaparanTelefon(awal, true);
+      muatPaparanTelefon();
+      setInterval(() => { if (!document.hidden) muatPaparanTelefon(); }, 30000);
+      if (MQ_TELEFON && MQ_TELEFON.addEventListener) MQ_TELEFON.addEventListener('change', () => applySukan(dash.sukan));
+      const btn = document.getElementById('adminPhoneViewSave');
+      const st = document.getElementById('adminPhoneViewStatus');
+      if (btn) btn.addEventListener('click', async () => {
+        const v = document.getElementById('adminPhoneView').value;
+        btn.disabled = true; if (st) st.textContent = 'Menyimpan...';
+        try {
+          const adminKey = typeof ensureAdminKey === 'function' ? await ensureAdminKey() : getAdminKey();
+          const r = await callGasTerus({ action: 'simpanPaparanTelefon', adminKey, paparan: v });
+          if (!r || !r.ok) throw new Error((r && r.error) || 'Gagal menyimpan.');
+          setPaparanTelefon(r.paparanTelefon || v, true);
+          if (st) st.textContent = '✅ Disimpan. Telefon penonton akan dikemas kini dalam masa 30 saat.';
+          try { showToast('Paparan telefon disimpan.', 'ok'); } catch (e) { /* abaikan */ }
+        } catch (err) {
+          if (st) st.textContent = '⚠ ' + (err && err.message ? err.message : err);
+        } finally { btn.disabled = false; }
+      });
+    }
+
     function sukanInit() {
       dash.sukan = getSukan();
+      try { paparanTelefonInit(); } catch (e) { console.error(e); }
       document.querySelectorAll('#sportSwitch button').forEach(b => b.addEventListener('click', () => applySukan(b.dataset.sukan)));
       document.querySelectorAll('#tabNav .tab-btn').forEach(b => b.addEventListener('click', () => setTimeout(() => dashRefresh(true), 0)));
       document.addEventListener('click', ev => {

@@ -339,6 +339,7 @@ const MASTER_ADMIN_PIN_DEFAULT = '101010';
 // v1.17.0: lajur 'Sukan' (FUTSAL / BADMINTON) ditambah di HUJUNG; akaun lama tanpa nilai = FUTSAL.
 const PENGADIL_HEADER = ['ID Pengadil', 'Nama Ringkas', 'Kata Laluan', 'Status', 'Dicipta Pada', 'Dikemaskini Pada', 'Log Masuk Terakhir', 'Sukan'];
 const PENGADIL_ACTIONS = [
+  'simpanpaparantelefon',   // tetapan paparan sukan mod telefon (Master Admin)
   'loginpengadil', 'senaraipengadil', 'simpanpengadil', 'padampengadil', 'syncpengadil',
   // Fasa 2: kunci gelanggang
   'logkeluarpengadil', 'statusgelanggang', 'kuncigelanggang', 'lepasgelanggang', 'skorlive',
@@ -487,8 +488,11 @@ function doGet(e) {
     if (sukan === 'BADMINTON' && ['read', 'badminton', 'databadminton', 'ping'].indexOf(action) < 0) {
       throw new Error('Tindakan ini masih khusus untuk FUTSAL.');
     }
+    if (action === 'paparantelefon') {
+      return output_({ ok: true, paparanTelefon: bacaPaparanTelefon_(), masa: new Date().toISOString() }, p.callback);
+    }
     if (action === 'ping') {
-      return output_({ ok: true, message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI,
+      return output_({ ok: true, paparanTelefon: bacaPaparanTelefon_(), message: 'Live Futsal PK KBB API aktif', versi: API_VERSI, ciri: API_CIRI,
         sheetPengadil: SHEET_PENGADIL, senaraiGelanggang: bacaGelanggang_(), giliran: statGiliran_(), masa: new Date().toISOString() }, p.callback);
     }
     if (action === 'gelanggang' || action === 'senaraigelanggang') {
@@ -1292,6 +1296,7 @@ function handlePengadil_(action, body) {
     // v1.9.9: Urus Gelanggang
     case 'urusgelanggang':  return urusGelanggang_(body);
     case 'resetacara':      return resetAcara_(body);
+    case 'simpanpaparantelefon': return simpanPaparanTelefon_(body);
     default:                return { ok: false, error: 'Tindakan pengadil tidak dikenali.' };
   }
 }
@@ -5166,4 +5171,22 @@ function isiKalahMatiBadminton() {
     console.log(res.perubahan.length ? res.perubahan.join('\n') : 'Tiada slot kalah mati Badminton yang perlu diisi.');
     return res;
   } finally { lock.releaseLock(); }
+}
+
+
+/* =========================================================
+   PAPARAN SUKAN MOD TELEFON (Master Admin)
+   SEMUA = telefon boleh pilih Futsal & Badminton
+   FUTSAL / BADMINTON = telefon hanya papar sukan itu (sukan lain disembunyikan)
+   Mod komputer sentiasa papar semua.
+   ========================================================= */
+function bacaPaparanTelefon_() {
+  const v = String(PropertiesService.getScriptProperties().getProperty('PAPARAN_TELEFON') || 'SEMUA').toUpperCase();
+  return ['SEMUA', 'FUTSAL', 'BADMINTON'].indexOf(v) >= 0 ? v : 'SEMUA';
+}
+function simpanPaparanTelefon_(body) {
+  const v = String((body && body.paparan) || '').toUpperCase();
+  if (['SEMUA', 'FUTSAL', 'BADMINTON'].indexOf(v) < 0) return { ok: false, error: 'Pilihan paparan tidak sah.' };
+  PropertiesService.getScriptProperties().setProperty('PAPARAN_TELEFON', v);
+  return { ok: true, paparanTelefon: v };
 }
