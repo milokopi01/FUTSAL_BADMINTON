@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbyLaQatH07CKFiv_dbeN6xAiy9RURF_5kxSPdz4I0bKYpu9DVU9sJt0OvBZTJIPyKP8Rg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -11247,9 +11247,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const count = { baharu: 0, disahkan: 0, ditolak: 0 };
         const baru = [];
         // v1.43.2: senarai perlawanan bermarkah RALAT (seri kalah mati tanpa penalti) untuk semua pengadil
-        // v1.43.3: markah RALAT yang telah dikemaskini pengadil -> Urusetia perlu sahkan semula
-        window.__sahSemula = {};
-        data.matches.forEach(r => { if (String(r.catatan || '').indexOf('DIKEMASKINI SEMULA') === 0) window.__sahSemula[String(r.id || '').toUpperCase()] = String(r.catatan); });
         window.__ralatMarkah = data.matches.filter(r => String(r.catatan || '').indexOf('RALAT:') === 0 &&
           String(r.status || '').toUpperCase().indexOf('SELESAI') < 0).map(r => ({
           id: String(r.id || '').toUpperCase(), namaP1: r.namaP1 || '', namaP2: r.namaP2 || '',
@@ -16172,7 +16169,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="ap-meta">Gelanggang ${escapeHtml(m.gelanggang)} · 🧑‍⚖️ Pengadil: ${escapeHtml(by)} · ${formatTime(m.masaTamat)}</div>
               <div class="ap-score">${escapeHtml(m.namaP1)} <span style="color:var(--brand);">${Number(m.skorP1) || 0} - ${Number(m.skorP2) || 0}</span> ${escapeHtml(m.namaP2)}</div>
               ${pen}
-              ${(window.__sahSemula && window.__sahSemula[String(m.id).toUpperCase()]) ? `<div class="ap-meta ap-nosah">🔁 <strong>MARKAH DIKEMASKINI SEMULA</strong> selepas RALAT penalti · sila semak &amp; SAHKAN SEMULA</div>` : ''}
               ${sah}
               ${pulih}
             </div>
