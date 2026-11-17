@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -15,6 +15,138 @@ Sebelum mengeluarkan kemas kini:
 Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitkan Google Apps Script secara automatik.
 --> 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- v2.4: PAPARAN LANCAR (anti-berkelip). Setiap kemas kini automatik kini hanya menukar bahagian yang berubah
+       (skor, masa, status) tanpa membina semula seluruh kad -> tiada kelipan / animasi masuk berulang / imej dimuat semula.
+       Untuk ujian: localStorage.setItem('kbb_lancar','off') + muat semula = kembali kepada cara lama. -->
+  <script>
+  (function () {
+    'use strict';
+    if (window.__kbbLancar) return;
+    window.__kbbLancar = true;
+    try { if (localStorage.getItem('kbb_lancar') === 'off') return; } catch (e) { /* abaikan */ }
+    var desc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    if (!desc || !desc.set || !desc.get || !window.WeakMap || !window.WeakSet) return;
+    var nativeSet = desc.set, nativeGet = desc.get;
+    var XHTML = 'http://www.w3.org/1999/xhtml';
+
+    // 1) Rekod pendengar acara pada elemen, supaya elemen yang dikekalkan boleh "dibersihkan"
+    //    (sama seperti elemen baharu) sebelum kod asal memasang semula pendengarnya.
+    var daftar = new WeakMap();   // elemen -> [{t, f, c}]
+    var ET = window.EventTarget && EventTarget.prototype;
+    var asalAdd = ET && ET.addEventListener, asalRemove = ET && ET.removeEventListener;
+    function tangkap(o) { return typeof o === 'boolean' ? o : !!(o && o.capture); }
+    if (asalAdd && asalRemove) {
+      ET.addEventListener = function (t, f, o) {
+        try {
+          if (f && this && this.nodeType === 1) {
+            var l = daftar.get(this); if (!l) { l = []; daftar.set(this, l); }
+            l.push({ t: t, f: f, c: tangkap(o) });
+          }
+        } catch (e) { /* abaikan */ }
+        return asalAdd.call(this, t, f, o);
+      };
+      ET.removeEventListener = function (t, f, o) {
+        try {
+          var l = this && this.nodeType === 1 ? daftar.get(this) : null;
+          if (l) { var c = tangkap(o); for (var i = 0; i < l.length; i++) if (l[i].t === t && l[i].f === f && l[i].c === c) { l.splice(i, 1); break; } }
+        } catch (e) { /* abaikan */ }
+        return asalRemove.call(this, t, f, o);
+      };
+    }
+    var ON = ['onclick', 'onchange', 'oninput', 'onsubmit', 'onkeydown', 'onkeyup', 'onpointerdown', 'onpointerup', 'onmousedown', 'onmouseup', 'ontouchstart', 'ontouchend', 'onfocus', 'onblur', 'ondblclick'];
+    function bersih(el) {
+      var l = daftar.get(el);
+      if (l && l.length) { for (var i = 0; i < l.length; i++) { try { asalRemove.call(el, l[i].t, l[i].f, l[i].c); } catch (e) { /* abaikan */ } } daftar.delete(el); }
+      for (var j = 0; j < ON.length; j++) { var p = ON[j]; if (el[p] && !el.hasAttribute(p)) { try { el[p] = null; } catch (e) { /* abaikan */ } } }
+      var k = Object.keys(el);
+      for (var n = 0; n < k.length; n++) { try { delete el[k[n]]; } catch (e) { /* abaikan */ } }
+    }
+
+    // 2) Bandingkan HTML baharu dengan paparan semasa dan tukar hanya yang berbeza.
+    var LANGKAU = { SCRIPT: 1, STYLE: 1, TEMPLATE: 1, TEXTAREA: 1, NOSCRIPT: 1, IFRAME: 1, TITLE: 1 };
+    var GANTI_SELALU = { CANVAS: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, OBJECT: 1, EMBED: 1 };
+    var BORANG = { INPUT: 1, SELECT: 1, TEXTAREA: 1, OPTION: 1, BUTTON: 0 };
+    function kunci(n) { return n.nodeType === 1 ? (n.id || n.getAttribute('data-key') || '') : ''; }
+    function boleh(l, b) {
+      if (l.nodeType !== b.nodeType || l.nodeName !== b.nodeName) return false;
+      if (l.nodeType !== 1) return true;
+      if (GANTI_SELALU[l.nodeName]) return false;
+      if (BORANG[l.nodeName]) return l.outerHTML === b.outerHTML;   // kekal nilai yang sedang ditaip / dipilih
+      return true;
+    }
+    function morphAtribut(l, b) {
+      var la = l.attributes, ba = b.attributes, i, a, details = l.nodeName === 'DETAILS';
+      for (i = la.length - 1; i >= 0; i--) {
+        a = la[i];
+        if (details && a.name === 'open') continue;           // buka/tutup oleh pengguna dikekalkan
+        if (!b.hasAttribute(a.name)) l.removeAttribute(a.name);
+      }
+      for (i = 0; i < ba.length; i++) {
+        a = ba[i];
+        if (details && a.name === 'open') continue;
+        if (l.getAttribute(a.name) !== a.value) {
+          if (a.namespaceURI) l.setAttributeNS(a.namespaceURI, a.name, a.value); else l.setAttribute(a.name, a.value);
+        }
+      }
+    }
+    function morphNod(l, b) {
+      if (l.nodeType === 1) {
+        bersih(l);
+        morphAtribut(l, b);
+        if (!BORANG[l.nodeName]) morphAnak(l, b);
+      } else if (l.nodeValue !== b.nodeValue) {
+        l.nodeValue = b.nodeValue;
+      }
+    }
+    function morphAnak(lama, baru) {
+      var lk = lama.firstChild, bk = baru.firstChild, seterus, k, cari;
+      while (bk) {
+        seterus = bk.nextSibling;
+        k = kunci(bk);
+        if (k && lk && kunci(lk) !== k) {
+          cari = lk.nextSibling;
+          while (cari && kunci(cari) !== k) cari = cari.nextSibling;
+          if (cari) { lama.insertBefore(cari, lk); lk = cari; }
+        }
+        if (!lk) {
+          lama.appendChild(bk);
+        } else if (boleh(lk, bk)) {
+          morphNod(lk, bk);
+          lk = lk.nextSibling;
+        } else {
+          var lepas = lk.nextSibling;
+          lama.replaceChild(bk, lk);
+          lk = lepas;
+        }
+        bk = seterus;
+      }
+      while (lk) { var x = lk.nextSibling; lama.removeChild(lk); lk = x; }
+    }
+
+    Object.defineProperty(Element.prototype, 'innerHTML', {
+      configurable: true,
+      enumerable: desc.enumerable,
+      get: nativeGet,
+      set: function (html) {
+        var s = html == null ? '' : String(html);
+        var el = this;
+        if (s === '' || !el.isConnected || !el.firstChild || LANGKAU[el.nodeName] || el.namespaceURI !== XHTML ||
+            el.hasAttribute('data-no-morph')) {
+          nativeSet.call(el, s);
+          return;
+        }
+        try {
+          var tmp = el.cloneNode(false);
+          nativeSet.call(tmp, s);
+          morphAnak(el, tmp);
+        } catch (err) {
+          try { console.warn('[paparan lancar] guna cara asal', err); nativeSet.call(el, s); } catch (e2) { /* abaikan */ }
+        }
+      }
+    });
+    window.KBBLancar = { versi: '2.4.0' };
+  })();
+  </script>
   <meta name="theme-color" content="#0f172a" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
