@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycby8nPaNCJsPDoNWpL6cdZSrJVcIf1Hyo4HHbiF7YgX02WWgPW6PLEPo5Sehr-zRuYAzaw/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1229,6 +1229,7 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
     .rm-more-body { display: grid; gap: 10px; padding: 0 12px 12px; }
     .rm-note { padding: 12px 14px; border-radius: 14px; font-size: .84rem; line-height: 1.45; border: 1px solid var(--glass-border); background: rgba(0,0,0,.22); color: var(--text-1); }
     .rm-note.warn { border-color: rgba(250,204,21,.5); background: rgba(250,204,21,.08); }
+    .rm-note.rehat-note { display: grid; gap: 6px; margin: 8px 0; text-align: left; }   /* v1.40.0 */
     .rm-note.danger { border-color: rgba(244,63,94,.5); background: rgba(244,63,94,.10); color: #fecdd3; }
     .rm-note.ok { border-color: rgba(46,230,166,.45); background: rgba(46,230,166,.08); }
     .rm-foot { font-size: .74rem; color: var(--text-2); text-align: center; line-height: 1.45; }
@@ -8398,12 +8399,25 @@ void main() {
         return cand[0].id;
       };
 
+      // v1.40.0: REHAT SATU PUSINGAN - pasukan yang bermain dalam pusingan sebelumnya (atau baru
+      // tamat / menunggu pengesahan) TIDAK diletakkan dalam pusingan seterusnya jika ada pilihan lain.
+      // Hanya jika tiada perlawanan lain yang sesuai, gelanggang diisi juga (pengadil diberi amaran rehat).
+      const nowMs = Date.now();
+      let prevTeams = new Set();
+      state.matches.forEach(m => {
+        if (!kats.includes(m.kategori) || m.status === MATCH_STATUS.LIVE) return;
+        const t = m.masaTamat ? new Date(m.masaTamat).getTime() : NaN;
+        const baru = Number.isFinite(t) && nowMs - t < REHAT_AMARAN_MINIT * 60000;
+        const tungguSah = m.status === MATCH_STATUS.TUNGGU_SAH;
+        if (baru || tungguSah) matchTeamKeys(m).forEach(k => prevTeams.add(k));
+      });
       const plan = [];
       let first = true;
       let guard = 0;
       while (queue.length && guard++ < 1000) {
         const round = [];
         const used = new Set();
+        const picked = new Set();
         const teams = new Set(first ? liveTeams : []);
         // Peringkat terendah yang masih berbaki bagi setiap kategori
         const minRank = {};
@@ -8411,19 +8425,25 @@ void main() {
           const r = matchStageRank(m);
           if (minRank[m.kategori] === undefined || r < minRank[m.kategori]) minRank[m.kategori] = r;
         });
-        for (let i = 0; i < queue.length && used.size < order.length; i++) {
-          const m = queue[i];
-          const r = matchStageRank(m);
-          if (r !== minRank[m.kategori]) continue;
-          if (first && (liveRanks[m.kategori] || []).some(x => x < r)) continue;
-          const keys = matchTeamKeys(m);
-          if (keys.some(k => teams.has(k))) continue;
-          const lock = lockOf(m);
-          const court = lock ? (used.has(lock) ? null : lock) : pickCourt(m, used);
-          if (!court) continue;
-          round.push({ m, court });
-          used.add(court);
-          keys.forEach(k => teams.add(k));
+        // Laluan 0: wajib rehat satu pusingan · Laluan 1: isi gelanggang yang masih kosong
+        for (let pass = 0; pass < 2 && used.size < order.length; pass++) {
+          for (let i = 0; i < queue.length && used.size < order.length; i++) {
+            const m = queue[i];
+            if (picked.has(m)) continue;
+            const r = matchStageRank(m);
+            if (r !== minRank[m.kategori]) continue;
+            if (first && (liveRanks[m.kategori] || []).some(x => x < r)) continue;
+            const keys = matchTeamKeys(m);
+            if (keys.some(k => teams.has(k))) continue;
+            if (pass === 0 && keys.some(k => prevTeams.has(k))) continue;
+            const lock = lockOf(m);
+            const court = lock ? (used.has(lock) ? null : lock) : pickCourt(m, used);
+            if (!court) continue;
+            round.push({ m, court });
+            picked.add(m);
+            used.add(court);
+            keys.forEach(k => teams.add(k));
+          }
         }
         if (!round.length) {
           if (first) { first = false; continue; }
@@ -8432,10 +8452,12 @@ void main() {
           if (!court) { queue.shift(); continue; }
           round.push({ m, court });
         }
+        prevTeams = new Set();
         round.forEach(({ m, court }) => {
           load[court] += 1;
           plan.push({ id: m.id, gelanggang: court });
           queue.splice(queue.indexOf(m), 1);
+          matchTeamKeys(m).forEach(k => prevTeams.add(k));
         });
         first = false;
       }
@@ -8982,6 +9004,71 @@ void main() {
       const mm = String(Math.floor(total / 60)).padStart(2, '0');
       const ss = String(total % 60).padStart(2, '0');
       return `${mm}:${ss}`;
+    }
+
+    /* v1.40.0: AMARAN REHAT PASUKAN (Futsal & Badminton)
+       Sebelum pengadil menekan wisel / servis mula, semak sama ada mana-mana sekolah
+       baru tamat perlawanan (dengan MASA TAMAT TEPAT) atau masih bermain di gelanggang lain.
+       Jana Susunan turut cuba memberi rehat sekurang-kurangnya SATU pusingan perlawanan. */
+    const REHAT_AMARAN_MINIT = 20;   // amaran dipaparkan jika rehat kurang daripada tempoh ini
+    function rehatKey(n) { return String(n == null ? '' : n).trim().toUpperCase(); }
+    function rehatSemak(match, list, opt = {}) {
+      const out = [];
+      if (!match) return out;
+      const sah = opt.sah || (n => !isPlaceholderName(n) && String(n || '').trim().charAt(0) !== '(');
+      const isLive = opt.isLive || (() => false);
+      const now = Date.now();
+      [match.namaP1, match.namaP2].forEach(nama => {
+        if (!sah(nama)) return;
+        const key = rehatKey(nama);
+        let akhir = null, live = null;
+        (list || []).forEach(m => {
+          if (!m || m.id === match.id) return;
+          if (rehatKey(m.namaP1) !== key && rehatKey(m.namaP2) !== key) return;
+          if (isLive(m)) { live = m; return; }
+          const iso = m.masaTamat || m.sahPengadilPada || null;
+          const t = iso ? new Date(iso).getTime() : NaN;
+          if (!Number.isFinite(t) || t > now + 60000) return;
+          if (!akhir || t > akhir.t) akhir = { m, t, iso };
+        });
+        if (live) { out.push({ nama: String(nama).trim(), live: true, id: live.id, gel: live.gelanggang || '' }); return; }
+        if (!akhir) return;
+        const minit = Math.max(0, Math.floor((now - akhir.t) / 60000));
+        if (minit >= REHAT_AMARAN_MINIT) return;
+        out.push({ nama: String(nama).trim(), live: false, id: akhir.m.id, gel: akhir.m.gelanggang || '',
+          masaTamat: akhir.iso, minit, sedia: new Date(akhir.t + REHAT_AMARAN_MINIT * 60000).toISOString() });
+      });
+      return out;
+    }
+    function rehatBaris(r) {
+      if (r.live) return `⛔ ${r.nama} masih bermain ${r.id}${r.gel ? ' di Gelanggang ' + r.gel : ''}.`;
+      return `${r.nama} baru tamat ${r.id}${r.gel ? ' · Gelanggang ' + r.gel : ''} pada ${formatTime(r.masaTamat)} · rehat ${r.minit < 1 ? 'kurang 1 minit' : r.minit + ' minit'}\n` +
+        `Cadangan mula selepas ${formatTime(r.sedia)} (rehat ${REHAT_AMARAN_MINIT} minit)`;
+    }
+    function rehatTeks(list) {
+      return list.map(rehatBaris).join('\n\n');
+    }
+    function rehatHtml(list) {
+      if (!list || !list.length) return '';
+      const rows = list.map(r => r.live
+        ? `<div>⛔ <strong>${escapeHtml(r.nama)}</strong> masih bermain <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' di Gelanggang ' + escapeHtml(r.gel) : ''}.</div>`
+        : `<div>⏱ <strong>${escapeHtml(r.nama)}</strong> baru tamat <strong>${escapeHtml(r.id)}</strong>${r.gel ? ' (Gelanggang ' + escapeHtml(r.gel) + ')' : ''} pada <strong>${escapeHtml(formatTime(r.masaTamat))}</strong> · rehat ${r.minit < 1 ? 'kurang 1 minit' : r.minit + ' minit'}. Cadangan mula selepas <strong>${escapeHtml(formatTime(r.sedia))}</strong>.</div>`).join('');
+      return `<div class="rm-note warn rehat-note" role="status">⚠ <strong>Amaran Rehat Pasukan</strong>${rows}</div>`;
+    }
+    // Pop-up sebelum wisel / servis mula. Pulang true jika tiada amaran atau pengadil memilih teruskan.
+    async function rehatSahkan(list, aksi, matchLabel) {
+      if (!list || !list.length) return true;
+      const adaLive = list.some(r => r.live);
+      return uxOpen(
+        `${adaLive ? '⛔ Pasukan masih bermain' : '⏱ Amaran Rehat Pasukan'}\n\n` +
+        `${rehatTeks(list)}\n\n` +
+        `${matchLabel}\n\n` +
+        `Teruskan ${aksi} sekarang? Tekan Batal untuk beri pasukan berehat dahulu.`,
+        { tone: { ic: '⏱️', c: '#ffb547', c2: '#f59e0b', yes: `Ya, ${aksi}` } }
+      );
+    }
+    function rehatSemakFutsal(match) {
+      return rehatSemak(match, state.matches, { isLive: m => m.status === MATCH_STATUS.LIVE });
     }
 
     function isPlaceholderName(name) {
@@ -10203,7 +10290,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <div class="court-name">
               <div class="court-letter">${escapeHtml(court.id)}</div>
               <div>
-                <h3>${escapeHtml(court.nama)}</h3>
+                <h3>${escapeHtml(court.nama)}${match ? ` <span class="bm-p-chip ${fsChipCls(court)}" title="Giliran semasa gelanggang ini">${escapeHtml(match.id)}</span>` : ''}</h3>
                 <small>${court.pengadilId ? '🧑‍⚖️ Pengadil: ' + escapeHtml(court.pengadil || court.pengadilId) + (court.kunciBasi ? ' (tidak aktif)' : '') : 'Pengadil: belum ditetapkan'} · ${katBadge}</small>
               </div>
             </div>
@@ -10245,6 +10332,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // v1.39.0: giliran Futsal (paparan sama seperti Badminton)
+    // v1.39.1: cip giliran semasa (cth. SM-01) dipaparkan di sebelah nama gelanggang Futsal, sama seperti P8 Badminton
     function fsChipCls(court) {
       if (!court) return 'is-next';
       if (court.status === COURT_STATUS.LIVE) return 'is-live';
@@ -10424,21 +10512,33 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     // Urusetia / Master Admin memulakan perlawanan di gelanggang
-    function startMatch(courtId) {
+    async function startMatch(courtId) {
       if (!canStartMatch()) {
         showToast('Hanya Urusetia atau Master Admin boleh memulakan perlawanan.', 'error');
         return false;
       }
-      const court = getCourt(courtId);
+      let court = getCourt(courtId);
       if (!court) {
         showToast('Gelanggang tidak dijumpai.', 'error');
         return false;
       }
-      const check = checkCourtStartable(court);
+      let check = checkCourtStartable(court);
       if (check.error) {
         showToast(check.error, check.level || 'warn');
         if (check.save) { saveState(); renderCourts(); }
         return false;
+      }
+      // v1.40.0: amaran rehat pasukan (masa tamat tepat) sebelum wisel mula
+      const rehat = rehatSemakFutsal(check.match);
+      if (rehat.length) {
+        const m0 = check.match;
+        if (!await rehatSahkan(rehat, 'mula perlawanan', `${m0.id} · ${m0.namaP1} lwn ${m0.namaP2} · Gelanggang ${courtId}`)) return false;
+        court = getCourt(courtId);
+        check = court ? checkCourtStartable(court) : { error: 'Gelanggang tidak dijumpai.' };
+        if (check.error || check.match.id !== m0.id) {
+          showToast(check.error || 'Perlawanan di gelanggang ini telah berubah. Sila cuba lagi.', 'warn');
+          return false;
+        }
       }
       const match = check.match;
       applyMatchStart(court, match);
@@ -11512,8 +11612,11 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }
       const resume = court.status === COURT_STATUS.LIVE;
       const takeover = court.pengadilId && court.kunciBasi ? `\n\n⚠ Kunci tidak aktif milik ${court.pengadil} akan diambil alih.` : '';
+      // v1.40.0: AMARAN REHAT - sebelum wisel sepak mula, maklumkan sekolah yang baru tamat bermain (masa tepat)
+      const rehat = resume ? [] : rehatSemakFutsal(match);
+      if (rehat.length && !await rehatSahkan(rehat, 'Sepak Mula', `${match.id} · ${match.namaP1} lwn ${match.namaP2} · ${court.nama}`)) return false;
       // FASA 6: perlawanan telah dipilih & dikunci di paparan telefon -> terus Sepak Mula
-      const ok = (opts.terus && opt.mine && court.status === COURT_STATUS.SEDIA) || await uiConfirm(
+      const ok = (opts.terus && opt.mine && court.status === COURT_STATUS.SEDIA) || rehat.length > 0 || await uiConfirm(
         `⚽ ${resume ? 'Sepak Mula · Sambung Kawalan' : 'Sepak Mula'} di ${court.nama}?\n\n` +
         `${match.id} · ${match.namaP1} lwn ${match.namaP2}\n\n` +
         `Gelanggang akan DIKUNCI untuk anda. Pengadil lain tidak boleh memberi markah di gelanggang ini sehingga anda menekan "Tamat & Hantar Keputusan" atau melepaskannya.${takeover}`
@@ -12307,6 +12410,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       let actions;
       if (!started) {
         actions = `
+          ${st === 'BELUM' ? rehatHtml(bmRefRehat(m)) : ''}
           <button type="button" class="rm-btn rm-btn-primary" onclick="bmRefStart()" ${bmRef.busy ? 'disabled' : ''}>${bmRef.busy ? '⏳ Memulakan...' : st === 'LIVE' ? '🤝 Ambil Alih &amp; Teruskan' : '🏸 Servis Mula'}</button>
           <button type="button" class="rm-btn rm-btn-ghost" onclick="bmRefClose()" ${bmRef.busy ? 'disabled' : ''}>↩ Salah pilih? Kembali ke senarai</button>`;
       } else {
@@ -12466,10 +12570,20 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       bmMobileRender();
     }
 
+    function bmRefRehat(m) {
+      return rehatSemak(m, bmRef.list, { isLive: x => bmRefStatus(x) === 'LIVE', sah: bmRefNamaSah });
+    }
     async function bmRefStart() {
       if (!bmRef.sel || bmRef.busy) return;
       const s = getSession();
       if (!s || !s.token) { bmRefSetMsg('Log masuk semula dengan internet untuk mula mengadili.', true); bmMobileRender(); return; }
+      // v1.40.0: AMARAN REHAT - sebelum servis mula, maklumkan sekolah yang baru tamat bermain (masa tepat)
+      const mSel = (bmRef.list || []).find(x => x.id === bmRef.sel.id);
+      if (mSel && bmRefStatus(mSel) === 'BELUM') {
+        const rehat = bmRefRehat(mSel);
+        if (rehat.length && !await rehatSahkan(rehat, 'Servis Mula', `${mSel.id}${mSel.gelanggang ? ' · Gelanggang ' + mSel.gelanggang : ''} · ${mSel.namaP1} lwn ${mSel.namaP2}`)) return;
+        if (!bmRef.sel || bmRef.busy) return;
+      }
       bmRef.busy = true; bmRefSetMsg(''); bmMobileRender();
       try {
         await bmRefPush('SEMASA');
@@ -12635,6 +12749,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
                  <small>${sel.resume
                    ? 'Perlawanan sedang LIVE tanpa pengadil. Sepak Mula akan mengunci gelanggang & anda mengambil alih kawalan markah.'
                    : 'Sepak Mula akan memulakan Separuh 1 dan mengunci gelanggang ini untuk anda sahaja.'}</small>
+                 ${sel.resume ? '' : rehatHtml(rehatSemakFutsal(sel.match))}
                </div>
                <button type="button" class="btn btn-primary btn-kickoff" onclick="refereeKickOff('${sel.court.id}')" ${kickoffBusy ? 'disabled' : ''}>${kickoffBusy ? '⏳ Mengunci...' : '⚽ Sepak Mula'}</button>
              </div>`
@@ -13022,6 +13137,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       } else {
         actions = `
           ${c.ditangguh ? `<div class="rm-note warn">⏸ Ditangguhkan: ${escapeHtml(c.ditangguh.sebab || '-')}</div>` : ''}
+          ${m && isMatchReady(m) ? rehatHtml(rehatSemakFutsal(m)) : ''}
           <button type="button" class="rm-btn rm-btn-primary" onclick="refereeKickOff('${c.id}', { terus: true })" ${kickoffBusy || !m || !isMatchReady(m) ? 'disabled' : ''}>${kickoffBusy ? '⏳ Memulakan...' : '⚽ Sepak Mula'}</button>
           <button type="button" class="rm-btn rm-btn-ghost" onclick="refereeReleaseCourt()">↩ Salah pilih? Lepaskan perlawanan ini</button>`;
       }
@@ -19332,22 +19448,30 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         cand.sort((a, b) => load[a.id] - load[b.id] || orderIdx[a.id] - orderIdx[b.id]);
         return cand[0].id;
       };
+      // v1.40.0: REHAT SATU PUSINGAN (sama seperti Futsal) - pasukan pusingan sebelumnya / baru tamat
+      // (menunggu pengesahan) tidak dimasukkan ke pusingan seterusnya jika ada perlawanan lain.
+      let prevTeams = new Set();
+      ms.filter(bmIsWaitSah).forEach(m => bmcTeamKeys(m).forEach(k => prevTeams.add(k)));
       const plan = [];
       let first = true, guard = 0;
       while (queue.length && guard++ < 1000) {
-        const round = [], used = new Set(), teams = new Set(first ? liveTeams : []);
+        const round = [], used = new Set(), picked = new Set(), teams = new Set(first ? liveTeams : []);
         const minRank = {};
         queue.forEach(m => { const r = bmcStageRank(m); if (minRank[m.kat] === undefined || r < minRank[m.kat]) minRank[m.kat] = r; });
-        for (let i = 0; i < queue.length && used.size < order.length; i++) {
-          const m = queue[i], r = bmcStageRank(m);
-          if (r !== minRank[m.kat]) continue;
-          if (first && (liveRanks[m.kat] || []).some(x => x < r)) continue;
-          const keys = bmcTeamKeys(m);
-          if (keys.some(k => teams.has(k))) continue;
-          const lock = bmcLockOf(m, cfg);
-          const court = lock ? (used.has(lock) ? null : lock) : pick(m, used);
-          if (!court) continue;
-          round.push({ m, court }); used.add(court); keys.forEach(k => teams.add(k));
+        for (let pass = 0; pass < 2 && used.size < order.length; pass++) {
+          for (let i = 0; i < queue.length && used.size < order.length; i++) {
+            const m = queue[i], r = bmcStageRank(m);
+            if (picked.has(m)) continue;
+            if (r !== minRank[m.kat]) continue;
+            if (first && (liveRanks[m.kat] || []).some(x => x < r)) continue;
+            const keys = bmcTeamKeys(m);
+            if (keys.some(k => teams.has(k))) continue;
+            if (pass === 0 && keys.some(k => prevTeams.has(k))) continue;
+            const lock = bmcLockOf(m, cfg);
+            const court = lock ? (used.has(lock) ? null : lock) : pick(m, used);
+            if (!court) continue;
+            round.push({ m, court }); picked.add(m); used.add(court); keys.forEach(k => teams.add(k));
+          }
         }
         if (!round.length) {
           if (first) { first = false; continue; }
@@ -19356,7 +19480,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           if (!court) { queue.shift(); continue; }
           round.push({ m, court });
         }
-        round.forEach(({ m, court }) => { load[court] += 1; plan.push({ id: m.id, gelanggang: court }); queue.splice(queue.indexOf(m), 1); });
+        prevTeams = new Set();
+        round.forEach(({ m, court }) => { load[court] += 1; plan.push({ id: m.id, gelanggang: court }); queue.splice(queue.indexOf(m), 1); bmcTeamKeys(m).forEach(k => prevTeams.add(k)); });
         first = false;
       }
       return { plan };
