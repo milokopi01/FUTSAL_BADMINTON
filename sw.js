@@ -7,7 +7,8 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.40.4';  // v1.40.4: Mod Pengadil ikut skor yang dibetulkan Master Admin + kalah mati seri wajib pemenang penalti sebelum disahkan
+const VERSI_SW = '1.41.0';  // v1.41.0: enjin giliran seragam - P1, P2 ... ikut pusingan gelanggang (terbuka / dikunci kategori), Futsal & Badminton
+// const VERSI_SW_1406 = '1.40.6';  // v1.40.6: markah RALAT hanya pengadil asal / Master Admin
 // const VERSI_SW_1403 = '1.40.3';  // v1.40.3: kad Admin & Urusetia dan Undian X & Y kini lebar penuh
 // const VERSI_SW_1401 = '1.40.1';  // v1.40.1: amaran rehat dipaparkan awal (kad gelanggang & senarai pengadil), tiada pop-up selepas tekan mula
 // const VERSI_SW_1400 = '1.40.0';  // v1.40.0: Jana Susunan beri rehat satu pusingan + amaran rehat pasukan (masa tamat tepat) sebelum wisel / servis mula
