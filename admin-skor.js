@@ -1,4 +1,6 @@
-/* Bahagian 4: skor Admin berasingan mengikut sukan. Bahagian 5: simpanan dimaklumkan ke Dashboard. */
+/* Bahagian 4: skor Admin berasingan mengikut sukan. Bahagian 5: simpanan dimaklumkan ke Dashboard.
+ * v1.44.0: Futsal kalah mati seri -> masukkan JARINGAN penalti (cth. 4 & 3); pemenang penalti ditentukan automatik.
+ *          Baris markah RALAT (seri tanpa penalti) ditanda "⚠ RALAT" supaya Master Admin boleh kemas kini. */
 const SKOR_ASAL_FIELDS = ['skorP1','skorP2','status','pengesahan','pemenangPenalti'];
 function binaPayloadSkor(sukan,match,values,adminKey) {
   if (!['FUTSAL','BADMINTON'].includes(sukan)||!adminKey) throw new Error('Sukan dan PIN Master Admin diperlukan.');
@@ -11,6 +13,17 @@ function binaPayloadSkor(sukan,match,values,adminKey) {
   if(!['SEMENTARA','DISAHKAN','DITOLAK'].includes(skor.keputusan))throw new Error('Pilih jenis keputusan.');
   if(skor.keputusan==='DITOLAK'){if(sukan!=='BADMINTON')throw new Error('Tolak keputusan Futsal melalui Peti Kelulusan.');skor.catatan=String(values.catatan||'Skor perlu disemak semula').trim().slice(0,200);}
   if(sukan==='BADMINTON'&&skor.keputusan==='DISAHKAN'&&skor.skorP1===skor.skorP2)throw new Error('Keputusan Badminton tidak boleh seri.');
+  // v1.44.0: jaringan penalti Futsal (hanya bila skor seri)
+  if(sukan==='FUTSAL'){
+    const a=String(values.penaltiP1??'').trim(),b=String(values.penaltiP2??'').trim();
+    if(skor.skorP1===skor.skorP2&&(a!==''||b!=='')){
+      if(a===''||b==='')throw new Error('Masukkan jaringan penalti kedua-dua pasukan.');
+      const p1=Number(a),p2=Number(b);
+      if(!Number.isInteger(p1)||p1<0||p1>99||!Number.isInteger(p2)||p2<0||p2>99)throw new Error('Jaringan penalti mesti nombor bulat 0 hingga 99.');
+      if(p1===p2)throw new Error('Keputusan penalti tidak boleh seri. Sepakan penalti diteruskan sehingga ada pemenang.');
+      skor.penaltiP1=p1;skor.penaltiP2=p2;skor.pemenangPenalti=p1>p2?'P1':'P2';
+    }
+  }
   const asal={};SKOR_ASAL_FIELDS.forEach(f=>{asal[f]=match[f]??'';});
   return {action:'simpanSkorSukan',sukan,id:match.id,adminKey,asal,skor};
 }
@@ -30,8 +43,11 @@ function initAdminSkor() {
     rows.replaceChildren();
     list.forEach(m=>{
       const tr=document.createElement('tr');
-      [m.id,m.namaP1,m.skorP1??'—',m.skorP2??'—',m.namaP2,(m.pengesahan||m.status)+(m.sahPengadil?' · dihantar '+m.sahPengadil:(m.pengadil?' · '+m.pengadil:''))].forEach(v=>{const td=document.createElement('td');td.textContent=String(v||v===0?v:'—');tr.append(td);});
-      const td=document.createElement('td'),edit=document.createElement('button');edit.type='button';edit.className='btn btn-sm';edit.textContent='✎ Skor';
+      const ralat=sport.value==='FUTSAL'&&String(m.catatan||'').indexOf('RALAT:')===0&&!m.pemenangPenalti; // v1.44.0
+      const pen=m.pemenangPenalti?(' · pen. '+(m.penaltiP1!=null&&m.penaltiP2!=null&&m.penaltiP1!==''?m.penaltiP1+'-'+m.penaltiP2+' ':'')+'('+m.pemenangPenalti+')'):'';
+      if(ralat)tr.classList.add('row-ralat');
+      [m.id,m.namaP1,m.skorP1??'—',m.skorP2??'—',m.namaP2,(ralat?'⚠ RALAT: seri tanpa penalti · ':'')+(m.pengesahan||m.status)+pen+(m.sahPengadil?' · dihantar '+m.sahPengadil:(m.pengadil?' · '+m.pengadil:''))].forEach(v=>{const td=document.createElement('td');td.textContent=String(v||v===0?v:'—');tr.append(td);});
+      const td=document.createElement('td'),edit=document.createElement('button');edit.type='button';edit.className=ralat?'btn btn-sm btn-primary':'btn btn-sm';edit.textContent=ralat?'🥅 Kemaskini':'✎ Skor';
       const finalFutsal=sport.value==='FUTSAL'&&m.pengesahan==='DISAHKAN'&&m.status==='SELESAI';edit.disabled=busy||finalFutsal;
       edit.title=finalFutsal?'Gunakan Pembetulan Markah':'Kemas kini skor';edit.dataset.final=finalFutsal?'1':'0';
       edit.addEventListener('click',()=>{
@@ -41,6 +57,11 @@ function initAdminSkor() {
         form.elements.namedItem('skorP1').value=m.skorP1??'';form.elements.namedItem('skorP2').value=m.skorP2??'';
         form.elements.namedItem('keputusan').value=m.pengesahan==='DISAHKAN'?'DISAHKAN':'SEMENTARA';
         document.getElementById('adminScorePenalty').classList.toggle('hidden',sport.value!=='FUTSAL');
+        const pen2=document.getElementById('adminScorePenalty2');if(pen2)pen2.classList.toggle('hidden',sport.value!=='FUTSAL');
+        const l1=document.getElementById('scorePenLabel1'),l2=document.getElementById('scorePenLabel2');if(l1)l1.textContent=m.namaP1;if(l2)l2.textContent=m.namaP2;
+        const fp1=form.elements.namedItem('penaltiP1'),fp2=form.elements.namedItem('penaltiP2');
+        if(fp1)fp1.value=m.penaltiP1??'';if(fp2)fp2.value=m.penaltiP2??'';
+        if(ralat)form.elements.namedItem('keputusan').value='DISAHKAN';
         form.classList.remove('hidden');form.scrollIntoView({block:'center',behavior:'smooth'});form.elements.namedItem('skorP1').focus({preventScroll:true});
       });td.append(edit);tr.append(td);rows.append(tr);
     });

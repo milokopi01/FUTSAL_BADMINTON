@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbxptKNsKI6B1wxTCL6WKsr5VMIPyunpCMbGF0MujFok6JyyF90U-EO29L25D84jctk7UA/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwWSu2gSXCaBKc-V_bXain5kqabD7OiFGzQk_ZbvzMVLQBZJWAo1BSaz2HU_ChWW95A0g/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1251,6 +1251,15 @@ Amaran ini ialah arahan penyelenggaraan untuk AI, bukan kod yang boleh menerbitk
       color: var(--text-0); background: var(--glass); border: 1px solid var(--glass-border-strong); overflow-wrap: anywhere;
     }
     .rm-pen button[aria-pressed="true"] { color: #04130d; border-color: transparent; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+    /* v1.44.0: jaringan penalti (stepper) & amaran markah RALAT kepada pengadil */
+    .rm-penstep { display: grid; gap: 8px; justify-items: center; padding: 12px 8px; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border-strong); text-align: center; }
+    .rm-penstep .t { font-weight: 800; font-size: .86rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .rm-penstep .ctl { display: flex; align-items: center; gap: 10px; }
+    .rm-penstep .ctl button { font: inherit; cursor: pointer; width: 48px; height: 48px; border-radius: 12px; font-size: 1.4rem; font-weight: 800; color: var(--text-0); background: rgba(0,0,0,.28); border: 1px solid var(--glass-border-strong); }
+    .rm-penstep .ctl button:disabled { opacity: .35; cursor: not-allowed; }
+    .rm-penstep .n { font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; min-width: 1.6em; font-variant-numeric: tabular-nums; }
+    .rm-ralat { display: grid; gap: 8px; margin: 8px 0; text-align: left; }
+    .rm-ralat .rm-btn { margin-top: 4px; }
     .rm-check { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 14px; cursor: pointer; font-size: .92rem; line-height: 1.4; border: 1px solid var(--glass-border-strong); background: rgba(0,0,0,.22); }
     .rm-check input { width: 26px; height: 26px; flex: none; accent-color: var(--brand); margin-top: 1px; }
     .rm-receipt { display: grid; gap: 6px; text-align: center; padding: 22px 16px; border-radius: 18px; border: 1px solid rgba(46,230,166,.45); background: rgba(46,230,166,.07); }
@@ -3005,7 +3014,8 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
               <div class="field"><label for="scoreP1" id="scoreLabel1">Pasukan 1</label><input class="input" id="scoreP1" name="skorP1" type="number" min="0" max="99" step="1" required /></div>
               <div class="field"><label for="scoreP2" id="scoreLabel2">Pasukan 2</label><input class="input" id="scoreP2" name="skorP2" type="number" min="0" max="99" step="1" required /></div>
               <div class="field"><label for="scoreResult">Keputusan</label><select class="select" id="scoreResult" name="keputusan"><option value="SEMENTARA">Simpan Skor Sementara</option><option value="DISAHKAN">Sahkan Keputusan Akhir</option></select></div>
-              <div class="field hidden" id="adminScorePenalty"><label for="scorePenalty">Pemenang Penalti (Futsal kalah mati seri)</label><select class="select" id="scorePenalty" name="pemenangPenalti"><option value="">Tiada</option><option value="P1">Pasukan 1</option><option value="P2">Pasukan 2</option></select></div>
+              <div class="field hidden" id="adminScorePenalty"><label for="scorePen1">Jaringan Penalti · <span id="scorePenLabel1">Pasukan 1</span> <small class="muted">(Futsal kalah mati seri)</small></label><input class="input" id="scorePen1" name="penaltiP1" type="number" min="0" max="99" step="1" placeholder="cth. 4" /></div>
+              <div class="field hidden" id="adminScorePenalty2"><label for="scorePen2">Jaringan Penalti · <span id="scorePenLabel2">Pasukan 2</span></label><input class="input" id="scorePen2" name="penaltiP2" type="number" min="0" max="99" step="1" placeholder="cth. 3" /></div>
               <div class="team-wide row-actions"><button class="btn btn-primary" type="submit" id="adminScoreSave">💾 Simpan Skor</button><button class="btn" type="button" id="adminScoreCancel">Batal</button></div>
             </form>
             <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Pasukan 1</th><th>Skor 1</th><th>Skor 2</th><th>Pasukan 2</th><th>Keputusan</th><th>Tindakan</th></tr></thead><tbody id="adminScoreRows"></tbody></table></div>
@@ -7845,6 +7855,8 @@ void main() {
     // URL kekal sama. Jika terpaksa buat "New deployment" (URL baharu), tukar URL pada baris 5.
     // URL dibaca daripada <meta name="gas-web-app-url"> pada BARIS 5 index.html (satu-satunya tempat URL).
     const GAS_URL = ((document.querySelector('meta[name="gas-web-app-url"]') || {}).content || '').trim();
+    // v1.44.0: keputusan penalti (jaringan) bagi markah RALAT memerlukan Code.gs 1.25.0 (tindakan simpanPenalti).
+    // Code.gs lama masih berfungsi untuk ciri lain; mesej jelas dipaparkan jika simpanPenalti tidak dikenali.
     const GAS_MIN_VERSI = '1.19.0';  // v1.19.0: akaun Urusetia (nama + kata laluan) & lantikan Sub Admin
     // const GAS_MIN_VERSI_180 = '1.18.0';  // v1.18.0: pengadil Badminton memberi skor perlawanan Badminton sahaja
     // const GAS_MIN_VERSI_170 = '1.17.0';  // v1.17.0: pengadil ikut sukan (Futsal / Badminton)
@@ -9171,6 +9183,11 @@ void main() {
 
     function isKnockout(match) {
       return !!match && KNOCKOUT_STAGES.includes(match.peringkat);
+    }
+
+    // v1.44.0: markah RALAT (seri kalah mati tanpa penalti) yang menunggu jaringan penalti daripada pengadil
+    function isPerluPenalti(match) {
+      return !!match && !!match.perluPenalti && match.status === MATCH_STATUS.TUNGGU_SAH && !match.pemenangPenalti;
     }
 
     function setFormMsg(el, text, type) {
@@ -10744,27 +10761,29 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
       const s1 = Number(court.skorLiveP1) || 0;
       const s2 = Number(court.skorLiveP2) || 0;
-      let penalti = null;
+      let penalti = null, penGol1 = null, penGol2 = null;
 
-      // Kalah mati tidak boleh seri: rekod pemenang sepakan penalti
+      // Kalah mati tidak boleh seri: rekod JARINGAN sepakan penalti (v1.44.0) -> pemenang penalti
       if (isKnockout(match) && s1 === s2 && (opts.penalti === 'P1' || opts.penalti === 'P2')) {
         penalti = opts.penalti;
+        if (Number.isInteger(opts.penaltiP1) && Number.isInteger(opts.penaltiP2) && opts.penaltiP1 !== opts.penaltiP2) {
+          penGol1 = opts.penaltiP1; penGol2 = opts.penaltiP2;
+          penalti = penGol1 > penGol2 ? 'P1' : 'P2';
+        }
       } else if (isKnockout(match) && s1 === s2) {
         const ans = await uiPrompt(
           `Keputusan seri ${s1}-${s2} dalam perlawanan kalah mati (${match.peringkat}).\n` +
-          `Masukkan pemenang sepakan penalti:\n1 = ${match.namaP1}\n2 = ${match.namaP2}`
+          `Masukkan jaringan gol penalti:\n${match.namaP1} - ${match.namaP2}\n(contoh: 4-3)`
         );
         if (ans === null) return false;
-        const v = ans.trim();
-        if (v === '1') penalti = 'P1';
-        else if (v === '2') penalti = 'P2';
-        else {
-          showToast('Sila masukkan 1 atau 2 untuk pemenang penalti.', 'error');
-          return false;
-        }
+        const pg = parsePenaltiGol(ans);
+        if (!pg) { showToast('Format jaringan penalti tidak sah. Contoh: 4-3', 'error'); return false; }
+        if (pg[0] === pg[1]) { showToast('Keputusan penalti tidak boleh seri. Sepakan penalti diteruskan sehingga ada pemenang.', 'error', 5000); return false; }
+        penGol1 = pg[0]; penGol2 = pg[1];
+        penalti = penGol1 > penGol2 ? 'P1' : 'P2';
       }
 
-      const penaltiText = penalti ? `\nMenang penalti: ${penalti === 'P1' ? match.namaP1 : match.namaP2}` : '';
+      const penaltiText = penalti ? `\nMenang penalti: ${penalti === 'P1' ? match.namaP1 : match.namaP2}${penGol1 !== null ? ` (penalti ${penGol1}-${penGol2})` : ''}` : '';
       const session = getSession();
       const isRefSesi = !!session && session.peranan === 'PENGADIL';
       const ok = opts.tanpaSahkan || await uiConfirm(
@@ -10783,6 +10802,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         pengesahan: 'MENUNGGU',
         masaTamat: now,
         pemenangPenalti: penalti,
+        penaltiP1: penGol1, penaltiP2: penGol2, perluPenalti: false,
         dihantarOleh: session ? session.userId : null,
         pengadil: isRefSesi ? session.nama : (court.pengadil || match.pengadil || null),
         // FASA 6: rekod pengadil yang mengesahkan keputusan (rujukan Urusetia jika ada ralat markah)
@@ -10805,7 +10825,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const online = !!getGasUrl() && !!session.token;
         const resit = {
           matchId: match.id, gelanggang: courtId, namaP1: match.namaP1, namaP2: match.namaP2, s1, s2,
-          penalti: penalti ? (penalti === 'P1' ? match.namaP1 : match.namaP2) : '',
+          penalti: penalti ? (penalti === 'P1' ? match.namaP1 : match.namaP2) + (penGol1 !== null ? ` (penalti ${penGol1}-${penGol2})` : '') : '',
           nama: session.nama, pada: now, hantar: online ? 'menghantar' : 'tempatan'
         };
         state.ui.refResit = resit;
@@ -10913,6 +10933,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     // v1.14.6: butang "Sahkan" Peti Kelulusan - semakan tambahan untuk keputusan dipulihkan
     async function approveFromPeti(matchId) {
       const m = getMatch(matchId);
+      if (isPerluPenalti(m)) {
+        showToast(`${m.id}: markah RALAT - menunggu pengadil ${m.pengadil || ''} memasukkan jaringan penalti. Master Admin boleh tekan "Kemaskini Markah".`, 'warn', 7000);
+        return false;
+      }
       if (m && m.status === MATCH_STATUS.TUNGGU_SAH) {
         const s1 = Number(m.skorP1) || 0, s2 = Number(m.skorP2) || 0;
         if (isKnockout(m) && s1 === s2 && m.pemenangPenalti !== 'P1' && m.pemenangPenalti !== 'P2') {
@@ -11071,6 +11095,20 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const n = Number(v);
       return isNaN(n) ? null : n;
     }
+    // v1.44.0: jaringan penalti (cth. 4 & 3) daripada Google Sheets
+    function srvPenaltiGol(v) {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isInteger(n) && n >= 0 && n <= 99 ? n : null;
+    }
+    // v1.44.0: markah RALAT di Google Sheets - perlawanan kalah mati tamat SERI tanpa pemenang penalti.
+    // Perlawanan ini menunggu pengadil yang bertanggungjawab memasukkan jaringan penalti.
+    function srvPerluPenalti(row, match, st, s1, s2, penalti) {
+      if (!match || !isKnockout(match) || penalti) return false;
+      if (st !== MATCH_STATUS.TUNGGU_SAH && st !== MATCH_STATUS.SELESAI) return false;
+      return s1 !== null && s2 !== null && s1 === s2;
+    }
+
     function srvPenalti(v, match) {
       const t = String(v || '').trim();
       if (!t) return null;
@@ -11123,13 +11161,37 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const sah = String(row.pengesahan || '').toUpperCase();
       const s1 = srvScore(row.skorP1), s2 = srvScore(row.skorP2);
       const penalti = srvPenalti(row.pemenangPenalti, match);
+      const pen1 = srvPenaltiGol(row.penaltiP1), pen2 = srvPenaltiGol(row.penaltiP2);
       const findCourt = () => state.courts.find(c => c.matchSemasa === match.id);
+
+      // v1.44.0: markah RALAT (seri kalah mati tanpa penalti) -> keputusan DIBATALKAN pada peranti ini
+      // & menunggu pengadil yang bertanggungjawab memasukkan jaringan penalti (tiada main semula).
+      if (srvPerluPenalti(row, match, st, s1, s2, penalti)) {
+        if (match.perluPenalti && match.status === MATCH_STATUS.TUNGGU_SAH &&
+          Number(match.skorP1) === s1 && Number(match.skorP2) === s2) return null;
+        const dahSelesai = match.status === MATCH_STATUS.SELESAI;
+        Object.assign(match, {
+          skorP1: s1, skorP2: s2, status: MATCH_STATUS.TUNGGU_SAH, pengesahan: 'DITOLAK',
+          pemenangPenalti: null, penaltiP1: null, penaltiP2: null, perluPenalti: true,
+          catatan: row.catatan || 'RALAT: seri dalam perlawanan kalah mati tanpa keputusan penalti.',
+          pengadil: row.pengadil || match.pengadil || null,
+          masaTamat: row.masaTamat || match.masaTamat || nowIso(),
+          disahkanOleh: null, disahkanPada: null, sahPengadil: null, sahPengadilId: null, sahPengadilPada: null,
+          dipulihkan: false
+        });
+        const court = findCourt();
+        if (court && court.status !== COURT_STATUS.LIVE) { clearCourtLock(court); resetCourt(court); autoAssignCourts(court.id, { silent: true }); }
+        if (dahSelesai && typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+        addApprovalLog(match, `RALAT MARKAH: MENUNGGU JARINGAN PENALTI DARIPADA PENGADIL${match.pengadil ? ' (' + match.pengadil + ')' : ''}`);
+        return 'ditolak';
+      }
 
       // (a) Pengadil telah tamat & mengesahkan -> masuk Peti Kelulusan
       if (st === MATCH_STATUS.TUNGGU_SAH) {
         if (match.status === MATCH_STATUS.SELESAI) return null;
         const same = match.status === MATCH_STATUS.TUNGGU_SAH && Number(match.skorP1) === s1 &&
           Number(match.skorP2) === s2 && (match.pemenangPenalti || null) === penalti &&
+          (match.penaltiP1 ?? null) === pen1 && (match.penaltiP2 ?? null) === pen2 && !match.perluPenalti &&
           (match.sahPengadil || null) === (row.sahPengadil || null) && !match.dipulihkan;
         if (same) return null;
         Object.assign(match, {
@@ -11138,6 +11200,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           status: MATCH_STATUS.TUNGGU_SAH,
           pengesahan: 'MENUNGGU',
           pemenangPenalti: penalti,
+          penaltiP1: pen1, penaltiP2: pen2, perluPenalti: false,
           masaMula: row.masaMula || match.masaMula || null,
           masaTamat: row.masaTamat || match.masaTamat || nowIso(),
           pengadil: row.pengadil || match.pengadil || null,
@@ -11164,12 +11227,18 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               skorP2: s2 === null ? (Number(match.skorP2) || 0) : s2,
               pengesahan: 'DISAHKAN',
               pemenangPenalti: penalti,
+              penaltiP1: pen1, penaltiP2: pen2, perluPenalti: false,
               disahkanOleh: row.disahkanOleh || match.disahkanOleh || 'Urusetia',
               disahkanPada: row.disahkanPada || match.disahkanPada || null,
               versiPembetulan: String(row.versiPembetulan || match.versiPembetulan || '')
             });
             addApprovalLog(match, 'DIKEMAS KINI IKUT PEMBETULAN GOOGLE SHEETS');
             if (typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+            return 'disahkan';
+          }
+          // v1.44.0: jaringan penalti yang baru direkod di Google Sheets
+          if ((match.penaltiP1 ?? null) !== pen1 || (match.penaltiP2 ?? null) !== pen2 || match.perluPenalti) {
+            Object.assign(match, { penaltiP1: pen1, penaltiP2: pen2, perluPenalti: false });
             return 'disahkan';
           }
           const c0 = findCourt();
@@ -11182,6 +11251,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           status: MATCH_STATUS.SELESAI,
           pengesahan: 'DISAHKAN',
           pemenangPenalti: penalti,
+          penaltiP1: pen1, penaltiP2: pen2, perluPenalti: false,
           masaTamat: row.masaTamat || match.masaTamat || null,
           pengadil: row.pengadil || match.pengadil || null,
           disahkanOleh: row.disahkanOleh || 'Urusetia',
@@ -11246,14 +11316,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (url !== getGasUrl()) return false;
         const count = { baharu: 0, disahkan: 0, ditolak: 0 };
         const baru = [];
-        // v1.43.2: senarai perlawanan bermarkah RALAT (seri kalah mati tanpa penalti) untuk semua pengadil
-        // v1.43.3: markah RALAT yang telah dikemaskini pengadil -> Urusetia perlu sahkan semula
-        window.__sahSemula = {};
-        data.matches.forEach(r => { if (String(r.catatan || '').indexOf('DIKEMASKINI SEMULA') === 0) window.__sahSemula[String(r.id || '').toUpperCase()] = String(r.catatan); });
-        window.__ralatMarkah = data.matches.filter(r => String(r.catatan || '').indexOf('RALAT:') === 0 &&
-          String(r.status || '').toUpperCase().indexOf('SELESAI') < 0).map(r => ({
-          id: String(r.id || '').toUpperCase(), namaP1: r.namaP1 || '', namaP2: r.namaP2 || '',
-          pengadil: r.pengadil || '', gelanggang: r.gelanggang || '', catatan: String(r.catatan || '') }));
         data.matches.forEach(row => {
           const kind = mergeServerMatch(row);
           if (kind) { count[kind] += 1; if (kind === 'baharu') baru.push(String(row.id).toUpperCase()); }
@@ -11611,6 +11673,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         status: match.status,
         pengesahan: match.pengesahan,
         pemenangPenalti: match.pemenangPenalti ? (match.pemenangPenalti === 'P1' ? match.namaP1 : match.namaP2) : '',
+        // v1.44.0: jaringan penalti (Code.gs 1.25.0 menentukan pemenang daripada jaringan)
+        penaltiP1: match.pemenangPenalti && Number.isInteger(match.penaltiP1) ? match.penaltiP1 : '',
+        penaltiP2: match.pemenangPenalti && Number.isInteger(match.penaltiP2) ? match.penaltiP2 : '',
         masaMula: match.masaMula,
         fasaMulaPada: court.fasaMulaPada,
         masaTamat: match.masaTamat,
@@ -12951,7 +13016,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <button type="button" class="btn btn-sm" onclick="refreshCourtLocks()" ${url ? '' : 'disabled'}>🔄 Semak Status</button>
           </div>
         </div>
-        <div class="ref-desk-body">${body}</div>`;
+        <div class="ref-desk-body">${refRalatBanner(s)}${body}</div>`;
     }
 
 
@@ -13024,6 +13089,197 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     function refBuzz(ms = 25) {
       try { if (navigator.vibrate) navigator.vibrate(ms); } catch (err) { /* abaikan */ }
+    }
+
+    /* ---------------------------------------------------------
+       v1.44.0: MARKAH RALAT - SERI KALAH MATI TANPA PENALTI
+       - Code.gs 1.25.0 menyenaraikan perlawanan ini dalam papan live (ralatPenalti).
+       - Amaran dipaparkan kepada PENGADIL YANG BERTANGGUNGJAWAB (nama pengadil pada perlawanan).
+       - Pengadil memasukkan JARINGAN gol penalti (skor masa perlawanan dikekalkan, tiada main semula)
+         -> keputusan ke Peti Kelulusan Urusetia. Master Admin boleh kemas kini terus.
+       --------------------------------------------------------- */
+    let refRalat = null;   // { matchId, p1, p2, setuju, busy } semasa skrin "Masukkan keputusan penalti"
+
+    function refRalatSenarai(s) {
+      s = s || getSession();
+      if (!s || s.peranan !== 'PENGADIL' || refSukanOf(s) === 'BADMINTON') return [];
+      const list = Array.isArray(publicLive.ralatPenalti) ? publicLive.ralatPenalti : [];
+      const key = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      return list.filter(r => r && r.id).map(r => Object.assign({}, r, {
+        id: String(r.id).toUpperCase(),
+        milikSaya: !String(r.pengadil || '').trim() || key(r.pengadil) === key(s.nama)
+      }));
+    }
+
+    function refRalatBanner(s) {
+      const list = refRalatSenarai(s);
+      if (!list.length) return '';
+      return list.map(r => r.milikSaya ? `
+        <div class="rm-note danger rm-ralat" role="alert">
+          <div>⚠ <strong>RALAT MARKAH · ${escapeHtml(r.id)}</strong> · ${escapeHtml(r.peringkat || '')}</div>
+          <div><strong>${escapeHtml(r.namaP1)}</strong> ${Number(r.skorP1) || 0} - ${Number(r.skorP2) || 0} <strong>${escapeHtml(r.namaP2)}</strong></div>
+          <div>Perlawanan kalah mati ini tamat <strong>seri</strong> tetapi keputusan penalti belum dimasukkan. Sebagai pengadil yang bertanggungjawab, sila masukkan berapa <strong>jaringan gol penalti</strong> setiap pasukan.</div>
+          <button type="button" class="rm-btn rm-btn-warn" onclick="refBukaRalat('${escapeHtml(r.id)}')">🥅 Masukkan Keputusan Penalti</button>
+        </div>` : `
+        <div class="rm-note warn rm-ralat">⚠ <strong>${escapeHtml(r.id)}</strong> (${escapeHtml(r.namaP1)} lwn ${escapeHtml(r.namaP2)}) mempunyai markah ralat (seri tanpa penalti). Menunggu pengadil <strong>${escapeHtml(r.pengadil)}</strong> atau Master Admin.</div>`).join('');
+    }
+
+    function refBukaRalat(id) {
+      const r = refRalatSenarai().find(x => x.id === String(id || '').toUpperCase());
+      if (!r) { showToast('Markah ini telah pun dikemas kini.', 'info'); renderRefDesk(); return; }
+      if (!r.milikSaya) {
+        showToast(`Hanya pengadil ${r.pengadil} atau Master Admin boleh memasukkan keputusan penalti ${r.id}.`, 'error', 6000);
+        return;
+      }
+      if (refHeldCourt()) { showToast('Tamatkan / lepaskan perlawanan yang sedang anda kendalikan dahulu.', 'warn'); return; }
+      refRalat = { matchId: r.id, p1: 0, p2: 0, setuju: false, busy: false };
+      if (!isRefMode()) { state.ui = state.ui || {}; state.ui.refMode = 'telefon'; saveState(); updateAuthUI(); }
+      renderRefMobile();
+    }
+
+    function refRalatView(s) {
+      const f = refRalat;
+      const r = f ? refRalatSenarai(s).find(x => x.id === f.matchId) : null;
+      if (!r) { refRalat = null; return null; }
+      const ready = f.setuju && f.p1 !== f.p2 && !f.busy;
+      return {
+        key: `ralat-${r.id}`,
+        html: `
+          <div class="rm-lockbar">⚠ Ralat markah · ${escapeHtml(r.id)} · ${escapeHtml(r.peringkat || '')}</div>
+          <h2 class="rm-title">Masukkan keputusan penalti</h2>
+          <p class="rm-sub">Perlawanan kalah mati tamat seri. Masukkan berapa jaringan gol sepakan penalti setiap pasukan.</p>
+          <div class="rm-final">
+            <div class="t">${escapeHtml(r.namaP1)}</div>
+            <div class="n">${Number(r.skorP1) || 0} - ${Number(r.skorP2) || 0}</div>
+            <div class="t">${escapeHtml(r.namaP2)}</div>
+          </div>
+          <div class="rm-note">Skor masa perlawanan dikekalkan. Hanya jaringan penalti dimasukkan di bawah.</div>
+          ${penStepHtml(r.namaP1, r.namaP2, f.p1, f.p2, 'refRalatGol')}
+          <label class="rm-check">
+            <input type="checkbox" ${f.setuju ? 'checked' : ''} onchange="refRalatSetuju(this.checked)" />
+            <span>Saya, <strong>${escapeHtml(s.nama)}</strong>, mengesahkan keputusan penalti ini adalah betul.</span>
+          </label>
+          <button type="button" class="rm-btn rm-btn-primary" onclick="refRalatHantar()" ${ready ? '' : 'disabled'}>${f.busy ? '⏳ Menghantar...' : '✅ Sahkan &amp; Hantar ke Urusetia'}</button>
+          <button type="button" class="rm-btn rm-btn-ghost" onclick="refRalatBatal()" ${f.busy ? 'disabled' : ''}>← Kembali</button>`
+      };
+    }
+
+    function refRalatGol(side, delta) {
+      if (!refRalat || refRalat.busy) return;
+      const k = side === 1 ? 'p1' : 'p2';
+      refRalat[k] = Math.max(0, Math.min(99, (Number(refRalat[k]) || 0) + delta));
+      renderRefMobile();
+    }
+    function refRalatSetuju(checked) {
+      if (!refRalat) return;
+      refRalat.setuju = !!checked;
+      renderRefMobile();
+    }
+    function refRalatBatal() {
+      if (refRalat && refRalat.busy) return;
+      refRalat = null;
+      renderRefMobile();
+    }
+
+    async function refRalatHantar() {
+      const s = getSession();
+      const f = refRalat;
+      if (!f || f.busy) return false;
+      if (!f.setuju) { showToast('Tandakan pengesahan anda dahulu.', 'warn'); return false; }
+      if (f.p1 === f.p2) { showToast('Keputusan penalti tidak boleh seri.', 'warn'); return false; }
+      if (!s || !s.token || !getGasUrl()) {
+        showToast('Perlu internet & log masuk dalam talian untuk menghantar keputusan penalti.', 'error', 6000);
+        return false;
+      }
+      f.busy = true;
+      renderRefMobile();
+      let res = null;
+      try {
+        res = await callGas({ action: 'simpanPenalti', token: s.token, matchId: f.matchId, penaltiP1: f.p1, penaltiP2: f.p2 });
+      } finally {
+        f.busy = false;
+      }
+      if (res && res.ok) {
+        publicLive.ralatPenalti = (publicLive.ralatPenalti || []).filter(x => String(x.id || '').toUpperCase() !== f.matchId);
+        publicLive.ralatSig = JSON.stringify(publicLive.ralatPenalti);
+        const m = getMatch(f.matchId);
+        if (m) {
+          Object.assign(m, {
+            status: MATCH_STATUS.TUNGGU_SAH, pengesahan: 'MENUNGGU', perluPenalti: false,
+            pemenangPenalti: f.p1 > f.p2 ? 'P1' : 'P2', penaltiP1: f.p1, penaltiP2: f.p2,
+            sahPengadil: s.nama, sahPengadilId: s.userId || null, sahPengadilPada: nowIso()
+          });
+          saveState();
+        }
+        refRalat = null;
+        refBuzz(60);
+        showToast(`Keputusan penalti ${f.matchId} (${f.p1}-${f.p2}) diterima Google Sheets & dihantar ke Peti Kelulusan Urusetia.`, 'success', 6500);
+        try { fetchPublicLive(); } catch (e) { /* abaikan */ }
+      } else {
+        const err = (res && res.error) || 'Google Sheets menolak permintaan.';
+        const lama = /tidak dikenali/i.test(err) ? ' Code.gs perlu dikemas kini ke versi 1.25.0 dan di-deploy sebagai versi baharu.' : '';
+        showToast('⚠ ' + err + lama, 'error', 9000);
+      }
+      renderRefMobile();
+      return !!(res && res.ok);
+    }
+
+    // v1.44.0: MASTER ADMIN - kemas kini markah RALAT (skor masa perlawanan + jaringan penalti) & terus SAHKAN
+    async function adminKemaskiniPenalti(matchId) {
+      if (!canManageSystem()) { showToast('Hanya Master Admin boleh mengemas kini markah ini.', 'error'); return false; }
+      const m = getMatch(matchId);
+      if (!m) return false;
+      if (!getGasUrl()) { showToast('URL Google Apps Script belum ditetapkan.', 'error'); return false; }
+      const skorAns = await uiPrompt(
+        `Kemaskini markah ${m.id} (Master Admin)\n${m.namaP1} lwn ${m.namaP2}\n\n` +
+        `Skor masa perlawanan (${m.namaP1} - ${m.namaP2}):`, `${Number(m.skorP1) || 0}-${Number(m.skorP2) || 0}`);
+      if (skorAns === null) return false;
+      const sk = parsePenaltiGol(skorAns);
+      if (!sk) { showToast('Format skor tidak sah. Contoh: 0-0', 'error'); return false; }
+      const [s1, s2] = sk;
+      let p1 = '', p2 = '';
+      if (s1 === s2) {
+        const penAns = await uiPrompt(
+          `Skor seri ${s1}-${s2} (kalah mati).\nMasukkan jaringan gol penalti:\n${m.namaP1} - ${m.namaP2}\n(contoh: 4-3)`, '');
+        if (penAns === null) return false;
+        const pg = parsePenaltiGol(penAns);
+        if (!pg) { showToast('Format jaringan penalti tidak sah. Contoh: 4-3', 'error'); return false; }
+        if (pg[0] === pg[1]) { showToast('Keputusan penalti tidak boleh seri.', 'error'); return false; }
+        [p1, p2] = pg;
+      }
+      const menang = s1 !== s2 ? (s1 > s2 ? m.namaP1 : m.namaP2) : (p1 > p2 ? m.namaP1 : m.namaP2);
+      const ok = await uiConfirm(
+        `Simpan & SAHKAN keputusan ${m.id}?\n\n${m.namaP1}  ${s1} - ${s2}  ${m.namaP2}` +
+        (p1 !== '' ? `\nPenalti ${p1} - ${p2}` : '') + `\nPemenang: ${menang}\n\n` +
+        'Keputusan terus DISAHKAN dan carta kalah mati dikemas kini automatik.');
+      if (!ok) return false;
+      const adminKey = await ensureAdminKey();
+      if (!adminKey) return false;
+      const res = await callGas({ action: 'simpanPenalti', adminKey, matchId: m.id, skorP1: s1, skorP2: s2,
+        penaltiP1: p1, penaltiP2: p2, oleh: (getSession() || {}).nama || 'Master Admin' });
+      if (!res || !res.ok) {
+        if (res && res.kod === 'BUKAN_ADMIN') setAdminKey(null);
+        const err = (res && res.error) || 'Google Sheets menolak permintaan.';
+        const lama = /tidak dikenali/i.test(err) ? ' Code.gs perlu dikemas kini ke versi 1.25.0 dan di-deploy sebagai versi baharu.' : '';
+        showToast('⚠ ' + err + lama, 'error', 9000);
+        return false;
+      }
+      Object.assign(m, {
+        skorP1: s1, skorP2: s2, status: MATCH_STATUS.SELESAI, pengesahan: 'DISAHKAN', perluPenalti: false,
+        pemenangPenalti: p1 !== '' ? (p1 > p2 ? 'P1' : 'P2') : null,
+        penaltiP1: p1 !== '' ? p1 : null, penaltiP2: p2 !== '' ? p2 : null,
+        disahkanOleh: (getSession() || {}).nama || 'Master Admin', disahkanPada: res.masa || nowIso(),
+        versiPembetulan: res.versiPembetulan || m.versiPembetulan || '',
+        catatan: `Dikemas kini Master Admin (ralat penalti): ${s1}-${s2}${p1 !== '' ? ` (penalti ${p1}-${p2})` : ''}`
+      });
+      recentDecisions[m.id] = Date.now();
+      addApprovalLog(m, `RALAT PENALTI DIKEMAS KINI & DISAHKAN (MASTER ADMIN): ${s1}-${s2}${p1 !== '' ? ` · penalti ${p1}-${p2}` : ''}`);
+      if (typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams();
+      saveState();
+      refreshAllViews();
+      showToast(`${m.id} dikemas kini & disahkan: ${s1}-${s2}${p1 !== '' ? ` (penalti ${p1}-${p2})` : ''} · pemenang ${menang}.`, 'success', 7000);
+      setTimeout(() => { try { pullMatchesFromSheet({ silent: true }); } catch (e) { /* abaikan */ } }, 1500);
+      return true;
     }
 
     function refSyncText(s) {
@@ -13133,7 +13389,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         showToast('Tekan ▶ Sambung Perlawanan sebelum menamatkan perlawanan.', 'warn');
         return;
       }
-      refFinish = { courtId, penalti: null, setuju: false };
+      refFinish = { courtId, penalti: null, setuju: false, p1: 0, p2: 0 };
       renderRefMobile();
     }
 
@@ -13154,6 +13410,38 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       renderRefMobile();
     }
 
+    // v1.44.0: jaringan penalti setiap pasukan (butang + / -) -> pemenang penalti
+    function refSetPenaltiGol(side, delta) {
+      if (!refFinish) return;
+      const k = side === 1 ? 'p1' : 'p2';
+      refFinish[k] = Math.max(0, Math.min(99, (Number(refFinish[k]) || 0) + delta));
+      refFinish.penalti = refFinish.p1 > refFinish.p2 ? 'P1' : (refFinish.p2 > refFinish.p1 ? 'P2' : null);
+      renderRefMobile();
+    }
+
+    // v1.44.0: kawalan jaringan penalti (dikongsi skrin Semak & Sahkan dan skrin Ralat Markah)
+    function penStepHtml(nama1, nama2, p1, p2, fn) {
+      const step = (side) => {
+        const v = side === 1 ? p1 : p2;
+        const nama = side === 1 ? nama1 : nama2;
+        return `
+          <div class="rm-penstep">
+            <div class="t">${escapeHtml(nama)}</div>
+            <div class="ctl">
+              <button type="button" onclick="${fn}(${side}, -1)" aria-label="Kurang 1 gol penalti ${escapeHtml(nama)}" ${v <= 0 ? 'disabled' : ''}>−</button>
+              <span class="n" aria-label="Gol penalti ${escapeHtml(nama)}">${v}</span>
+              <button type="button" onclick="${fn}(${side}, 1)" aria-label="Tambah 1 gol penalti ${escapeHtml(nama)}">＋</button>
+            </div>
+          </div>`;
+      };
+      const seri = p1 === p2;
+      const menang = seri ? '' : (p1 > p2 ? nama1 : nama2);
+      return `<div class="rm-pen">${step(1)}${step(2)}</div>
+        ${seri
+          ? `<div class="rm-note warn">Penalti tidak boleh seri (${p1} - ${p2}). Sepakan penalti diteruskan sehingga ada pemenang.</div>`
+          : `<div class="rm-note ok">🥅 Pemenang penalti: <strong>${escapeHtml(menang)}</strong> (penalti ${p1} - ${p2})</div>`}`;
+    }
+
     // Langkah 3b: pengadil SAHKAN & hantar keputusan
     async function refConfirmSubmit() {
       const c = refHeldCourt();
@@ -13163,8 +13451,13 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const s2 = Number(c.skorLiveP2) || 0;
       const perluPenalti = !!m && isKnockout(m) && s1 === s2;
       if (!refFinish.setuju) { showToast('Tandakan pengesahan anda dahulu.', 'warn'); return false; }
-      if (perluPenalti && !refFinish.penalti) { showToast('Pilih pemenang sepakan penalti.', 'warn'); return false; }
-      const ok = await refereeSubmitMatch(c.id, { penalti: perluPenalti ? refFinish.penalti : null, tanpaSahkan: true });
+      if (perluPenalti && !refFinish.penalti) { showToast('Masukkan jaringan penalti. Penalti tidak boleh seri.', 'warn'); return false; }
+      const ok = await refereeSubmitMatch(c.id, {
+        penalti: perluPenalti ? refFinish.penalti : null,
+        penaltiP1: perluPenalti ? (Number(refFinish.p1) || 0) : null,
+        penaltiP2: perluPenalti ? (Number(refFinish.p2) || 0) : null,
+        tanpaSahkan: true
+      });
       if (ok) { refFinish = null; refBuzz(60); }
       renderRefMobile();
       return ok;
@@ -13254,6 +13547,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             </div>
           </div>
           <p class="rm-sync">${escapeHtml(refSyncText(s))}</p>
+          ${refRalatBanner(s)}
           <h2 class="rm-title">Pilih perlawanan untuk diadili</h2>
           <p class="rm-sub">Ketik satu perlawanan. Paparan akan dikunci pada perlawanan itu sahaja.</p>
           ${refFsTurutan()}
@@ -13347,7 +13641,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       const s2 = Number(c.skorLiveP2) || 0;
       const perluPenalti = !!m && isKnockout(m) && s1 === s2;
       const f = refFinish;
-      const ready = f.setuju && (!perluPenalti || !!f.penalti);
+      const ready = f.setuju && (!perluPenalti || (!!f.penalti && (Number(f.p1) || 0) !== (Number(f.p2) || 0)));
       return {
         key: `finish-${c.id}`,
         html: `
@@ -13360,11 +13654,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <div class="t">${m ? escapeHtml(m.namaP2) : '-'}</div>
           </div>
           ${perluPenalti ? `
-            <div class="rm-note warn">Seri dalam perlawanan kalah mati. Pilih pemenang sepakan penalti:</div>
-            <div class="rm-pen">
-              <button type="button" aria-pressed="${f.penalti === 'P1' ? 'true' : 'false'}" onclick="refSetPenalti('P1')">🥅 ${escapeHtml(m.namaP1)}</button>
-              <button type="button" aria-pressed="${f.penalti === 'P2' ? 'true' : 'false'}" onclick="refSetPenalti('P2')">🥅 ${escapeHtml(m.namaP2)}</button>
-            </div>` : ''}
+            <div class="rm-note warn">Seri dalam perlawanan kalah mati. Masukkan <strong>jaringan gol penalti</strong> setiap pasukan:</div>
+            ${penStepHtml(m.namaP1, m.namaP2, Number(f.p1) || 0, Number(f.p2) || 0, 'refSetPenaltiGol')}` : ''}
           <label class="rm-check">
             <input type="checkbox" ${f.setuju ? 'checked' : ''} onchange="refToggleSetuju(this.checked)" />
             <span>Saya, <strong>${escapeHtml(s.nama)}</strong>, mengesahkan keputusan perlawanan ini adalah betul.</span>
@@ -13386,6 +13677,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       return {
         key: `resit-${r.matchId}`,
         html: `
+          ${refRalatBanner(s)}
           <div class="rm-receipt">
             <div class="big">✅</div>
             <h2>Keputusan disahkan &amp; dihantar</h2>
@@ -13401,23 +13693,6 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           ${r.hantar === 'gagal' && r.payload ? `<button type="button" class="rm-btn rm-btn-warn" onclick="refRetrySend()">🔁 Cuba Hantar Semula</button>` : ''}
           <button type="button" class="rm-btn rm-btn-primary" onclick="refCloseReceipt()">➡ Pilih Perlawanan Seterusnya</button>`
       };
-    }
-
-    // v1.43.2: arahan kepada SEMUA pengadil - perlawanan yang markahnya perlu ditetapkan semula
-    function ralatMarkahBanner(s) {
-      const list = Array.isArray(window.__ralatMarkah) ? window.__ralatMarkah : [];
-      if (!list.length || refSukanOf(s) === 'BADMINTON') return '';
-      const saya = String((s && s.nama) || '').trim().toUpperCase();
-      const items = list.map(r => {
-        const milik = r.pengadil && String(r.pengadil).trim().toUpperCase() === saya;
-        return `<li style="margin:6px 0;"><strong>${escapeHtml(r.id)}</strong> · ${escapeHtml(r.namaP1)} lawan ${escapeHtml(r.namaP2)}` +
-          (r.gelanggang ? ` · Gelanggang ${escapeHtml(r.gelanggang)}` : '') +
-          `<br><small>${milik ? '👉 <strong>Anda</strong> pengadil asal - sila ambil semula perlawanan ini, masukkan skor betul &amp; PILIH pemenang penalti jika seri.'
-            : 'Pengadil asal: <strong>' + escapeHtml(r.pengadil || '-') + '</strong> perlu menetapkan semula markah.'}</small></li>`;
-      }).join('');
-      return `<div class="rm-note danger" style="margin:10px 0;">⚠ <strong>MARKAH PERLU DIKEMASKINI SEMULA</strong><br>` +
-        `<small>Keputusan seri kalah mati tanpa pemenang penalti TIDAK dihantar kepada Urusetia. Perlawanan seterusnya tidak dapat diproses selagi markah ini belum dikemaskini.</small>` +
-        `<ul style="margin:6px 0 0 16px;padding:0;">${items}</ul></div>`;
     }
 
     function renderRefMobile() {
@@ -13444,13 +13719,14 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (refFinish && (!held || held.id !== refFinish.courtId || held.status !== COURT_STATUS.LIVE || isCourtPaused(held))) refFinish = null;
         if (held && refFinish) view = refFinishView(s, held);
         else if (held) view = refFocusView(s, held);
+        else if (refRalat && (view = refRalatView(s))) { /* v1.44.0: masukkan jaringan penalti (markah RALAT) */ }
         else if (state.ui && state.ui.refResit) view = refReceiptView(s, state.ui.refResit);
         else view = refPickView(s);
       }
       // Kekalkan keadaan "Tindakan lain" (terbuka/tertutup) selepas paparan dijana semula
       const moreOpen = !!el.querySelector('details.rm-more[open]');
       const othersOpen = !!el.querySelector('details.rm-others[open]');
-      el.innerHTML = ralatMarkahBanner(s) + view.html;
+      el.innerHTML = view.html;
       if (moreOpen) { const d = el.querySelector('details.rm-more'); if (d) d.open = true; }
       if (othersOpen) { const d = el.querySelector('details.rm-others'); if (d) d.open = true; }
       if (view.key !== refViewKey) {
@@ -14161,6 +14437,13 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const changed = sig !== publicLive.sig || !!publicLive.error;
         publicLive.data = data.gelanggang;
         publicLive.sig = sig;
+        // v1.44.0: markah RALAT (seri kalah mati tanpa penalti) untuk amaran pengadil bertanggungjawab
+        const ralatBaru = Array.isArray(data.ralatPenalti) ? data.ralatPenalti : [];
+        const ralatSig = JSON.stringify(ralatBaru);
+        const ralatUbah = ralatSig !== (publicLive.ralatSig || '[]');
+        publicLive.ralatPenalti = ralatBaru;
+        publicLive.ralatSig = ralatSig;
+        if (ralatUbah) { try { renderRefDesk(); } catch (e) { /* abaikan */ } }
         publicLive.lastOk = nowIso();
         publicLive.error = '';
         publicLive.fails = 0;
@@ -15259,6 +15542,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function statusBadge(match) {
+      if (isPerluPenalti(match)) return '<span class="badge badge-reject" title="Seri kalah mati tanpa keputusan penalti">⚠ Ralat · Perlu Penalti</span>';   // v1.44.0
       switch (match.status) {
         case MATCH_STATUS.LIVE: return '<span class="badge badge-live badge-dot">Live</span>';
         case MATCH_STATUS.TUNGGU_SAH: return '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>';
@@ -15275,8 +15559,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
     function scoreText(match) {
       if (match.skorP1 === null || match.skorP1 === undefined) return '– : –';
-      const pen = match.pemenangPenalti ? ` <small class="muted">(pen. ${match.pemenangPenalti === 'P1' ? 'P1' : 'P2'})</small>` : '';
+      const gol = penaltiGolTeks(match);
+      const pen = match.pemenangPenalti ? ` <small class="muted">(pen. ${gol || (match.pemenangPenalti === 'P1' ? 'P1' : 'P2')})</small>` : '';
       return `${Number(match.skorP1) || 0} : ${Number(match.skorP2) || 0}${pen}`;
+    }
+
+    // v1.44.0: "4-3" bila jaringan penalti direkod, '' jika tiada
+    function penaltiGolTeks(match) {
+      if (!match || !match.pemenangPenalti) return '';
+      return Number.isInteger(match.penaltiP1) && Number.isInteger(match.penaltiP2) ? `${match.penaltiP1}-${match.penaltiP2}` : '';
+    }
+
+    // v1.44.0: "4-3" / "4 - 3" / "4:3" -> [4, 3] (0 hingga 99) atau null
+    function parsePenaltiGol(teks) {
+      const m = /^\s*(\d{1,2})\s*[-:–]\s*(\d{1,2})\s*$/.exec(String(teks || ''));
+      return m ? [Number(m[1]), Number(m[2])] : null;
     }
 
     function categoryVisible(kategori) {
@@ -15434,14 +15731,20 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const nama = p === 'P1' ? m.namaP1 : m.namaP2;
         const sk = p === 'P1' ? m.skorP1 : m.skorP2;
         const cls = isPlaceholderName(nama) ? 'tbd' : (win ? (win === p ? 'win' : 'lose') : '');
-        const pen = m.pemenangPenalti === p ? ' <small class="muted">(pen)</small>' : '';
+        const gol = penaltiGolTeks(m);
+        const pen = gol
+          ? ` <small class="muted">(${p === 'P1' ? m.penaltiP1 : m.penaltiP2})</small>`
+          : (m.pemenangPenalti === p ? ' <small class="muted">(pen)</small>' : '');
         return `<div class="ko-team ${cls}"><span class="nm" title="${escapeHtml(nama)}">${escapeHtml(nama)}</span><span class="sc">${has ? (Number(sk) || 0) : '–'}${pen}</span></div>`;
       };
       const cls = (m.status === MATCH_STATUS.LIVE ? ' live' : '') + (m.peringkat === 'AKHIR' ? ' final' : '');
       // v1.40.4: keputusan disahkan tetapi tiada pemenang (seri tanpa penalti) -> perlawanan seterusnya tersekat
       const tiadaPemenang = isApproved(m) && !win
         ? `<div class="ko-team"><span class="badge badge-reject" title="Master Admin: Pembetulan Markah -> pilih pemenang penalti">⚠ Tiada pemenang · perlu pemenang penalti</span></div>` : '';
-      return `<div class="ko-card${cls}"><div class="ko-meta"><span>${escapeHtml(m.id)}</span>${statusBadge(m)}</div>${side('P1')}${side('P2')}${tiadaPemenang}</div>`;
+      // v1.44.0: markah RALAT -> menunggu jaringan penalti daripada pengadil yang bertanggungjawab
+      const ralatPen = isPerluPenalti(m)
+        ? `<div class="ko-team"><span class="badge badge-reject" title="Pengadil yang bertanggungjawab perlu memasukkan jaringan penalti (atau Master Admin kemas kini markah)">⚠ Ralat markah · menunggu penalti${m.pengadil ? ' daripada ' + escapeHtml(m.pengadil) : ''}</span></div>` : '';
+      return `<div class="ko-card${cls}"><div class="ko-meta"><span>${escapeHtml(m.id)}</span>${statusBadge(m)}</div>${side('P1')}${side('P2')}${tiadaPemenang}${ralatPen}</div>`;
     }
 
     function renderKoBlock(kat) {
@@ -16156,8 +16459,12 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
 
       const bmPending = petiBmPending();
       const futsalHtml = pending.map(m => {
+        const golPen = penaltiGolTeks(m);
         const pen = m.pemenangPenalti
-          ? `<div class="ap-meta">🥅 Menang penalti: <strong>${escapeHtml(m.pemenangPenalti === 'P1' ? m.namaP1 : m.namaP2)}</strong></div>` : '';
+          ? `<div class="ap-meta">🥅 Menang penalti: <strong>${escapeHtml(m.pemenangPenalti === 'P1' ? m.namaP1 : m.namaP2)}</strong>${golPen ? ` · jaringan penalti <strong>${golPen}</strong>` : ''}</div>` : '';
+        // v1.44.0: markah RALAT - seri kalah mati tanpa penalti (tidak boleh Sahkan / Tolak)
+        const ralatPen = isPerluPenalti(m)
+          ? `<div class="ap-meta ap-nosah">⚠ <strong>RALAT MARKAH:</strong> seri dalam perlawanan kalah mati tanpa keputusan penalti. Menunggu pengadil <strong>${escapeHtml(m.pengadil || '-')}</strong> memasukkan jaringan gol penalti${canManageSystem() ? ' · atau tekan "Kemaskini Markah"' : ''}.</div>` : '';
         const by = m.pengadil || (m.dihantarOleh ? ((getUserById(m.dihantarOleh) || getRefereeById(m.dihantarOleh) || {}).nama || m.dihantarOleh) : 'Pengadil');
         // FASA 6: siapa pengadil yang mengesahkan keputusan ini
         const pulih = m.dipulihkan
@@ -16172,13 +16479,17 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
               <div class="ap-meta">Gelanggang ${escapeHtml(m.gelanggang)} · 🧑‍⚖️ Pengadil: ${escapeHtml(by)} · ${formatTime(m.masaTamat)}</div>
               <div class="ap-score">${escapeHtml(m.namaP1)} <span style="color:var(--brand);">${Number(m.skorP1) || 0} - ${Number(m.skorP2) || 0}</span> ${escapeHtml(m.namaP2)}</div>
               ${pen}
-              ${(window.__sahSemula && window.__sahSemula[String(m.id).toUpperCase()]) ? `<div class="ap-meta ap-nosah">🔁 <strong>MARKAH DIKEMASKINI SEMULA</strong> selepas RALAT penalti · sila semak &amp; SAHKAN SEMULA</div>` : ''}
-              ${sah}
+              ${ralatPen}
+              ${isPerluPenalti(m) ? '' : sah}
               ${pulih}
             </div>
             <div class="approval-actions">
-              <button type="button" class="btn btn-success btn-sm" onclick="approveFromPeti('${m.id}')">✔ Sahkan</button>
-              <button type="button" class="btn btn-sm" onclick="rejectMatch('${m.id}')">✖ Tolak</button>
+              ${isPerluPenalti(m)
+                ? (canManageSystem()
+                  ? `<button type="button" class="btn btn-primary btn-sm" onclick="adminKemaskiniPenalti('${m.id}')">🥅 Kemaskini Markah</button>`
+                  : '<span class="badge badge-reject">Menunggu pengadil</span>')
+                : `<button type="button" class="btn btn-success btn-sm" onclick="approveFromPeti('${m.id}')">✔ Sahkan</button>
+              <button type="button" class="btn btn-sm" onclick="rejectMatch('${m.id}')">✖ Tolak</button>`}
             </div>
           </div>`;
       }).join('');
@@ -16636,7 +16947,10 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         pemenangPenalti: m.pemenangPenalti ? (m.pemenangPenalti === 'P1' ? m.namaP1 : m.namaP2) : '',
         masaMula: m.masaMula, masaTamat: m.masaTamat,
         disahkanOleh: m.disahkanOleh, disahkanPada: m.disahkanPada, catatan: m.catatan,
-        versiPembetulan: m.versiPembetulan || ''   // FASA 4: cop versi daripada pelayan
+        versiPembetulan: m.versiPembetulan || '',   // FASA 4: cop versi daripada pelayan
+        // v1.44.0: jaringan penalti dihantar HANYA bila diketahui (peranti lama tidak memadam nilai di Google Sheets)
+        ...(m.pemenangPenalti && Number.isInteger(m.penaltiP1) && Number.isInteger(m.penaltiP2)
+          ? { penaltiP1: m.penaltiP1, penaltiP2: m.penaltiP2 } : {})
       };
     }
 
@@ -18969,27 +19283,40 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         rows.forEach(row => {
           const m = getMatch(String(row.id || '').toUpperCase());
           if (!m) return;
-          const sebelum = JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti]);
+          const sebelum = JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti, m.perluPenalti, m.penaltiP1, m.penaltiP2]);
           const st = srvStatus(row.status), sah = String(row.pengesahan || '').toUpperCase();
           const s1 = srvScore(row.skorP1), s2 = srvScore(row.skorP2);
+          const penSrv = srvPenalti(row.pemenangPenalti, m);
+          const pen1 = srvPenaltiGol(row.penaltiP1), pen2 = srvPenaltiGol(row.penaltiP2);
           if (m.status === MATCH_STATUS.MENUNGGU || st === MATCH_STATUS.SELESAI) {
             const nm = v => { const x = String(v || '').trim(); return x && !isPlaceholderName(x) ? x : ''; };
             const n1 = nm(row.namaP1), n2 = nm(row.namaP2);
             if (n1) m.namaP1 = n1;
             if (n2) m.namaP2 = n2;
           }
-          if (st === MATCH_STATUS.SELESAI && sah === 'DISAHKAN' && s1 !== null && s2 !== null) {
+          if (srvPerluPenalti(row, m, st, s1, s2, penSrv)) {
+            // v1.44.0: markah RALAT - keputusan belum sah, menunggu jaringan penalti daripada pengadil
+            Object.assign(m, {
+              skorP1: s1, skorP2: s2, status: MATCH_STATUS.TUNGGU_SAH, pengesahan: 'DITOLAK',
+              pemenangPenalti: null, penaltiP1: null, penaltiP2: null, perluPenalti: true,
+              pengadil: row.pengadil || m.pengadil || null, disahkanOleh: null, disahkanPada: null
+            });
+          } else if (m.perluPenalti && st === MATCH_STATUS.TUNGGU_SAH && penSrv) {
+            // Pengadil telah memasukkan penalti -> menunggu pengesahan Urusetia
+            Object.assign(m, { perluPenalti: false, pengesahan: 'MENUNGGU', pemenangPenalti: penSrv, penaltiP1: pen1, penaltiP2: pen2 });
+          } else if (st === MATCH_STATUS.SELESAI && sah === 'DISAHKAN' && s1 !== null && s2 !== null) {
             Object.assign(m, {
               skorP1: s1, skorP2: s2, status: MATCH_STATUS.SELESAI, pengesahan: 'DISAHKAN',
-              pemenangPenalti: srvPenalti(row.pemenangPenalti, m),
+              penaltiP1: pen1, penaltiP2: pen2, perluPenalti: false,
+              pemenangPenalti: penSrv,
               disahkanOleh: row.disahkanOleh || m.disahkanOleh || 'Urusetia',
               disahkanPada: row.disahkanPada || m.disahkanPada || null
             });
           } else if (m.status === MATCH_STATUS.SELESAI && st === MATCH_STATUS.MENUNGGU && sah !== 'DISAHKAN') {
             // Acara ditetapkan semula di Google Sheets -> buang keputusan lama pada peranti ini
-            Object.assign(m, { status: MATCH_STATUS.MENUNGGU, pengesahan: 'MENUNGGU', skorP1: null, skorP2: null, pemenangPenalti: null });
+            Object.assign(m, { status: MATCH_STATUS.MENUNGGU, pengesahan: 'MENUNGGU', skorP1: null, skorP2: null, pemenangPenalti: null, penaltiP1: null, penaltiP2: null, perluPenalti: false });
           }
-          if (JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti]) !== sebelum) berubah = true;
+          if (JSON.stringify([m.namaP1, m.namaP2, m.skorP1, m.skorP2, m.status, m.pengesahan, m.pemenangPenalti, m.perluPenalti, m.penaltiP1, m.penaltiP2]) !== sebelum) berubah = true;
         });
         if (berubah) {
           try { if (typeof window.resolveKnockoutTeams === 'function') window.resolveKnockoutTeams(); } catch (e) { /* abaikan */ }
