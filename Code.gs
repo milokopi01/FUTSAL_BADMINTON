@@ -4873,7 +4873,7 @@ function skorPengadilBadminton_(body) {
   const id = String(body.id || '').trim().toUpperCase();
   if (!/^[A-Z0-9][A-Z0-9_-]{0,59}$/.test(id)) return { ok: false, error: 'ID perlawanan tidak sah.' };
   const jenis = String(body.jenis || '').trim().toUpperCase();
-  if (jenis !== 'SEMASA' && jenis !== 'TAMAT') return { ok: false, error: 'Jenis penghantaran skor tidak sah.' };
+  if (jenis !== 'SEMASA' && jenis !== 'TAMAT' && jenis !== 'LEPAS') return { ok: false, error: 'Jenis penghantaran skor tidak sah.' };
   const s1 = skorInt_(body.skorP1), s2 = skorInt_(body.skorP2);
   if (s1 === null || s2 === null) return { ok: false, error: 'Skor mesti nombor bulat 0 hingga 99.' };
   if (jenis === 'TAMAT' && s1 === s2) return { ok: false, error: 'Keputusan Badminton tidak boleh seri.' };
@@ -4908,6 +4908,18 @@ function skorPengadilBadminton_(body) {
     }
   }
 
+  // Pengadil serah / keluar gelanggang: simpan skor, kosongkan nama pengadil -> pengadil lain boleh ambil alih segera
+  if (jenis === 'LEPAS') {
+    if (status !== 'LIVE') return { ok: false, error: 'Perlawanan ' + id + ' tidak sedang berlangsung.' };
+    if (lama && refNameKey_(lama) !== refNameKey_(ref.nama)) return { ok: false, kod: 'DIKUNCI', error: 'Anda bukan pengadil perlawanan ' + id + '.' };
+    const rowL = table.values[rec.rowIndex].slice();
+    const setL = function (f, v) { if (table.colOf[f] !== undefined) rowL[table.colOf[f]] = v; };
+    setL('skorP1', s1); setL('skorP2', s2); setL('pengadil', ''); setL('kemaskini', new Date());
+    sheet.getRange(rec.rowIndex + 1, 1, 1, rowL.length).setValues([rowL]);
+    SpreadsheetApp.flush();
+    CacheService.getScriptCache().remove(BM_CACHE_KEY);
+    return { ok: true, versi: API_VERSI, sukan: 'BADMINTON', id: id, skorP1: s1, skorP2: s2, jenis: 'LEPAS', status: 'SEDANG BERLANGSUNG', pengadil: '' };
+  }
   if (jenis === 'SEMASA' && bmBelumMula_(d)) BM_BARU_MULA_ = true;   // v1.23.4: perlawanan baru bermula -> auto-isi gelanggang kosong
   const now = new Date();
   const row = table.values[rec.rowIndex].slice();

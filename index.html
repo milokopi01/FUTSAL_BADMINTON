@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbwt70SrBxxfd5gvoIHSm6Yc00Fym8kl-fXQUW00QZW9QBp8k1STs9tYeR5hPJGrS1VJ/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -12594,6 +12594,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
                 <button type="button" class="btn btn-sm" onclick="bmRefSend('SEMASA')" ${bmRef.busy ? 'disabled' : ''}>💾 Simpan Skor Semasa</button>
                 <button type="button" class="btn btn-success btn-sm" onclick="bmRefSend('TAMAT')" ${bmRef.busy ? 'disabled' : ''}>🏁 Tamat &amp; Hantar Keputusan</button>
                 <button type="button" class="btn btn-sm" onclick="bmRefClose()" ${bmRef.busy ? 'disabled' : ''}>✕ Tutup</button>
+                ${bmRef.sel.started ? `<button type="button" class="btn btn-sm" onclick="bmRefRelease()" ${bmRef.busy ? 'disabled' : ''}>🔓 Serah kepada Pengadil Lain</button>` : ''}
               </div>
               <small style="display:block;color:var(--text-2);font-size:.74rem;margin-top:8px;">Keputusan yang dihantar menunggu pengesahan Master Admin sebelum dikira dalam carta.</small>
             </div>`;
@@ -12986,6 +12987,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <summary>⋯ Tindakan lain</summary>
             <div class="rm-more-body">
               <button type="button" class="rm-btn" onclick="bmRefSaveNow()" ${bmRef.busy || bmSave.busy ? 'disabled' : ''}>💾 Simpan Skor Sekarang</button>
+              <button type="button" class="rm-btn" onclick="bmRefRelease()" ${bmRef.busy ? 'disabled' : ''}>🔓 Serah kepada Pengadil Lain / Keluar Gelanggang</button>
               <button type="button" class="rm-btn rm-btn-ghost" onclick="bmRefLeave()" ${bmRef.busy ? 'disabled' : ''}>↩ Kembali ke senarai (perlawanan kekal di bawah anda)</button>
             </div>
           </details>`;
@@ -13158,6 +13160,35 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     async function bmRefSaveNow() { await bmRefFlushSave(); await bmRefAutoSave(); }
+
+    // Pengadil keluar gelanggang (salah gelanggang / ke tandas): skor disimpan, nama pengadil dikosongkan
+    // supaya pengadil Badminton lain boleh terus "Ambil Alih & Teruskan" tanpa menunggu 30 minit.
+    async function bmRefRelease() {
+      if (!bmRef.sel || bmRef.busy) return;
+      const s = getSession();
+      const m = bmRef.list.find(x => x.id === bmRef.sel.id);
+      if (!s || !s.token || !m) { bmRefSetMsg('Log masuk semula dengan internet untuk melepaskan perlawanan.', true); bmRefPaint(); bmMobileRender(); return; }
+      if (!await uiConfirm(`Serahkan ${m.id}${m.gelanggang ? ' (Gelanggang ' + m.gelanggang + ')' : ''} kepada pengadil lain?\n\nSkor semasa disimpan. Pengadil Badminton lain boleh tekan "Ambil Alih & Teruskan" dengan segera. Anda pun boleh ambil semula kemudian.`)) return;
+      clearTimeout(bmSave.timer);
+      bmRef.busy = true; bmRefSetMsg('Melepaskan perlawanan…'); bmMobileRender();
+      try {
+        const s1 = parseInt(bmRef.sel.s1, 10) || 0, s2 = parseInt(bmRef.sel.s2, 10) || 0;
+        const res = await callGas({ action: 'skorPengadilBadminton', sukan: 'BADMINTON', token: s.token, id: m.id, skorP1: s1, skorP2: s2, jenis: 'LEPAS' });
+        if (!res || !res.ok) {
+          const e = String((res && res.error) || '');
+          if (/Jenis penghantaran skor tidak sah/i.test(e)) throw new Error('Google Sheets masih Code.gs versi lama. Master Admin perlu Deploy Code.gs terkini (New version).');
+          throw new Error(e || (res && res.networkError ? 'Tiada sambungan internet.' : 'Gagal melepaskan perlawanan.'));
+        }
+        Object.assign(m, { skorP1: s1, skorP2: s2, pengadil: '' });
+        bmRef.sel = null; bmRef.fin = null; bmRefSetMsg('');
+        showToast(`${m.id} dilepaskan. Pengadil lain boleh mengambil alih.`, 'success', 4500);
+        if (typeof window.umumkanPerubahan === 'function') window.umumkanPerubahan('BADMINTON', 'skor');
+      } catch (e) {
+        bmRefSetMsg(e.message || 'Gagal melepaskan perlawanan.', true);
+      } finally {
+        bmRef.busy = false; bmRefPaint(); bmMobileRender();
+      }
+    }
 
     async function bmRefLeave() {
       await bmRefFlushSave();
