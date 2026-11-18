@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycby6to1YwluVef2dEv0M5Gk3lmVp0B1VjWPv1GSCYq05LK8R3hVUTjXCxLxtCVRl0073Ow/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -3212,6 +3212,18 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
             <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Kategori</th><th>Masa (Malaysia)</th><th>Gelanggang</th><th>Pasukan 1</th><th>Pasukan 2</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="adminScheduleRows"></tbody></table></div>
           </section>
 
+<section class="admin-team-section" id="universalAdmin" aria-labelledby="universalTitle">
+<h3 class="card-title" id="universalTitle">📊 Jadual Excel Universal</h3>
+<div class="row-actions"><button class="btn" type="button" id="universalTemplate">⬇ Excel Kosong</button><button class="btn" type="button" id="universalRefresh">🔄 Jadual Semasa</button></div>
+<div class="field"><label for="universalFile">Muat Naik Jadual Baharu (.xlsx)</label><input class="input" type="file" accept=".xlsx" id="universalFile" /></div>
+<p id="universalStatus" class="admin-team-status muted" role="status" aria-live="polite"></p>
+<h4>Semakan Jadual Baharu</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalPreview"></tbody></table></div>
+<button class="btn btn-primary" type="button" id="universalSave" disabled>💾 Sandar &amp; Simpan Jadual</button>
+<h4>Jadual Universal Semasa</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalRows"></tbody></table></div>
+<div class="row-actions"><button class="btn" type="button" id="universalExport">⬇ Sandaran Semua Jadual</button><button class="btn" type="button" id="universalBackups">🗄 Senarai Sandaran Universal</button></div>
+<div class="field"><label for="universalBackupSelect">Sandaran Universal</label><select class="select" id="universalBackupSelect"><option value="">Pilih sandaran</option></select></div>
+<button class="btn" type="button" id="universalRestore">♻ Pulihkan Jadual</button>
+</section>
           <section class="admin-team-section" aria-labelledby="adminScoreHeading">
             <div class="card-bar"><h3 class="card-title" id="adminScoreHeading">Skor &amp; Keputusan Perlawanan</h3><button class="btn btn-sm" type="button" id="adminScoreRefresh">🔄 Muat Semula Skor</button></div>
             <div class="field"><label for="adminScoreSport">Sukan</label><select class="select" id="adminScoreSport"><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
@@ -21836,8 +21848,21 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw] pendaftaran gagal', err)); });
     }
   </script>
+  <style>
+.jadual-universal-active #tab-dashboard,.jadual-universal-active #tab-live,.jadual-universal-active #tab-standings,.jadual-universal-active #tab-knockout,.jadual-universal-active #tab-schedule,.jadual-universal-active #tab-bm-live,.jadual-universal-active #tab-bm-standings,.jadual-universal-active #tab-bm-knockout,.jadual-universal-active #tab-bm-schedule {display:none!important;}
+.jadual-universal-active [data-sukan="FUTSAL"],.jadual-universal-active [data-sukan="BADMINTON"] {display:none!important;}
+#universalPublic {margin:24px auto;max-width:1400px;padding:16px;}
+#universalPublic[hidden] {display:none;}
+@media(max-width:600px){#universalPublic .table-wrap {overflow:visible;} #universalPublic thead {display:none;} #universalPublic table,#universalPublic tbody {display:block;} #universalPublic tr {display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--glass-border);padding:12px 0;gap:8px;} #universalPublic td {display:block;border:0;white-space:normal;padding:4px;} #universalPublic td::before {content:attr(data-label);display:block;color:var(--text-2);font-size:.7rem;margin-bottom:4px;} #universalPublic td:nth-child(12),#universalPublic td:nth-child(13){grid-column:1/-1;}}
+</style>
+<section class="admin-team-section" id="universalPublic" hidden aria-labelledby="universalPublicTitle">
+    <h2 id="universalPublicTitle" class="card-title">Jadual Acara Universal</h2>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalPublicRows"></tbody></table></div>
+  </section>
   <script src="admin-pasukan.js"></script>
   <script src="admin-jadual.js"></script>
+  <script src="xlsx.full.min.js"></script>
+  <script src="jadual-universal.js"></script>
   <script src="admin-skor.js"></script>
 
   <!-- v1.24.0 ENJIN AUTO-FIT SKRIN KOMPUTER TANPA SCROLL -->

@@ -7,7 +7,7 @@
  *   (data tertunda disimpan dalam LocalStorage halaman; service worker tidak membaca/menyimpan skor).
  * - Cache lama (futsal-pk-kbb-*, karnival-pk-kbb-* versi terdahulu) dibuang semasa aktivasi.
  */
-const VERSI_SW = '1.48.0';  // v1.48.0: telefon - JADUAL jadi paparan utama (buka sahaja terus nampak jadual)
+const VERSI_SW = '1.49.0';  // v1.48.0: telefon - JADUAL jadi paparan utama (buka sahaja terus nampak jadual)
 // const VERSI_SW_1460 = '1.46.0';  // v1.46.0: Paparan Lancar - kemas kini automatik tanpa kelipan (hanya bahagian berubah dikemas kini)
 // const VERSI_SW_1450 = '1.45.0';  // v1.45.0: Paparan Pengurus Pasukan (?view=pasukan) - ringkas, telefon & komputer, tanpa Simulasi Gelanggang
 // const VERSI_SW_1444 = '1.44.4';  // v1.44.4: Sahkan / Tolak di Peti Kelulusan meminta PIN Master Admin semula jika hilang (bukan lagi ditolak Google Sheets)
@@ -31,7 +31,7 @@ const VERSI_SW = '1.48.0';  // v1.48.0: telefon - JADUAL jadi paparan utama (buk
 // const VERSI_SW_137 = '1.37.0';  // v1.37.0: Peti Kelulusan Badminton sentiasa segerak + auto-fit gelanggang swa-pulih
 // const VERSI_SW_LAMA = '1.35.0';  // v1.35.0: cuba semula automatik + anti-bertindih (reqId) untuk Code.gs v1.22.0  // v1.34.1: pembaikan autosimpan pengadil Badminton  // v1.34.0: PRESTASI - Sahkan keputusan Badminton sepantas Futsal (tiada jem / lag)
 const CACHE = 'karnival-pk-kbb-' + VERSI_SW;
-const SHELL = ['./', './index.html', './admin-pasukan.js', './admin-jadual.js', './admin-skor.js', './peti-keluar.js', './manifest.json',
+const SHELL = ['./', './index.html', './admin-pasukan.js', './admin-jadual.js', './admin-skor.js', './jadual-universal.js', './xlsx.full.min.js', './Templat-Jadual-Universal.xlsx', './peti-keluar.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 
 self.addEventListener('install', event => {
