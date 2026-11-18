@@ -263,7 +263,8 @@ const PEMBETULAN_HEADER = ['Masa', 'Versi', 'ID Match', 'Kategori', 'Peringkat',
   'Penalti Lama', 'Penalti Baharu', 'Sebab', 'Mod Rombakan', 'Perlawanan Terkesan', 'Oleh'];
 const TIMEZONE = 'Asia/Kuala_Lumpur';
 // FASA 4.1: versi API (aplikasi menyemak nilai ini untuk mengesan Code.gs lama)
-const API_VERSI = '1.25.2';  // v1.25.2: PENGESAHAN Urusetia / Sub Admin bagi perlawanan yang pernah DIBETULKAN (ada cop Versi Pembetulan, cth. SM-37) tidak lagi DITOLAK SENYAP - jika skor sama dengan Google Sheets, pengesahan diterima; ID yang tidak ditulis dipulangkan (idLapuk / idSeriTanpaPenalti) supaya peranti kembalikan ke Peti Kelulusan
+const API_VERSI = '1.26.0';  // v1.26.0: URUS JADUAL - Master Admin boleh TAMBAH / UBAH / PADAM perlawanan akan datang terus dari paparan Jadual Penuh (Futsal & Badminton). Perlawanan dipadam tidak dicipta semula oleh peranti lama; suntingan jadual dilindungi daripada data peranti lama (cop Versi Jadual)
+// const API_VERSI_1252 = '1.25.2';  // v1.25.2: PENGESAHAN Urusetia / Sub Admin bagi perlawanan yang pernah DIBETULKAN (ada cop Versi Pembetulan, cth. SM-37) tidak lagi DITOLAK SENYAP - jika skor sama dengan Google Sheets, pengesahan diterima; ID yang tidak ditulis dipulangkan (idLapuk / idSeriTanpaPenalti) supaya peranti kembalikan ke Peti Kelulusan
 // const API_VERSI_1251 = '1.25.1';  // v1.25.1: keputusan kalah mati DISAHKAN Urusetia / Sub Admin (Peti Kelulusan) kini TERUS mengisi slot Menang / Kalah perlawanan seterusnya di Google Sheets (dahulu hanya Master Admin) - Mod Pengadil tidak lagi kosong (cth. SM-39 / SM-40 selepas SM-38 menang penalti); pemenang penalti dibaca tanpa beza huruf besar / ruang
 // const API_VERSI_1250 = '1.25.0';  // v1.25.0: RALAT PENALTI - seri kalah mati tanpa penalti dipaparkan kepada pengadil bertanggungjawab; pengadil masukkan JARINGAN penalti (cth. 4-3) tanpa main semula; Master Admin boleh kemas kini terus; lajur Penalti P1 / Penalti P2; pepijat nama pemenang penalti dianggap 'tiada penalti' dibaiki
 // const API_VERSI_1240 = '1.24.0';  // v1.24.0: Master Admin pilih kategori setiap gelanggang - SR + SM (Terbuka) / SR sahaja / SM sahaja (Futsal & Badminton); auto-isi, Sepak Mula & Jana Susunan mematuhi kategori
@@ -481,7 +482,6 @@ function doGet(e) {
     const action = String(p.action || 'read').toLowerCase();
     // Bahagian 5: isyarat perubahan (tiada data sulit; sangat pantas daripada cache)
     if (action === 'perubahan' || action === 'isyarat') return output_(isyaratPerubahan_(), p.callback);
-    if (action === 'jadualuniversal') return output_(juRead_(), p.callback);
     const sukan = jenisSukan_(p.sukan, action === 'badminton' || action === 'databadminton' ? 'BADMINTON' : 'FUTSAL');
     if ((action === 'badminton' || action === 'databadminton') && sukan !== 'BADMINTON') throw new Error('Tindakan badminton memerlukan sukan BADMINTON.');
     if (action === 'pasukan') return output_({ ok: true, versi: API_VERSI, sukan: sukan,
@@ -581,7 +581,9 @@ function doGet(e) {
       dikemaskini: new Date().toISOString(),
       senaraiGelanggang: sukan === 'FUTSAL' ? bacaGelanggang_() : bacaGelanggangBm_(),   // v1.20.0
       matches: p.id ? undefined : rows,
-      match: p.id ? (rows[0] || null) : undefined
+      match: p.id ? (rows[0] || null) : undefined,
+      dipadam: Object.keys(idDipadam_(sukan)),   // v1.26.0
+      jadualVersi: jadualVersi_(sukan)           // v1.26.0
     }, p.callback);
   } catch (err) {
     return output_({ ok: false, versi: API_VERSI, error: String(err && err.message || err) }, p.callback);
@@ -874,10 +876,6 @@ function prosesPost_(body, ctx) {
   }
 
   const action = String(body.action || '').toLowerCase();
-  if (['simpanjadualuniversal','senaraijadualuniversal','pulihjadualuniversal','eksportjadualuniversal'].indexOf(action) >= 0) {
-    ctx.ubahPapan = false; return output_(juPost_(body));
-  }
-  if (PropertiesService.getScriptProperties().getProperty('JU_ACTIVE') === '1' && (['updatematch','updatematches','sync','syncall','update','bulk','simpanjadual','simpanskorsukan','skorpengadilbadminton','skorlive','resetacara','kuncigelanggang'].indexOf(action) >= 0 || Array.isArray(body.matches))) return output_({ok:false,error:'Jadual lama telah diganti. Jadual universal tidak menggunakan enjin skor lama.'});
   const sukan = jenisSukan_(body.sukan);
   if (ACTIONS_TANPA_ISYARAT.indexOf(action) < 0 &&
       !(action === 'kuncigelanggang' && (body.perbaharui === true || body.perbaharui === 'true'))) {
@@ -904,6 +902,11 @@ function prosesPost_(body, ctx) {
   if (action === 'simpanjadual') {
     if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', error: 'Hanya Master Admin boleh mengubah jadual.' });
     return output_(simpanJadualSukan_(body, sukan));
+  }
+  // v1.26.0: Urus Jadual (tambah / ubah / padam perlawanan akan datang) - Master Admin sahaja
+  if (action === 'urusjadual') {
+    if (!isMasterAdmin_(body)) return output_({ ok: false, kod: 'BUKAN_ADMIN', versi: API_VERSI, error: 'Hanya Master Admin boleh mengurus jadual.' });
+    return output_(urusJadualSukan_(body, sukan));
   }
   if (action === 'simpanpasukan' || action === 'syncpasukan') {
     ctx.ubahPapan = false;
@@ -1028,6 +1031,8 @@ function upsertMatches_(list, opts) {
   const width = values[0].length;
   const index = {};
   table.rows.forEach(function (r) { index[String(r.data.id).toUpperCase()] = r.rowIndex; });
+  const dipadamJ = idDipadam_(sukan);        // v1.26.0: perlawanan dipadam Master Admin -> jangan cipta semula
+  const versiJ = jadualVersi_(sukan);        // v1.26.0: cop Versi Jadual (suntingan jadual Master Admin)
 
   const now = new Date();
   let updated = 0, inserted = 0, skipped = 0, protectedRows = 0, finalRows = 0, staleRows = 0;
@@ -1038,7 +1043,9 @@ function upsertMatches_(list, opts) {
 
   list.forEach(function (m) {
     const id = String(m && m.id || '').trim().toUpperCase();
-    if (!(sukan === 'FUTSAL' ? /^(SR|SM)-\d{1,2}$/ : /^[A-Z0-9][A-Z0-9_-]{0,59}$/).test(id)) { skipped++; return; }
+    if (!(sukan === 'FUTSAL' ? /^(SR|SM)-\d{1,3}$/ : /^[A-Z0-9][A-Z0-9_-]{0,59}$/).test(id)) { skipped++; return; }
+    if (dipadamJ[id]) { skipped++; return; }   // v1.26.0
+    const lindungJadual = !!versiJ[id] && (Number(m.jadualVersi) || 0) < versiJ[id];   // v1.26.0: data peranti lama
 
     let rowIdx = index[id];
     if (rowIdx === undefined) {
@@ -1072,6 +1079,7 @@ function upsertMatches_(list, opts) {
 
     UPDATABLE.forEach(function (field) {
       if (!(field in m) || m[field] === undefined) return;
+      if (lindungJadual && JADUAL_LINDUNG_FIELDS.indexOf(field) >= 0) return;   // v1.26.0
       // FASA 6: pengesahan pengadil hanya melalui skorLive (token pengadil) atau Master Admin
       if (PENGADIL_ONLY_FIELDS.indexOf(field) >= 0 && !admin && !opts.abaikanKunci) return;
       // Gelanggang dikunci pengadil: markah hanya boleh diubah oleh pengadil tersebut
@@ -2575,7 +2583,7 @@ function normGelanggang_(g) {
 
 function normMatchId_(id) {
   const v = String(id || '').trim().toUpperCase();
-  return /^(SR|SM)-\d{1,2}$/.test(v) ? v : '';
+  return /^(SR|SM)-\d{1,3}$/.test(v) ? v : '';
 }
 
 function getKunciSheet_() {
@@ -4462,6 +4470,7 @@ function resetAcara_(body) {
   try { CacheService.getScriptCache().removeAll([PAPAN_CACHE_KEY, PAPAN_CACHE_VER, BM_CACHE_KEY]); } catch (e) {}
   try { bustPapanCache_(); } catch (e) { /* abaikan */ }
   try { tandaPerubahan_('FUTSAL'); tandaPerubahan_('BADMINTON'); } catch (e) { /* abaikan */ }
+  try { ['FUTSAL', 'BADMINTON'].forEach(function (sk) { PropertiesService.getScriptProperties().deleteProperty(PROP_JADUAL_DIPADAM + sk); PropertiesService.getScriptProperties().deleteProperty(PROP_JADUAL_VERSI + sk); }); } catch (e) { /* v1.26.0 */ }
   return { ok: true, versi: API_VERSI, dikosongkan: dikosongkan, senaraiGelanggang: gelFutsal,
     badminton: bm, masa: new Date().toISOString() };
 }
@@ -4724,8 +4733,9 @@ function simpanJadualSukan_(body, sukan) {
   row[table.colOf.kemaskini] = new Date();
   sheet.getRange(rec.rowIndex + 1, 1, 1, row.length).setValues([row]);
   SpreadsheetApp.flush();
+  const jv = tandaJadualVersi_(sukan, id);   // v1.26.0
   if (sukan === 'BADMINTON') CacheService.getScriptCache().remove(BM_CACHE_KEY);
-  return { ok: true, versi: API_VERSI, sukan: sukan, id: id, sheet: sheet.getName() };
+  return { ok: true, versi: API_VERSI, sukan: sukan, id: id, sheet: sheet.getName(), jadualVersi: jv };
 }
 
 function simpanSkorSukan_(body, sukan, oleh) {
@@ -5208,78 +5218,157 @@ function simpanPaparanTelefon_(body) {
   return { ok: true, paparanTelefon: v };
 }
 
-/* Jadual universal berasingan; sandaran ialah salinan penuh tab jadual. */
-const JU_HEADERS_ = ['ID Acara','Nama Acara','Sukan','ID Perlawanan','Giliran','Kategori','Peringkat','Kumpulan','Tarikh','Masa','Lokasi','Peserta','Catatan'];
-const JU_SHEET_ = 'Jadual_Universal';
-function juVersion_() { return PropertiesService.getScriptProperties().getProperty('JU_VERSION') || ''; }
-function juReadSheet_(sheet) {
-  if (!sheet || sheet.getLastRow() < 2) return [];
-  const values = sheet.getRange(1, 1, sheet.getLastRow(), JU_HEADERS_.length).getDisplayValues();
-  if (JU_HEADERS_.some(function(h,i){return values[0][i] !== h;})) throw new Error('Tajuk jadual universal tidak sepadan.');
-  return values.slice(1).filter(function(r){return r.some(function(v){return v !== '';});}).map(function(r){const o={};JU_HEADERS_.forEach(function(h,i){o[h]=r[i];});return o;});
+
+/* =========================================================
+   v1.26.0 - URUS JADUAL (MASTER ADMIN SAHAJA)
+   Satu format untuk SEMUA sukan (Futsal & Badminton):
+   - op 'tambah' : tambah perlawanan baharu (ID & No dijana automatik, cth. SR-26 / BSM-29)
+   - op 'ubah'   : ubah perlawanan yang BELUM BERMULA (peringkat, kumpulan, gelanggang, pasukan, masa)
+   - op 'padam'  : padam perlawanan yang BELUM BERMULA (tiada skor)
+   Perlawanan dipadam disimpan dalam senarai 'dipadam' supaya syncAll peranti lama tidak
+   mencipta semula baris tersebut. Cop 'Versi Jadual' melindungi suntingan daripada data lama.
+   ========================================================= */
+const PROP_JADUAL_DIPADAM = 'JADUAL_DIPADAM_';   // + FUTSAL / BADMINTON
+const PROP_JADUAL_VERSI = 'JADUAL_VERSI_';       // + FUTSAL / BADMINTON
+const JADUAL_LINDUNG_FIELDS = ['namaP1', 'namaP2', 'kodP1', 'kodP2', 'peringkat', 'kumpulan'];
+const JADUAL_PERINGKAT_SAH = ['PERINGKAT KUMPULAN', 'PUSINGAN KEDUA', 'SUKU AKHIR', 'SEPARUH AKHIR', 'TEMPAT 3/4', 'AKHIR', 'PERLAWANAN PERSAHABATAN'];
+
+function bacaPropJson_(kunci) {
+  try { const v = JSON.parse(PropertiesService.getScriptProperties().getProperty(kunci) || '{}'); return v && typeof v === 'object' ? v : {}; }
+  catch (e) { return {}; }
 }
-function juRead_() { return {ok:true, active:PropertiesService.getScriptProperties().getProperty('JU_ACTIVE') === '1', rows:juReadSheet_(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(JU_SHEET_)), version:juVersion_()}; }
-function juValidate_(rows) {
-  if (!Array.isArray(rows) || !rows.length || rows.length > 5000) throw new Error('Jadual mesti mengandungi 1 hingga 5000 perlawanan.');
-  const seen = {};
-  return rows.map(function(row,i){
-    const r={};JU_HEADERS_.forEach(function(h){r[h]=String(row[h] == null ? '' : row[h]).trim();if(r[h].length>2000 || /^[=+@-]/.test(r[h]))throw new Error('Baris '+(i+2)+': nilai '+h+' tidak sah.');});
-    ['ID Acara','Nama Acara','Sukan','ID Perlawanan','Giliran','Lokasi','Peserta'].forEach(function(h){if(!r[h])throw new Error('Baris '+(i+2)+': '+h+' diperlukan.');});
-    const id=JSON.stringify([r['ID Acara'].toUpperCase(),r.Sukan.toUpperCase(),r['ID Perlawanan'].toUpperCase()]);if(seen[id])throw new Error('ID perlawanan berulang.');seen[id]=true;
-    if(!/^\d+$/.test(r.Giliran)||Number(r.Giliran)<1)throw new Error('Giliran mesti nombor bulat positif.');
-    if(r.Tarikh){const d=new Date(r.Tarikh+'T00:00:00Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(r.Tarikh)||isNaN(d.getTime())||d.toISOString().slice(0,10)!==r.Tarikh)throw new Error('Tarikh tidak sah. Gunakan YYYY-MM-DD.');}
-    if(r.Masa&&(!r.Tarikh||!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.Masa)))throw new Error('Masa tidak sah. Gunakan HH:MM bersama tarikh.');
-    const p=r.Peserta.split('|').map(function(x){return x.trim();});if(p.some(function(x){return !x;})||new Set(p.map(function(x){return x.toUpperCase();})).size!==p.length)throw new Error('Peserta kosong atau berulang.');r.Peserta=p.join(' | ');return r;
-  });
+function idDipadam_(sukan) { return bacaPropJson_(PROP_JADUAL_DIPADAM + jenisSukan_(sukan)); }
+function jadualVersi_(sukan) { return bacaPropJson_(PROP_JADUAL_VERSI + jenisSukan_(sukan)); }
+function tandaJadualVersi_(sukan, id) {
+  const k = PROP_JADUAL_VERSI + jenisSukan_(sukan);
+  const v = bacaPropJson_(k);
+  const versi = Math.max(Date.now(), (Number(v[id]) || 0) + 1);
+  v[id] = versi;
+  PropertiesService.getScriptProperties().setProperty(k, JSON.stringify(v));
+  return versi;
 }
-function juBackups_(){return SpreadsheetApp.getActiveSpreadsheet().getSheets().map(function(s){return s.getName();}).filter(function(n){return /^JU_SB_\d{8}_\d{6}_[a-f0-9]{8}$/.test(n);}).sort().reverse();}
-function juBackup_(sheet){
-  if(!sheet||sheet.getLastRow()<2)return '';
-  const name='JU_SB_'+Utilities.formatDate(new Date(),TIMEZONE,'yyyyMMdd_HHmmss')+'_'+Utilities.getUuid().replace(/-/g,'').slice(0,8);
-  const copy=sheet.copyTo(SpreadsheetApp.getActiveSpreadsheet());copy.setName(name);SpreadsheetApp.flush();
-  if(JSON.stringify(juReadSheet_(copy))!==JSON.stringify(juReadSheet_(sheet)))throw new Error('Sandaran tidak lengkap. Jadual belum diubah.');return name;
-}
-function juWrite_(rows,version,confirmed){
-  if(confirmed!==true)throw new Error('Sandarkan semua jadual ke Excel dahulu.');
-  if(String(version == null ? '' : version)!==juVersion_())throw new Error('Jadual telah berubah. Muat semula dan cuba lagi.');
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  [SHEET_JADUAL,SHEET_BM_JADUAL].forEach(function(n){const sh=ss.getSheetByName(n);if(!sh)return;const live=readTable_(sh).rows.some(function(r){return /SEMASA|BERLANGSUNG|REHAT|TAMAT - TUNGGU SAH/.test(String(r.data.status||'')) || !!r.data.fasaMulaPada && !/SELESAI|TAMAT/.test(String(r.data.status||''));});if(live)throw new Error('Tamatkan perlawanan aktif dan sahkan keputusan dahulu.');});
-  const old=ss.getSheetByName(JU_SHEET_);const backup=juBackup_(old);
-  const legacy=[];[SHEET_JADUAL,SHEET_BM_JADUAL,SHEET_CARTA,SHEET_KUNCI].forEach(function(n){const sh=ss.getSheetByName(n);if(sh&&sh.getLastRow()>1){const cp=sh.copyTo(ss);cp.setName('ARKIB_'+Utilities.getUuid().replace(/-/g,'').slice(0,8)+'_'+n.slice(0,40));legacy.push({sheet:sh,copy:cp});}});
-  const staged=ss.insertSheet('JU_TMP_'+Utilities.getUuid().replace(/-/g,'').slice(0,8));
-  try {
-    if(staged.getMaxRows()<rows.length+1)staged.insertRowsAfter(staged.getMaxRows(),rows.length+1-staged.getMaxRows());
-    staged.getRange(1,1,rows.length+1,JU_HEADERS_.length).setNumberFormat('@').setValues([JU_HEADERS_].concat(rows.map(function(r){return JU_HEADERS_.map(function(h){return r[h];});})));staged.setFrozenRows(1);SpreadsheetApp.flush();
-    if(JSON.stringify(juReadSheet_(staged))!==JSON.stringify(rows))throw new Error('Simpanan tidak sepadan. Jadual lama dikekalkan.');
-    const retired='JU_OLD_'+Utilities.getUuid().replace(/-/g,'').slice(0,8);
-    if(old)old.setName(retired);
-    try{staged.setName(JU_SHEET_);}catch(err){if(old)old.setName(JU_SHEET_);throw err;}
-    try {legacy.forEach(function(x){x.sheet.getRange(2,1,x.sheet.getLastRow()-1,x.sheet.getLastColumn()).clearContent();});SpreadsheetApp.flush();}
-    catch(err){legacy.forEach(function(x){const v=x.copy.getDataRange().getValues();x.sheet.getRange(1,1,v.length,v[0].length).setValues(v);});staged.setName('JU_FAILED_'+Utilities.getUuid().slice(0,8));if(old)old.setName(JU_SHEET_);throw err;}
-    PropertiesService.getScriptProperties().setProperty('JU_ACTIVE','1');
-    PropertiesService.getScriptProperties().setProperty('JU_VERSION',Utilities.getUuid());
-    try{CacheService.getScriptCache().remove(BM_CACHE_KEY);bustPapanCache_();}catch(err){console.warn(err);}
-    if(old)ss.deleteSheet(old);
-    return {ok:true,backup:backup,version:juVersion_(),count:rows.length};
-  }catch(err){if(staged.getName()!==JU_SHEET_)ss.deleteSheet(staged);throw err;}
-}
-function juPost_(body){
-  if(!isMasterAdmin_(body))return {ok:false,kod:'BUKAN_ADMIN',error:'Hanya Master Admin dibenarkan.'};
-  const a=String(body.action||'').toLowerCase();
-  if(a==='eksportjadualuniversal')return juExport_();
-  if(a==='senaraijadualuniversal')return {ok:true,backups:juBackups_()};
-  if(a==='simpanjadualuniversal')return juWrite_(juValidate_(body.rows),body.version,body.backupConfirmed);
-  if(a==='pulihjadualuniversal'){
-    if(juBackups_().indexOf(String(body.backup))<0)throw new Error('Sandaran tidak ditemui.');
-    return juWrite_(juValidate_(juReadSheet_(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(body.backup))),body.version,body.backupConfirmed);
-  }
-  throw new Error('Tindakan jadual universal tidak dikenali.');
+function tandaDipadam_(sukan, id, padam) {
+  const k = PROP_JADUAL_DIPADAM + jenisSukan_(sukan);
+  const v = bacaPropJson_(k);
+  if (padam) v[id] = Date.now(); else delete v[id];
+  PropertiesService.getScriptProperties().setProperty(k, JSON.stringify(v));
 }
 
-function juExport_(){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();const tables=[];let rows=juReadSheet_(ss.getSheetByName(JU_SHEET_));
-  [SHEET_JADUAL,SHEET_BM_JADUAL].forEach(function(n){const sh=ss.getSheetByName(n);if(!sh)return;tables.push({name:n,values:sh.getDataRange().getDisplayValues()});if(PropertiesService.getScriptProperties().getProperty('JU_ACTIVE')==='1')return;
-    const sport=n===SHEET_JADUAL?'FUTSAL':'BADMINTON';readTable_(sh).rows.forEach(function(rec,i){const m=rec.data;const r={};JU_HEADERS_.forEach(function(h){r[h]='';});r['ID Acara']='ARKIB-'+sport;r['Nama Acara']='Jadual '+sport;r.Sukan=sport;r['ID Perlawanan']=String(m.id);r.Giliran=String(i+1);r.Kategori=String(m.kategori||'');r.Peringkat=String(m.peringkat||'');r.Kumpulan=String(m.kumpulan||'');r.Lokasi=String(m.gelanggang||'BELUM DITETAPKAN');r.Peserta=[m.namaP1,m.namaP2].filter(Boolean).join(' | ')||'BELUM DITETAPKAN';r.Catatan='Status: '+(m.status||'')+'; Skor: '+(m.skorP1 == null?'':m.skorP1)+' : '+(m.skorP2 == null?'':m.skorP2);if(m.masaJadual&&!isNaN(new Date(m.masaJadual).getTime())){r.Tarikh=Utilities.formatDate(new Date(m.masaJadual),TIMEZONE,'yyyy-MM-dd');r.Masa=Utilities.formatDate(new Date(m.masaJadual),TIMEZONE,'HH:mm');}rows.push(r);});
+function bersihNilaiJadual_(f, value) {
+  value = String(value === undefined || value === null ? '' : value).trim();
+  if (f === 'masaJadual') {
+    if (value && (!/Z$|[+-]\d{2}:\d{2}$/.test(value) || isNaN(new Date(value).getTime()))) throw new Error('Masa jadual tidak sah.');
+    return value ? new Date(value) : '';
+  }
+  if (value.length > 120 || /^[=+@-]/.test(value)) throw new Error('Nilai jadual tidak sah (tidak boleh bermula dengan = + - @).');
+  if (f === 'gelanggang' || f === 'kodP1' || f === 'kodP2' || f === 'peringkat' || f === 'kumpulan' || f === 'kategori') return value.toUpperCase();
+  return value;
+}
+
+function urusJadualSukan_(body, sukan) {
+  const op = String(body.op || '').toLowerCase();
+  if (['tambah', 'ubah', 'padam'].indexOf(op) < 0) throw new Error('Operasi jadual tidak sah (tambah / ubah / padam).');
+  const sheet = getJadualSheet_(sukan);
+  const table = readTable_(sheet);
+  const colOf = table.colOf;
+  const header = (table.values[0] || []).map(normalizeKey_);
+  const width = table.values[0].length;
+  const cari = function (id) { return table.rows.find(function (r) { return String(r.data.id).toUpperCase() === id; }); };
+  const belumMula = function (d) {
+    const st = statusBaris_(d);
+    const adaSkor = d.skorP1 !== null && d.skorP1 !== '' && d.skorP1 !== undefined;
+    return (st === 'MENUNGGU GILIRAN' || st === '') && !adaSkor;
+  };
+  const selesai = function (id, extra) {
+    SpreadsheetApp.flush();
+    if (sukan === 'BADMINTON') { try { CacheService.getScriptCache().remove(BM_CACHE_KEY); } catch (e) { /* abaikan */ } }
+    return Object.assign({ ok: true, versi: API_VERSI, sukan: sukan, op: op, id: id, sheet: sheet.getName() }, extra || {});
+  };
+  const j = body.jadual || {};
+  const medan = ['peringkat', 'kumpulan', 'gelanggang', 'namaP1', 'namaP2', 'kodP1', 'kodP2', 'masaJadual'];
+  const nilai = {};
+  if (op !== 'padam') {
+    medan.forEach(function (f) { nilai[f] = bersihNilaiJadual_(f, j[f]); });
+    if (!nilai.gelanggang) throw new Error('Gelanggang diperlukan.');
+    // Pasukan: nama ATAU kod slot (cth. JOHAN-A / MENANG-10) - slot kalah mati diisi automatik kemudian
+    if (!(nilai.namaP1 || nilai.kodP1) || !(nilai.namaP2 || nilai.kodP2)) throw new Error('Setiap pasukan perlu nama atau kod pasukan.');
+    if ((nilai.namaP1 && nilai.namaP1.toUpperCase() === nilai.namaP2.toUpperCase()) ||
+        (!nilai.namaP1 && !nilai.namaP2 && nilai.kodP1 === nilai.kodP2)) throw new Error('Pasukan 1 dan Pasukan 2 mesti berbeza.');
+    if (!nilai.peringkat) nilai.peringkat = 'PERINGKAT KUMPULAN';
+    if (nilai.peringkat.length > 40) throw new Error('Peringkat terlalu panjang.');
+    if (nilai.kumpulan.length > 10) throw new Error('Kumpulan terlalu panjang.');
+    if (!nilai.kumpulan && sukan === 'FUTSAL') nilai.kumpulan = '-';
+    if (sukan === 'FUTSAL') {
+      const sah = gelanggangSah_();
+      if (sah.length && sah.indexOf(nilai.gelanggang) < 0) throw new Error('Gelanggang ' + nilai.gelanggang + ' tiada dalam senarai gelanggang Futsal (' + sah.join(', ') + ').');
+    }
+  }
+
+  if (op === 'padam' || op === 'ubah') {
+    const id = String(body.id || '').trim().toUpperCase();
+    const rec = cari(id);
+    if (!rec) throw new Error('Perlawanan ' + id + ' tidak dijumpai dalam jadual ' + sukan + '.');
+    if (!belumMula(rec.data)) throw new Error('Hanya perlawanan yang BELUM BERMULA boleh di' + (op === 'padam' ? 'padam' : 'ubah') + '.');
+    if (sukan === 'FUTSAL' && lockedMatchIds_()[id]) throw new Error('Perlawanan ' + id + ' sedang dipegang pengadil. Lepaskan kunci gelanggang dahulu.');
+    if (op === 'padam') {
+      sheet.deleteRow(rec.rowIndex + 1);
+      tandaDipadam_(sukan, id, true);
+      return selesai(id, { dipadam: true });
+    }
+    const asal = body.asal || {};
+    if ((asal.namaP1 !== undefined && String(asal.namaP1 || '').trim().toUpperCase() !== String(rec.data.namaP1 || '').trim().toUpperCase()) ||
+        (asal.namaP2 !== undefined && String(asal.namaP2 || '').trim().toUpperCase() !== String(rec.data.namaP2 || '').trim().toUpperCase())) {
+      return { ok: false, kod: 'LAPUK', versi: API_VERSI, error: 'Jadual ' + id + ' telah berubah. Muat semula sebelum menyimpan.' };
+    }
+    const row = table.values[rec.rowIndex].slice();
+    medan.forEach(function (f) { if (colOf[f] !== undefined) row[colOf[f]] = nilai[f]; });
+    if (sukan === 'BADMINTON') {
+      ['1', '2'].forEach(function (sd) { const c = header.indexOf('singkatanp' + sd); if (c >= 0 && j['sing' + sd] !== undefined) row[c] = bersihNilaiJadual_('sing', j['sing' + sd]); });
+    }
+    row[colOf.kemaskini] = new Date();
+    sheet.getRange(rec.rowIndex + 1, 1, 1, row.length).setValues([row]);
+    const jv = tandaJadualVersi_(sukan, id);
+    return selesai(id, { jadualVersi: jv });
+  }
+
+  // ---------- TAMBAH ----------
+  const kat = bersihNilaiJadual_('kategori', j.kategori);
+  if (kat !== 'SR' && kat !== 'SM') throw new Error('Kategori mesti SR atau SM.');
+  const awalan = sukan === 'FUTSAL' ? kat + '-' : 'B' + kat + '-';
+  const dipadam = idDipadam_(sukan);
+  let maxId = 0, maxNo = 0, maxP = 0;
+  const nomborId = function (id) { id = String(id || '').toUpperCase(); return id.indexOf(awalan) === 0 ? (parseInt(id.slice(awalan.length), 10) || 0) : 0; };
+  table.rows.forEach(function (r) {
+    const d = r.data;
+    maxId = Math.max(maxId, nomborId(d.id));
+    const katBaris = String(d.kategori || '').toUpperCase() || (String(d.id).toUpperCase().indexOf(awalan) === 0 ? kat : '');
+    if (katBaris === kat || String(d.id).toUpperCase().indexOf(awalan) === 0) maxNo = Math.max(maxNo, Number(d.no) || 0);
   });
-  return {ok:true,rows:rows,tables:tables,version:juVersion_()};
+  Object.keys(dipadam).forEach(function (id) { maxId = Math.max(maxId, nomborId(id)); });
+  const colOv = header.findIndex(function (k) { return k === 'noperkeseluruhan' || (k.indexOf('no') === 0 && k.indexOf('keseluruhan') >= 0); });
+  if (colOv >= 0) table.rows.forEach(function (r) { const x = /^P(\d+)$/i.exec(String(table.values[r.rowIndex][colOv] || '').trim()); if (x) maxP = Math.max(maxP, Number(x[1])); });
+  const nomor = Math.max(maxId, maxNo) + 1;
+  if (sukan === 'FUTSAL' && nomor > 999) throw new Error('Had ID perlawanan Futsal dicapai.');
+  const id = awalan + (nomor < 10 ? '0' + nomor : String(nomor));
+  const row = new Array(width).fill('');
+  const set = function (f, v) { if (colOf[f] !== undefined) row[colOf[f]] = v; };
+  set('id', id); set('kategori', kat); set('no', nomor);
+  medan.forEach(function (f) { set(f, nilai[f]); });
+  set('status', sukan === 'FUTSAL' ? 'MENUNGGU GILIRAN' : 'BELUM BERMULA');
+  set('pengesahan', 'MENUNGGU');
+  if (sukan === 'FUTSAL') set('fasaMasa', 'Belum Bermula');
+  set('catatan', 'Ditambah Master Admin');
+  set('kemaskini', new Date());
+  if (sukan === 'BADMINTON') {
+    ['1', '2'].forEach(function (sd) { const c = header.indexOf('singkatanp' + sd); if (c >= 0) row[c] = bersihNilaiJadual_('sing', j['sing' + sd]); });
+    if (colOv >= 0) row[colOv] = nilai.peringkat === 'PERINGKAT KUMPULAN' ? 'P' + (maxP + 1) : '';
+    const colEv = header.indexOf('idevent');
+    if (colEv >= 0) row[colEv] = 'BPK-KBB-2026-' + kat;
+  }
+  const barisBaru = sheet.getLastRow() + 1;
+  if (sheet.getMaxRows() < barisBaru) sheet.insertRowsAfter(sheet.getMaxRows(), barisBaru - sheet.getMaxRows());
+  sheet.getRange(barisBaru, 1, 1, width).setValues([row]);
+  tandaDipadam_(sukan, id, false);
+  const jv = tandaJadualVersi_(sukan, id);
+  return selesai(id, { no: row[colOf.no], jadualVersi: jv });
 }

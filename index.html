@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbzp9bY6vBwCI9PWKAS3l_2_UJP2fveA1y7Y038bOVEdLGo8mAlwit0L8xf9OcjJwf1Vig/exec" />
+  <meta name="gas-web-app-url" content="https://script.google.com/macros/s/AKfycbw2xWZ2B0yRGHfBbkeNJze_bi55OK_YQDlZSj9Yp9uPa5TfRoX5VQ-6tikOSeh5PpfYcg/exec" />
 <!--
 AMARAN WAJIB UNTUK AI / PENYELENGGARA — JANGAN PADAM
 Sebelum mengeluarkan kemas kini:
@@ -1728,6 +1728,15 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
     #tab-bm-knockout .ko-round-title { color: #e9d5ff; }
     #tab-bm-knockout .ko-champ { background: var(--bm-soft); border-color: var(--bm-line); color: #f5e9ff; }
     .bm-list { display: grid; gap: 8px; }
+    /* v1.49.0: Urus Jadual (Master Admin) - lajur Tindakan hanya untuk Master Admin */
+    .data-table:not(.jd-admin) .jd-act-col { display: none; }
+    .jd-act-btns { display: flex; gap: 6px; align-items: center; }
+    .jd-act-btns .btn-sm { padding: 4px 9px; white-space: nowrap; }
+    .jd-lock { font-size: .72rem; color: var(--text-2); white-space: nowrap; }
+    .jd-new { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; font: 800 .6rem var(--font-mono); background: rgba(34,197,94,.16); color: #bff5d2; vertical-align: middle; }
+    .jd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+    .jd-grid .jd-wide { grid-column: 1 / -1; }
+    @media (max-width: 560px) { .jd-grid { grid-template-columns: minmax(0, 1fr); } }
     .bm-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 150px; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 14px;
       background: var(--glass); border: 1px solid var(--glass-border); }
     .bm-row.live { border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.07); }
@@ -1771,6 +1780,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       .app-header .tab-nav { padding: 6px 0 8px; }
       .app-header .tab-btn { padding: 8px 12px; font-size: .8rem; }
       #tab-bm-schedule .filter-bar .input { flex: 1 1 100%; }
+      .jd-act-btns { flex-wrap: nowrap; }
       #tab-bm-schedule .filter-bar .select { flex: 1 1 140px; min-width: 0; }
     }
 
@@ -2654,7 +2664,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <span aria-hidden="true">⚔️</span> Kalah Mati
         </button>
         <button type="button" class="tab-btn" role="tab" data-tab="tab-schedule" data-sukan="FUTSAL" aria-selected="false">
-          <span aria-hidden="true">📅</span> <span class="not-semua">Jadual Penuh (65 Match)</span><span class="only-semua-in">Jadual Penuh (99 Match)</span>
+          <span aria-hidden="true">📅</span> <span class="not-semua" id="tabLblJadualFs">Jadual Penuh (65 Match)</span><span class="only-semua-in" id="tabLblJadualSemua">Jadual Penuh (99 Match)</span>
         </button>
         <span class="tab-group tg-badminton" data-sukan="BADMINTON" aria-hidden="true">🏸 Badminton</span>
         <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-live" data-sukan="BADMINTON" aria-selected="false">
@@ -2667,7 +2677,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <span aria-hidden="true">⚔️</span> Kalah Mati
         </button>
         <button type="button" class="tab-btn tab-bm" role="tab" data-tab="tab-bm-schedule" data-sukan="BADMINTON" aria-selected="false">
-          <span aria-hidden="true">📅</span> Jadual (34 Match)
+          <span aria-hidden="true">📅</span> <span id="tabLblJadualBm">Jadual Penuh (34 Match)</span>
         </button>
         <span class="tab-group" data-sukan="SEMUA" aria-hidden="true" style="color:var(--text-2);border:1px solid var(--glass-border)">🔐 Urusetia</span>
         <button type="button" class="tab-btn" role="tab" data-tab="tab-approval" data-sukan="SEMUA" aria-selected="false">
@@ -2866,10 +2876,11 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       <section class="tab-panel" id="tab-bm-schedule" role="tabpanel">
         <div class="panel-head">
           <div>
-            <h2>🏸 Jadual Badminton</h2>
-            <p>24 perlawanan kumpulan + 10 perlawanan kalah mati · Giliran P1, P2, P3 … disusun automatik ikut pusingan gelanggang (semua gelanggang serentak), sama ada gelanggang terbuka atau dikunci kategori.</p>
+            <h2 id="bmScheduleTitle">🏸 Jadual Penuh Badminton (34 Perlawanan)</h2>
+            <p id="bmScheduleSub">Sekolah Rendah · Sekolah Menengah</p>
           </div>
           <div class="panel-tools">
+            <button type="button" class="btn btn-primary btn-sm jd-add hidden" data-jd-tambah="BADMINTON">＋ Tambah Perlawanan</button>
             <span class="badge" id="bmScheduleSummary">0 / 34 disahkan</span>
           </div>
         </div>
@@ -2877,7 +2888,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
         <!-- v1.18.0: MEJA PENGADIL BADMINTON - hanya untuk pengadil Badminton yang log masuk -->
         <div class="card glass ref-desk hidden" id="bmRefDesk"></div>
         <div class="filter-bar">
-          <input type="search" class="input" id="bmSearch" placeholder="🔍 Cari pasukan / singkatan / P1…" />
+          <input type="search" class="input" id="bmSearch" placeholder="🔍 Cari pasukan / ID match..." />
           <select class="select" id="bmFilterCourt">
             <option value="SEMUA">Semua Gelanggang</option>
             <option value="1">Gelanggang 1</option>
@@ -2890,12 +2901,35 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           <select class="select" id="bmFilterStatus">
             <option value="SEMUA">Semua Status</option>
             <option value="BELUM">Belum Bermula</option>
-            <option value="LIVE">Sedang Berlangsung</option>
-            <option value="TAMAT">Tamat · Tunggu Sah</option>
+            <option value="LIVE">Live</option>
+            <option value="TAMAT">Tamat</option>
             <option value="DISAHKAN">Disahkan</option>
           </select>
         </div>
-        <div class="bm-list" id="bmSchedule"></div>
+        <!-- v1.49.0: format jadual SAMA seperti Futsal (satu format untuk semua sukan) -->
+        <div class="card glass" id="bmSchedule" style="padding: 0; overflow: hidden;">
+          <div class="table-wrap">
+            <table class="data-table" id="bmScheduleTable">
+              <thead>
+                <tr>
+                  <th>Giliran</th>
+                  <th>ID</th>
+                  <th>Kategori</th>
+                  <th>Peringkat</th>
+                  <th>Kump.</th>
+                  <th>Pasukan 1</th>
+                  <th class="num">Skor</th>
+                  <th>Pasukan 2</th>
+                  <th>Gel.</th>
+                  <th>Status</th>
+                  <th>Pengesahan</th>
+                  <th class="jd-act-col">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody id="bmScheduleBody"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- =========================================================
@@ -3030,10 +3064,11 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
       <section class="tab-panel" id="tab-schedule" role="tabpanel">
         <div class="panel-head">
           <div>
-            <h2>Jadual Penuh (65 Perlawanan)</h2>
-            <p>25 perlawanan Sekolah Rendah · 40 perlawanan Sekolah Menengah</p>
+            <h2 id="scheduleTitle">⚽ Jadual Penuh Futsal (65 Perlawanan)</h2>
+            <p id="scheduleSub">25 perlawanan Sekolah Rendah · 40 perlawanan Sekolah Menengah</p>
           </div>
           <div class="panel-tools">
+            <button type="button" class="btn btn-primary btn-sm jd-add hidden" data-jd-tambah="FUTSAL">＋ Tambah Perlawanan</button>
             <span class="badge" id="scheduleSummary">0 / 65 disahkan</span>
           </div>
         </div>
@@ -3072,6 +3107,7 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
                   <th>Gel.</th>
                   <th>Status</th>
                   <th>Pengesahan</th>
+                  <th class="jd-act-col">Tindakan</th>
                 </tr>
               </thead>
               <tbody id="scheduleBody">
@@ -3196,34 +3232,11 @@ body[data-sukan="SEMUA"] #tab-live #standbyBoard { display:none; }
           </section>
 
           <section class="admin-team-section" aria-labelledby="adminScheduleTitle">
-            <div class="card-bar"><h3 class="card-title" id="adminScheduleTitle">Pengurusan Jadual Perlawanan</h3><button type="button" class="btn btn-sm" id="adminScheduleRefresh">🔄 Muat Semula Jadual</button></div>
-            <div class="field"><label for="adminScheduleSport">Sukan</label><select class="select" id="adminScheduleSport"><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
-            <p class="admin-team-status muted" id="adminScheduleStatus" role="status" aria-live="polite"></p>
-            <form class="admin-team-form hidden" id="adminScheduleForm">
-              <h4 class="team-wide" id="adminScheduleEditTitle"></h4>
-              <div class="field"><label for="scheduleTime">Masa Jadual (Malaysia)</label><input class="input" type="datetime-local" id="scheduleTime" name="masaJadual" /></div>
-              <div class="field"><label for="scheduleCourt">Gelanggang *</label><input class="input" id="scheduleCourt" name="gelanggang" maxlength="120" required /></div>
-              <div class="field"><label for="scheduleTeam1">Pasukan 1 *</label><input class="input" id="scheduleTeam1" name="namaP1" maxlength="120" required /></div>
-              <div class="field"><label for="scheduleTeam2">Pasukan 2 *</label><input class="input" id="scheduleTeam2" name="namaP2" maxlength="120" required /></div>
-              <div class="field"><label for="scheduleCode1">Kod Pasukan 1</label><input class="input" id="scheduleCode1" name="kodP1" maxlength="120" /></div>
-              <div class="field"><label for="scheduleCode2">Kod Pasukan 2</label><input class="input" id="scheduleCode2" name="kodP2" maxlength="120" /></div>
-              <div class="team-wide row-actions"><button class="btn btn-primary" type="submit" id="adminScheduleSave">💾 Simpan Jadual</button><button class="btn" type="button" id="adminScheduleCancel">Batal</button></div>
-            </form>
-            <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Kategori</th><th>Masa (Malaysia)</th><th>Gelanggang</th><th>Pasukan 1</th><th>Pasukan 2</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="adminScheduleRows"></tbody></table></div>
+            <div class="card-bar"><h3 class="card-title" id="adminScheduleTitle">Pengurusan Jadual Perlawanan</h3></div>
+            <p class="muted">v1.49.0: Jadual kini diurus terus di paparan <strong>Jadual Penuh</strong> (format sama untuk Futsal &amp; Badminton). Tekan <strong>＋ Tambah Perlawanan</strong>, atau <strong>✎ Edit</strong> / <strong>🗑 Padam</strong> pada perlawanan yang belum bermula.</p>
+            <div class="row-actions"><button type="button" class="btn btn-sm" onclick="setActiveTab('tab-schedule')">⚽ Buka Jadual Penuh Futsal</button><button type="button" class="btn btn-sm" onclick="setActiveTab('tab-bm-schedule')">🏸 Buka Jadual Penuh Badminton</button></div>
           </section>
 
-<section class="admin-team-section" id="universalAdmin" aria-labelledby="universalTitle">
-<h3 class="card-title" id="universalTitle">📊 Jadual Excel Universal</h3>
-<div class="row-actions"><button class="btn" type="button" id="universalTemplate">⬇ Excel Kosong</button><button class="btn" type="button" id="universalRefresh">🔄 Jadual Semasa</button></div>
-<div class="field"><label for="universalFile">Muat Naik Jadual Baharu (.xlsx)</label><input class="input" type="file" accept=".xlsx" id="universalFile" /></div>
-<p id="universalStatus" class="admin-team-status muted" role="status" aria-live="polite"></p>
-<h4>Semakan Jadual Baharu</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalPreview"></tbody></table></div>
-<button class="btn btn-primary" type="button" id="universalSave" disabled>💾 Sandar &amp; Simpan Jadual</button>
-<h4>Jadual Universal Semasa</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalRows"></tbody></table></div>
-<div class="row-actions"><button class="btn" type="button" id="universalExport">⬇ Sandaran Semua Jadual</button><button class="btn" type="button" id="universalBackups">🗄 Senarai Sandaran Universal</button></div>
-<div class="field"><label for="universalBackupSelect">Sandaran Universal</label><select class="select" id="universalBackupSelect"><option value="">Pilih sandaran</option></select></div>
-<button class="btn" type="button" id="universalRestore">♻ Pulihkan Jadual</button>
-</section>
           <section class="admin-team-section" aria-labelledby="adminScoreHeading">
             <div class="card-bar"><h3 class="card-title" id="adminScoreHeading">Skor &amp; Keputusan Perlawanan</h3><button class="btn btn-sm" type="button" id="adminScoreRefresh">🔄 Muat Semula Skor</button></div>
             <div class="field"><label for="adminScoreSport">Sukan</label><select class="select" id="adminScoreSport"><option value="">Pilih sukan</option><option value="FUTSAL">Futsal</option><option value="BADMINTON">Badminton</option></select></div>
@@ -8364,7 +8377,7 @@ void main() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return createDefaultState();
         const parsed = JSON.parse(raw);
-        if (!parsed || parsed.version !== STATE_VERSION || !Array.isArray(parsed.matches) || parsed.matches.length !== 65) {
+        if (!parsed || parsed.version !== STATE_VERSION || !Array.isArray(parsed.matches) || parsed.matches.length < 1) {   // v1.49.0: jadual boleh ditambah / dikurangkan
           console.warn('[loadState] Data lama/tidak sah dikesan. Menjana semula state asal.');
           return createDefaultState();
         }
@@ -11596,6 +11609,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
           if (kind) { count[kind] += 1; if (kind === 'baharu') baru.push(String(row.id).toUpperCase()); }
         });
         try { hantarSahSemula(); } catch (e) { console.warn('[hantarSahSemula]', e); }   // v1.44.3
+        try { if (window.JadualUrus) window.JadualUrus.segerakFutsal(data); } catch (e) { console.warn('[JadualUrus.segerakFutsal]', e); }   // v1.49.0
         // v1.17.0: senarai gelanggang & susunan baki perlawanan daripada Google Sheets
         let susunBerubah = applyServerCourtConfig(data.senaraiGelanggang);
         if (!state.courtConfigPending && (courtCfgSync.changedAt || 0) < resultSync.lastPullAt - 2000) {
@@ -16624,9 +16638,15 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const done = state.matches.filter(isApproved).length;
         summary.textContent = `${done} / ${state.matches.length} disahkan`;
       }
+      // v1.49.0: kiraan dinamik (jadual boleh ditambah / dikurangkan) + lajur Tindakan Master Admin
+      const jdAdmin = !!(window.JadualUrus && window.JadualUrus.bolehUrus());
+      try { if (window.JadualUrus) window.JadualUrus.kemasLabel(); } catch (e) { /* abaikan */ }
+      const tbl = document.getElementById('scheduleTable');
+      if (tbl) tbl.classList.toggle('jd-admin', jdAdmin);
+      const jdAksi = m => (window.JadualUrus ? window.JadualUrus.aksiHtml('FUTSAL', m.id, m.status === MATCH_STATUS.MENUNGGU && (m.skorP1 === null || m.skorP1 === undefined)) : '');
 
       if (!list.length) {
-        body.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">🔍</div><p>Tiada perlawanan sepadan dengan carian.</p></div></td></tr>';
+        body.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="icon">🔍</div><p>Tiada perlawanan sepadan dengan carian.</p></div></td></tr>';
         return;
       }
 
@@ -16640,7 +16660,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         const pk = g && g.pusingan != null ? g.pusingan : '-';
         if (pk !== lastPus) {
           lastPus = pk;
-          html += `<tr class="phase-row"><td colspan="11">${pk === '-' ? 'Belum ditetapkan gelanggang' : `Pusingan ${pk}`} · ${bilPus[pk]} perlawanan</td></tr>`;
+          html += `<tr class="phase-row"><td colspan="12">${pk === '-' ? 'Belum ditetapkan gelanggang' : `Pusingan ${pk}`} · ${bilPus[pk]} perlawanan</td></tr>`;
         }
         const cls = m.status === MATCH_STATUS.LIVE ? 'row-live' : (m.status === MATCH_STATUS.TUNGGU_SAH ? 'row-done' : '');
         const courtCell = canAssign && m.status === MATCH_STATUS.MENUNGGU
@@ -16661,6 +16681,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             <td>${courtCell}</td>
             <td>${statusBadge(m)}</td>
             <td>${approvalBadge(m)}</td>
+            <td class="jd-act-col">${jdAdmin ? jdAksi(m) : ''}</td>
           </tr>`;
         return html;
       }).join('');
@@ -17546,6 +17567,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         masaMula: m.masaMula, masaTamat: m.masaTamat,
         disahkanOleh: m.disahkanOleh, disahkanPada: m.disahkanPada, catatan: m.catatan,
         versiPembetulan: m.versiPembetulan || '',   // FASA 4: cop versi daripada pelayan
+        jadualVersi: Number(m.jadualVersi) || 0,     // v1.49.0: cop Versi Jadual (suntingan Master Admin)
         // v1.44.0: jaringan penalti dihantar HANYA bila diketahui (peranti lama tidak memadam nilai di Google Sheets)
         ...(m.pemenangPenalti && Number.isInteger(m.penaltiP1) && Number.isInteger(m.penaltiP2)
           ? { penaltiP1: m.penaltiP1, penaltiP2: m.penaltiP2 } : {})
@@ -17664,8 +17686,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       reader.onload = async () => {
         try {
           const parsed = JSON.parse(reader.result);
-          if (!parsed || !Array.isArray(parsed.matches) || parsed.matches.length !== 65 || !Array.isArray(parsed.teams) || !Array.isArray(parsed.users)) {
-            throw new Error('Format fail tidak sah (perlu 65 perlawanan).');
+          if (!parsed || !Array.isArray(parsed.matches) || parsed.matches.length < 1 || !Array.isArray(parsed.teams) || !Array.isArray(parsed.users)) {
+            throw new Error('Format fail tidak sah (tiada perlawanan).');
           }
           if (!await uiConfirm('Gantikan semua data semasa dengan fail sandaran ini?')) return;
           const session = state.session;
@@ -18005,8 +18027,8 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
     }
 
     function validateBackupData(parsed) {
-      if (!parsed || !Array.isArray(parsed.matches) || parsed.matches.length !== 65 || !Array.isArray(parsed.teams) || !Array.isArray(parsed.users)) {
-        throw new Error('Format sandaran tidak sah (perlu 65 perlawanan).');
+      if (!parsed || !Array.isArray(parsed.matches) || parsed.matches.length < 1 || !Array.isArray(parsed.teams) || !Array.isArray(parsed.users)) {
+        throw new Error('Format sandaran tidak sah (tiada perlawanan).');
       }
       return parsed;
     }
@@ -19858,6 +19880,7 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
             rtJejak('FUTSAL', d.matches.map(r => [r.id, r.skorP1, r.skorP2, r.status, r.pengesahan, r.namaP1, r.namaP2, r.gelanggang, r.masaJadual]));
             dash.futsal.rows = d.matches; dash.futsal.at = Date.now(); dash.futsal.err = '';
             dash.futsal.srvAt = Date.parse(d.dikemaskini) || 0;
+            try { if (window.JadualUrus) window.JadualUrus.segerakFutsal(d); } catch (e) { console.warn('[JadualUrus.segerakFutsal]', e); }   // v1.49.0
             fsGabungAwam(d.matches);
           }
           else dash.futsal.err = (d && d.error) || 'Data futsal tidak dapat dibaca.';
@@ -20555,15 +20578,51 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       }).join('') || '<div class="bm-empty">Tiada perlawanan kalah mati untuk kategori ini.</div>';
     }
 
+    // v1.49.0: Jadual Badminton dipaparkan dalam FORMAT YANG SAMA seperti Jadual Penuh Futsal
+    function bmBadgeStatusJd(m) {
+      switch (m.status) {
+        case 'SEDANG BERLANGSUNG': case 'LIVE': return '<span class="badge badge-live badge-dot">Live</span>';
+        case 'REHAT': return '<span class="badge badge-live badge-dot">Rehat</span>';
+        case 'TAMAT': return '<span class="badge badge-done badge-dot">Tamat · Tunggu Sah</span>';
+        case 'SELESAI': return '<span class="badge badge-ok">Selesai</span>';
+        case 'DITANGGUH': return '<span class="badge badge-reject">Ditangguh</span>';
+        default: return bmApproved(m) ? '<span class="badge badge-ok">Selesai</span>' : '<span class="badge badge-pending">Menunggu Giliran</span>';
+      }
+    }
+    function bmBadgeSahJd(m) {
+      if (bmApproved(m)) return '<span class="badge badge-ok">Disahkan</span>';
+      if (m.sah === 'DITOLAK') return '<span class="badge badge-reject">Ditolak</span>';
+      return '<span class="badge badge-pending">Menunggu</span>';
+    }
+    function bmBelumMulaJd(m) {
+      return !bmApproved(m) && !bmIsLive(m) && !bmIsWaitSah(m) && m.s1 === null && m.s2 === null &&
+        ['', 'BELUM BERMULA', 'MENUNGGU', 'MENUNGGU GILIRAN'].includes(String(m.status || '').toUpperCase());
+    }
     function renderBmSchedule(model) {
-      const wrap = document.getElementById('bmSchedule');
-      if (!wrap) return;
+      const body = document.getElementById('bmScheduleBody');
+      if (!body) return;
       const q = bmUp((document.getElementById('bmSearch') || {}).value);
       const gel = (document.getElementById('bmFilterCourt') || {}).value || 'SEMUA';
       const stF = (document.getElementById('bmFilterStatus') || {}).value || 'SEMUA';
       const vis = model.matches.filter(m => dashKatOk(m.kat));
       const sum = document.getElementById('bmScheduleSummary');
       if (sum) sum.textContent = `${vis.filter(bmApproved).length} / ${vis.length} disahkan`;
+      try { if (window.JadualUrus) window.JadualUrus.kemasLabel(); } catch (e) { /* abaikan */ }
+      const jdAdmin = !!(window.JadualUrus && window.JadualUrus.bolehUrus());
+      const tbl = document.getElementById('bmScheduleTable');
+      if (tbl) tbl.classList.toggle('jd-admin', jdAdmin);
+      // Pilihan tapisan gelanggang ikut gelanggang sebenar dalam jadual
+      const selG = document.getElementById('bmFilterCourt');
+      if (selG) {
+        const ids = Array.from(new Set(model.matches.map(m => String(m.gel || '')).filter(Boolean)))
+          .sort((x, y) => (Number(x) || 0) - (Number(y) || 0) || x.localeCompare(y));
+        const kini = Array.from(selG.options).slice(1).map(o => o.value).join('|');
+        if (kini !== ids.join('|')) {
+          const cur = selG.value;
+          selG.innerHTML = '<option value="SEMUA">Semua Gelanggang</option>' + ids.map(g => `<option value="${dashEsc(g)}">Gelanggang ${dashEsc(g)}</option>`).join('');
+          selG.value = ids.includes(cur) ? cur : 'SEMUA';
+        }
+      }
       const list = vis.filter(m => {
         if (gel !== 'SEMUA' && m.gel !== gel) return false;
         if (stF === 'DISAHKAN' && !bmApproved(m)) return false;
@@ -20571,30 +20630,45 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
         if (stF === 'TAMAT' && !bmIsWaitSah(m)) return false;
         if (stF === 'BELUM' && (bmApproved(m) || bmIsLive(m) || bmIsWaitSah(m))) return false;
         if (q) {
-          const hay = [m.ov, m.id, m.nama1, m.nama2, m.sing1, m.sing2, m.kumpulan ? 'KUMPULAN ' + m.kumpulan : m.peringkat].join(' ').toUpperCase();
+          const hay = [m.ov, m.id, m.nama1, m.nama2, m.sing1, m.sing2, m.kod1, m.kod2, m.peringkat, m.kumpulan ? 'KUMPULAN ' + m.kumpulan : ''].join(' ').toUpperCase();
           if (hay.indexOf(q) < 0) return false;
         }
         return true;
       });
-      // v1.41.0: senarai dikumpul ikut PUSINGAN (P1-P6 = pusingan pertama di semua gelanggang, dsb.)
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="icon">🔍</div><p>Tiada perlawanan sepadan dengan carian.</p></div></td></tr>';
+        return;
+      }
+      // Dikumpul ikut PUSINGAN gelanggang (sama seperti Futsal)
       const bilPus = {};
       list.forEach(m => { const k = m.pusingan == null ? '-' : m.pusingan; bilPus[k] = (bilPus[k] || 0) + 1; });
       let lastPus = null;
-      wrap.innerHTML = list.map(m => {
-        const sc = bmScore(m);
+      body.innerHTML = list.map(m => {
+        let html = '';
         const pk = m.pusingan == null ? '-' : m.pusingan;
-        let head = '';
         if (pk !== lastPus) {
           lastPus = pk;
-          head = `<div class="bm-round-head">${pk === '-' ? 'Belum ditetapkan gelanggang' : `Pusingan ${pk}`} · ${bilPus[pk]} perlawanan</div>`;
+          html += `<tr class="phase-row"><td colspan="12">${pk === '-' ? 'Belum ditetapkan gelanggang' : `Pusingan ${pk}`} · ${bilPus[pk]} perlawanan</td></tr>`;
         }
-        return head + `<div class="bm-row ${bmIsLive(m) ? 'live' : ''} ${bmApproved(m) ? 'done' : ''}">
-          <div class="r-id"><b>${dashEsc(m.ov)}</b><small>${dashEsc(m.id)}</small></div>
-          <div><div class="r-stage">${katTag(m.kat)}<span>${dashEsc(bmStageText(m))}</span></div>
-            <div class="dm-teams">${dmTeam(m.nama1, bmSideCls(m, '1'), m.sing1)}${sc ? `<span class="dm-sc">${sc}</span>` : '<span class="dm-vs">VS</span>'}${dmTeam(m.nama2, bmSideCls(m, '2'), m.sing2, true)}</div></div>
-          <div class="r-side"><span class="r-court">Gelanggang ${dashEsc(m.gel)}</span>${bmStatusBadge(m)}</div>
-        </div>`;
-      }).join('') || '<div class="bm-empty">Tiada perlawanan sepadan dengan tapisan.</div>';
+        const sc = bmScore(m);
+        const cls = bmIsLive(m) ? 'row-live' : (bmIsWaitSah(m) ? 'row-done' : '');
+        html += `
+          <tr class="${cls}">
+            <td class="mono"><b>${dashEsc(m.ov || '-')}</b></td>
+            <td class="mono">${dashEsc(m.id)}</td>
+            <td>${m.kat === 'SR' ? '<span class="badge badge-sr">SR</span>' : '<span class="badge badge-sm">SM</span>'}</td>
+            <td>${dashEsc(m.peringkat || '')}</td>
+            <td class="num">${dashEsc(m.kumpulan || '-')}</td>
+            <td class="team-cell">${dashEsc(m.nama1)}<small>${dashEsc(m.sing1 || m.kod1 || '')}</small></td>
+            <td class="score-cell">${sc || '– : –'}</td>
+            <td class="team-cell">${dashEsc(m.nama2)}<small>${dashEsc(m.sing2 || m.kod2 || '')}</small></td>
+            <td><span class="mono">${dashEsc(m.gel || '-')}</span></td>
+            <td>${bmBadgeStatusJd(m)}</td>
+            <td>${bmBadgeSahJd(m)}</td>
+            <td class="jd-act-col">${jdAdmin && window.JadualUrus ? window.JadualUrus.aksiHtml('BADMINTON', m.id, bmBelumMulaJd(m)) : ''}</td>
+          </tr>`;
+        return html;
+      }).join('');
     }
 
     /* =========================================================
@@ -21848,21 +21922,9 @@ Log keluar akan MELEPASKAN kunci gelanggang dan pengadil lain boleh mengambil al
       window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw] pendaftaran gagal', err)); });
     }
   </script>
-  <style>
-.jadual-universal-active #tab-dashboard,.jadual-universal-active #tab-live,.jadual-universal-active #tab-standings,.jadual-universal-active #tab-knockout,.jadual-universal-active #tab-schedule,.jadual-universal-active #tab-bm-live,.jadual-universal-active #tab-bm-standings,.jadual-universal-active #tab-bm-knockout,.jadual-universal-active #tab-bm-schedule {display:none!important;}
-.jadual-universal-active [data-sukan="FUTSAL"],.jadual-universal-active [data-sukan="BADMINTON"] {display:none!important;}
-#universalPublic {margin:24px auto;max-width:1400px;padding:16px;}
-#universalPublic[hidden] {display:none;}
-@media(max-width:600px){#universalPublic .table-wrap {overflow:visible;} #universalPublic thead {display:none;} #universalPublic table,#universalPublic tbody {display:block;} #universalPublic tr {display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--glass-border);padding:12px 0;gap:8px;} #universalPublic td {display:block;border:0;white-space:normal;padding:4px;} #universalPublic td::before {content:attr(data-label);display:block;color:var(--text-2);font-size:.7rem;margin-bottom:4px;} #universalPublic td:nth-child(12),#universalPublic td:nth-child(13){grid-column:1/-1;}}
-</style>
-<section class="admin-team-section" id="universalPublic" hidden aria-labelledby="universalPublicTitle">
-    <h2 id="universalPublicTitle" class="card-title">Jadual Acara Universal</h2>
-    <div class="table-wrap"><table class="data-table"><thead><tr><th>ID Acara</th><th>Nama Acara</th><th>Sukan</th><th>ID Perlawanan</th><th>Giliran</th><th>Kategori</th><th>Peringkat</th><th>Kumpulan</th><th>Tarikh</th><th>Masa</th><th>Lokasi</th><th>Peserta</th><th>Catatan</th></tr></thead><tbody id="universalPublicRows"></tbody></table></div>
-  </section>
   <script src="admin-pasukan.js"></script>
   <script src="admin-jadual.js"></script>
-  <script src="xlsx.full.min.js"></script>
-  <script src="jadual-universal.js"></script>
+  <script src="jadual-urus.js"></script> <!-- v1.49.0: Urus Jadual terus dari paparan Jadual Penuh -->
   <script src="admin-skor.js"></script>
 
   <!-- v1.24.0 ENJIN AUTO-FIT SKRIN KOMPUTER TANPA SCROLL -->
